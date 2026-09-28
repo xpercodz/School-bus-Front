@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo, useState } from "react";
 import type { RunSegmentId } from "@/data/dashboard";
 import { useDashboardData, todayDateStr } from "@/lib/school-data";

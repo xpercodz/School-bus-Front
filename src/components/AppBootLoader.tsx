@@ -1,5 +1,3 @@
-"use client";
-
 import { useAuth } from "@/lib/auth";
 import { useLocale } from "@/lib/i18n/context";
 import { BanterLoader } from "./BanterLoader";

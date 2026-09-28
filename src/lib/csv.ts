@@ -57,7 +57,9 @@ export function buildAttendanceCsv(
         .join(","),
     );
   }
-  return `﻿${lines.join("\r\n")}`;
+  // Leading BOM (spelled as an escape, not a literal invisible character) so
+  // Excel detects UTF-8; without it Arabic text mojibakes on open.
+  return `\uFEFF${lines.join("\r\n")}`;
 }
 
 /** Trigger a client-side download of `content` as `filename`. */

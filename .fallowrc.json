@@ -1,13 +1,17 @@
 {
   // JSONC — fallow reads these comments; generic JSON tools may not.
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
-  // CLI-run scripts (node scripts/seed.mjs) are not importable, so fallow
-  // flags them as unused. They are load-bearing — keep them.
-  "ignorePatterns": ["scripts/**"],
   // Tailwind v4 is pulled in via `@import "tailwindcss"` in globals.css at
-  // build time; it is a devDependency by design. firebase-admin is used only
-  // by the (ignored) CLI scripts in scripts/.
-  "ignoreDependencies": ["tailwindcss", "firebase-admin"],
+  // build time, and applied through the @tailwindcss/vite plugin — it is a
+  // devDependency by design. Fonts are imported for their side-effect CSS in
+  // main.tsx, which fallow cannot see.
+  "ignoreDependencies": [
+    "tailwindcss",
+    "@tailwindcss/vite",
+    "@fontsource-variable/inter",
+    "@fontsource-variable/jetbrains-mono",
+    "@fontsource/ibm-plex-sans-arabic"
+  ],
   // i18n dictionary/type files intentionally re-export the same names
   // (Messages, messages) across modules — a namespace-barrel pattern.
   "ignoreExports": [

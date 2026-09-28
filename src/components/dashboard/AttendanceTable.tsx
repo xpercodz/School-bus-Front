@@ -1,5 +1,3 @@
-"use client";
-
 import type { AttendanceRow } from "@/data/dashboard";
 import { DASH_STATUS_META } from "@/data/dashboard";
 import type { StudentStatus } from "@/data/students";

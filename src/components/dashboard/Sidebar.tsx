@@ -1,7 +1,5 @@
-"use client";
-
 import { useState } from "react";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import { Dialog } from "@/components/Dialog";
 import { Icon } from "@/components/Icon";
 import { NAV_ITEMS } from "@/data/dashboard";
@@ -131,10 +129,11 @@ function SidebarContent({
           return (
             <li key={item.id}>
               {item.href ? (
-                // next/link = client-side transition; a plain <a> would hard-reload
-                // the shell and re-trigger the RequireRole guard ("Checking access…").
+                // react-router <Link> = client-side transition; a plain <a> would
+                // hard-reload the shell and re-trigger the RequireRole guard
+                // ("Checking access…").
                 <Link
-                  href={item.href}
+                  to={item.href}
                   aria-current={active ? "page" : undefined}
                   onClick={() => onNavigate?.()}
                   className={linkClass}

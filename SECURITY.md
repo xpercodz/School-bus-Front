@@ -2,20 +2,30 @@
 
 Security model for the app. Keep this accurate when controls change.
 
+> **Two repositories.** This file lives with the web client. The privileged
+> endpoints referenced below are served by **`School-bus-API`** — a separate repo,
+> a separate origin, and a separate deploy. Its README documents the server-side
+> controls. Because the browser now calls it **cross-origin**, the API's
+> `APP_ORIGINS` must allowlist every origin this app is served from, and CORS joins
+> the Origin check as a browser-side control. The HTTP security headers
+> (`X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`) that used
+> to come from `next.config.ts` now ship from the `hosting.headers` block of
+> `firebase.json`.
+
 ## Authentication
 
 - **Provider:** Firebase Auth — email/password for directors, 6-digit access
   codes for drivers (no OAuth/SSO yet).
-- **Login UI:** `/login` (`src/app/login/page.tsx`) has two modes; **neither
+- **Login UI:** `/login` (`src/routes/LoginPage.tsx`) has two modes; **neither
   mode signs the client in with raw credentials.** Both exchange credentials
   for a server-minted Firebase custom token, and the client only ever calls
   `signInWithCustomToken`:
-  - **Driver code tab** → `POST /api/auth/verify-code`: hashes the submitted
+  - **Driver code tab** → `POST /v1/auth/verify-code` (School-bus-API): hashes the submitted
     code (HMAC-SHA256, `CODE_PEPPER`) and Admin SDK collection-group lookups
     `driverCodes.codeHash`, then requires the owner's profile to be
     `role: "staff"` before minting the token. A code can never mint a director
     session.
-  - **Director tab** → `POST /api/auth/director-sign-in`: verifies the
+  - **Director tab** → `POST /v1/auth/director-sign-in` (School-bus-API): verifies the
     email/password with Firebase Auth's REST endpoint (public web API key),
     then requires `users/{uid}.role === "director"` (fresh Admin SDK read)
     before minting the token. A staff/driver account typed into the Director
@@ -23,13 +33,14 @@ Security model for the app. Keep this accurate when controls change.
     create any session through that path.
   - Both routes run a uniform ~400ms delay on success AND failure (no timing
     oracle), a **bounded** in-memory per-IP rate limit (10k-entry cap), and an
-    **Origin check** (`APP_ORIGIN`; cross-origin auth POSTs → 403) as CSRF
+    **Origin check** (`APP_ORIGINS` allowlist; cross-origin auth POSTs → 403) as CSRF
     hardening. Failed attempts log one structured line (event/reason/ip —
     never codes, emails, or passwords).
 - **Codes are stored hashed, not plaintext.** A `driverCodes/{uid}` doc holds
   only `codeHash = HMAC-SHA256(CODE_PEPPER, code)`; the plaintext code is
-  returned exactly once at create/regenerate (`POST /api/drivers`,
-  `POST /api/drivers/regenerate`) so directors can hand it to the driver.
+  returned exactly once at create/regenerate (`POST /v1/drivers`,
+  `POST /v1/drivers/regenerate`, both on School-bus-API) so directors can hand it
+  to the driver.
   Legacy plaintext `code` docs still display until regenerated (rotation
   replaces them); verification only matches `codeHash`, so regenerate is the
   recovery path for any lost code.
@@ -43,15 +54,15 @@ Security model for the app. Keep this accurate when controls change.
   `src/lib/auth.tsx`; there are no server-side session cookies. Client JS
   cannot be trusted to gate data — the Firestore rules are the real boundary.
 - Users are provisioned by an Admin-SDK bootstrap (`scripts/seed.mjs`), the
-  console, or `POST /api/drivers` (director-only); there is no self-signup and
+  console, or `POST /v1/drivers` (director-only); there is no self-signup and
   the rules no longer allow clients to create `users/{uid}` at all. Driver
   accounts are code-only: a placeholder `{uuid}@drivers.invalid` email and
   **no password**, so password auth can never reach them.
-- **Branch policy:** `dev` predates the server-side director gate — it signs
-  directors in client-side with `signInWithEmailAndPassword` (no role gate).
-  Never merge it as-is; the canonical line is `director-gate-and-drawer-ui`.
-  Client code must never call `signInWithEmailAndPassword` directly (grep for
-  it on every merge).
+- **Invariant:** client code must never call `signInWithEmailAndPassword`
+  directly (grep for it on every merge) — director sign-in must go through the
+  API so the role gate runs server-side. Verified absent as of the two-repo split.
+  (An older `dev` predated the server-side director gate; that is no longer the
+  case — `dev` at `267d946` contains `director-sign-in` and the gate.)
 
 ## Authorization model
 
@@ -78,7 +89,7 @@ Security model for the app. Keep this accurate when controls change.
 - A user can only ever read/write their own school's subtree — no collection-
   group queries cross schools, and cross-school reads are denied by the rules.
 
-## Firestore rules (`firestore.rules`)
+## Firestore rules (`firebase/firestore.rules`)
 
 - `users`: a user may read **their own** profile; a director may additionally
   read any profile of their own school (the staff list). A user may update
@@ -96,21 +107,22 @@ Security model for the app. Keep this accurate when controls change.
   `status` ∈ BOARDED / WAITING / DROPPED_OFF / ABSENT. A staff account can no
   longer write another bus's run or forge attendance records.
 - `schools/{id}/audit`: director-read-only; written exclusively by the Admin
-  SDK (`logAudit` in `src/lib/driver-admin.ts`) — driver-created and
+  SDK (`logAudit` in `School-bus-API/src/lib/driver-admin.ts`) — driver-created and
   code-regenerated events, never codes or passwords.
 
 ## Data
 
 - **Client keys** (`apiKey`, etc.) are public by design and shipped in the web
   bundle; the security boundary is the rules, never these values.
-- **Secrets kept out of git:** `.env.local` (`.env*` ignored) and the
-  service-account key (`service-account.json`, gitignored, chmod 600). The
-  service account must never be exposed to the client — it's used only by
-  `scripts/seed.mjs`. **Server-only envs in `.env.local`:** `CODE_PEPPER`
-  (HMAC key for driver-code hashing — required by the server routes and the
-  seed script) and `APP_ORIGIN` (Origin check for the auth POST routes;
-  defaults to `http://localhost:3000`). Set real values in the hosting env,
-  never in the repo.
+- **Secrets kept out of git.** The service-account key
+  (`service-account.json`, gitignored, chmod 600) and the server-only envs now
+  live with **`School-bus-API`**, which is where they are used; this repo keeps
+  only the public `VITE_FIREBASE_*` client config in `.env.local`. The service
+  account must never be exposed to the client.
+- **Server-only envs (in the API repo):** `CODE_PEPPER` (HMAC key for driver-code
+  hashing) and `APP_ORIGINS` (Origin check for the auth POST routes; must list
+  every origin this app is served from). Set real values in the API's hosting env,
+  never in a repo.
 
 ## Known limitations / pre-launch requirements
 
@@ -141,5 +153,5 @@ Security model for the app. Keep this accurate when controls change.
   in `firestore.indexes.json`); deploy rules to staging first and smoke-test
   staff/director flows (the rules now deny profile creation and scope staff
   writes); re-seed or regenerate demo driver codes once so docs store
-  `codeHash`; set `CODE_PEPPER` + `APP_ORIGIN` in the hosting env; HSTS at the
-  edge.
+  `codeHash`; set `CODE_PEPPER`, `FIREBASE_API_KEY`, and `APP_ORIGINS` (including
+  this app's Hosting origins) in the **API's** hosting env; HSTS at the edge.

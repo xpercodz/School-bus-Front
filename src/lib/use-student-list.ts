@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo, useState } from "react";
 import type { AttendanceRow, StudentStatusFilter } from "@/data/dashboard";
 

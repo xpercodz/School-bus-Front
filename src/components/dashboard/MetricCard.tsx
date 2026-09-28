@@ -1,5 +1,3 @@
-"use client";
-
 import type { KPI } from "@/data/dashboard";
 import { Icon } from "@/components/Icon";
 import { useLocale } from "@/lib/i18n/context";

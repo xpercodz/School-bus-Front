@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState, type RefObject } from "react";
 import { Icon } from "@/components/Icon";
 import type { Locale } from "@/lib/i18n/config";

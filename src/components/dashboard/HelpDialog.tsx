@@ -1,5 +1,3 @@
-"use client";
-
 import { Dialog } from "@/components/Dialog";
 import { Icon } from "@/components/Icon";
 import { useLocale } from "@/lib/i18n/context";

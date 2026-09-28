@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import type { Student } from "@/data/students";
 import { STATUS_META } from "@/data/students";

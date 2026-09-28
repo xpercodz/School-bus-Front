@@ -1,5 +1,3 @@
-"use client";
-
 import { useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { SlideSegments } from "@/components/SlideSegments";

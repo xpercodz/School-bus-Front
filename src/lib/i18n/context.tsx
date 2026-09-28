@@ -1,5 +1,3 @@
-"use client";
-
 import {
   createContext,
   useCallback,
@@ -26,9 +24,10 @@ interface LocaleContextValue {
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
 /**
- * Client locale provider. Seeded from the server-passed `initialLocale` (read
- * from the cookie by the root layout) so hydration never sees a mismatch. On
- * every change it updates <html lang/dir> and writes the cookie.
+ * Client locale provider. Seeded from `readLocaleCookie()` (called once in
+ * App.tsx before the first render) so the initial paint is already in the right
+ * language and direction. On every change it updates <html lang/dir> and writes
+ * the cookie.
  */
 export function LocaleProvider({
   initialLocale,

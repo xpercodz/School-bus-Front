@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/context";
 import { formatTime } from "@/lib/i18n/format";

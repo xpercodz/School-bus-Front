@@ -1,5 +1,3 @@
-"use client";
-
 import type { StudentListState } from "@/lib/use-student-list";
 import { AttendanceTable } from "./AttendanceTable";
 import { StudentListToolbar } from "./StudentListToolbar";

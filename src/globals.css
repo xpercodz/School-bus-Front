@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/*
+  Self-hosted font families. `next/font` used to inject these exact variable
+  names; now the @font-face rules come from the @fontsource imports in
+  `src/main.tsx` and this block names the families so the stacks below resolve.
+*/
+:root {
+  --font-inter: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: "IBM Plex Sans Arabic", sans-serif;
+  --font-jetbrains: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace,
+    monospace;
+}
+
 @theme {
   /* Material Utility (M3 light) — tokens from DESIGN.md */
   --color-surface: #f8f9fa;

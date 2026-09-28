@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import {
   collection,
@@ -14,10 +12,11 @@ import {
   writeBatch,
   type DocumentSnapshot,
 } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth";
 import { fetchSchoolId } from "@/lib/school-id";
 import { useCursorPage } from "@/lib/use-cursor-page";
+
 
 /**
  * Director-only data access for the Assignments page: realtime buses + staff
@@ -338,46 +337,11 @@ export async function assignStudentToBus(
   await setDoc(doc(db, "schools", schoolId, "students", studentId), { busId }, { merge: true });
 }
 
-/** Bearer token for the signed-in director calling the driver API routes. */
-async function currentIdToken(): Promise<string> {
-  const current = auth?.currentUser;
-  if (!current) throw new Error("Not signed in");
-  return current.getIdToken();
-}
-
 /**
- * Create a driver account and return its uid + auto-generated access code. Goes
- * through the server route (Admin SDK) — the client SDK can't create Auth users
- * and `users` profiles are rule-denied to clients.
+ * Driver account creation and code rotation are privileged: Firebase Auth users
+ * and `users` profiles are Admin-SDK-only, and global code uniqueness is
+ * enforced server-side. Both therefore live in the School-bus-API and are
+ * re-exported here so the Drivers page keeps a single import site for
+ * director-admin actions.
  */
-export async function createDriver(name: string): Promise<{ uid: string; code: string }> {
-  const token = await currentIdToken();
-  const res = await fetch("/api/drivers", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ name }),
-  });
-  if (!res.ok) throw new Error("Failed to create driver");
-  return (await res.json()) as { uid: string; code: string };
-}
-
-/**
- * Rotate a driver's access code (or issue a first one to a staff account that
- * has none). Server-side so global code uniqueness is enforced.
- */
-export async function regenerateDriverCode(uid: string): Promise<string> {
-  const token = await currentIdToken();
-  const res = await fetch("/api/drivers/regenerate", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ uid }),
-  });
-  if (!res.ok) throw new Error("Failed to regenerate code");
-  return ((await res.json()) as { code: string }).code;
-}
+export { createDriver, regenerateDriverCode } from "@/lib/api";

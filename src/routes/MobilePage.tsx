@@ -1,7 +1,5 @@
-"use client";
-
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import type { TabId } from "@/data/students";
 import { countByStatus } from "@/data/students";
 import { useRunRoster } from "@/lib/school-data";
@@ -30,7 +28,7 @@ export default function Home() {
     runExists,
   } = useRunRoster();
   const { t } = useLocale();
-  const router = useRouter();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<TabId>("all");
   const [historyStudent, setHistoryStudent] = useState<string | null>(null);
@@ -59,7 +57,7 @@ export default function Home() {
           </p>
           <button
             type="button"
-            onClick={() => router.push("/login")}
+            onClick={() => navigate("/login")}
             className="mt-2 flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-label-lg text-on-primary transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <Icon name="login" size={18} />

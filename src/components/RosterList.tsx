@@ -1,5 +1,3 @@
-"use client";
-
 import type { Student } from "@/data/students";
 import { Icon } from "@/components/Icon";
 import { StudentCard } from "@/components/StudentCard";

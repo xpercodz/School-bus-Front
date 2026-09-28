@@ -1,5 +1,3 @@
-"use client";
-
 import type { StudentStatus } from "@/data/students";
 import { CHIPS, STATUS_META, type ChipConfig } from "@/data/students";
 import { Icon } from "@/components/Icon";

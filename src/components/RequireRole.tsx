@@ -1,7 +1,5 @@
-"use client";
-
 import { useEffect, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useUserProfile, type UserRole } from "@/lib/user-profile";
 import { useLocale } from "@/lib/i18n/context";
@@ -23,7 +21,7 @@ export function RequireRole({ role, fallback, children }: RequireRoleProps) {
   const { user, status } = useAuth();
   const { profile, loading } = useUserProfile();
   const { t } = useLocale();
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const authorized =
     status === "ready" && !!user && !loading && profile.role === role;
@@ -31,13 +29,13 @@ export function RequireRole({ role, fallback, children }: RequireRoleProps) {
   useEffect(() => {
     if (status !== "ready") return;
     if (!user) {
-      router.replace("/login");
+      navigate("/login", { replace: true });
       return;
     }
     if (!loading && profile.role !== role) {
-      router.replace(fallback);
+      navigate(fallback, { replace: true });
     }
-  }, [status, user, loading, profile.role, role, fallback, router]);
+  }, [status, user, loading, profile.role, role, fallback, navigate]);
 
   if (status === "loading" || loading) {
     return (

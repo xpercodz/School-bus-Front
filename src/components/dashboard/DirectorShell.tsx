@@ -1,7 +1,5 @@
-"use client";
-
 import { useEffect, useState, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { useLocation } from "react-router-dom";
 import { RequireRole } from "@/components/RequireRole";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { TopBar } from "@/components/dashboard/TopBar";
@@ -18,7 +16,7 @@ import { useSchoolName } from "@/lib/school";
  */
 export function DirectorShell({ children }: { children: ReactNode }) {
   const schoolName = useSchoolName();
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   const activeId = activeIdFromPathname(pathname);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 

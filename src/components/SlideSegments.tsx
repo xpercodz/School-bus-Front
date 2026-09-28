@@ -1,5 +1,3 @@
-"use client";
-
 import { useRef, type KeyboardEvent } from "react";
 import { useLocale } from "@/lib/i18n/context";
 

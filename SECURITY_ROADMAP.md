@@ -20,27 +20,30 @@ header check, `npm audit` clean except one tracked moderate (uuid chain).
 
 ## Tier 1 — Code wins (in-repo, committable without console access)
 
-1. `Cache-Control: no-store` on `/api` responses + the CSV download
-   (OWASP A04/A09 — PII must not reach shared/CDN caches).
-2. Global generic error surfaces: `src/app/error.tsx`, `global-error.tsx`,
-   `not-found.tsx`; map Firebase SDK error codes to generic i18n messages;
-   never surface raw error strings (OWASP Top 10 2025 A10 "Mishandling of
-   Exceptional Conditions", ASVS 5.0 V16.5).
+1. `Cache-Control: no-store` on the School-bus-API's responses + the CSV download
+   (OWASP A04/A09 — PII must not reach shared/CDN caches). The web app no longer
+   has server routes of its own, so this half is an **API-repo** change.
+2. Global generic error surfaces: a React Router error boundary plus a `not-found`
+   route (the Next.js `error.tsx` / `global-error.tsx` / `not-found.tsx` files went
+   away with the App Router); map Firebase SDK error codes to generic i18n
+   messages; never surface raw error strings (OWASP Top 10 2025 A10 "Mishandling of
+   Exceptional Conditions", ASVS 5.0 V16.5). The API half is already done — see
+   `onError` in `School-bus-API/src/app.ts`.
 3. Self-host the Material Symbols icon font via
-   `@fontsource/material-symbols-rounded` (+ outlined variant; both verified
+   `@fontsource/material-symbols-rounded` (5.3.8, + outlined variant; both verified
    on npm, OFL-1.1, SLSA provenance) and remove the Google Fonts `<link>` +
-   preconnects in `src/app/layout.tsx` — removes the app's only external
-   runtime asset load (privacy + no-SRI hole). Text fonts are already
-   self-hosted via `next/font`.
+   preconnects in `index.html` — removes the app's only remaining external runtime
+   asset load (privacy + no-SRI hole). Text fonts (Inter, JetBrains Mono, IBM Plex
+   Sans Arabic) are already self-hosted via `@fontsource`.
 4. CSV hardening: also neutralize full-width formula triggers (`＝＋－＠`),
    tab/CR/LF-leading cells, and mid-field separator tricks (OWASP CSV
    Injection; note: no sanitizer is safe for every spreadsheet consumer).
 5. Formalize the structured log line shape (`{level,event,message,requestId,ts}`)
    for correlation (auth routes already emit `{event,reason,ip}` JSON).
-6. Add `Cross-Origin-Opener-Policy: same-origin` header (skip COEP: no
-   SharedArrayBuffer use and it breaks cross-origin assets; revisit via
-   report-only only if ever needed). `X-Permitted-Cross-Domain-Policies: none`
-   is scanner-score-only, optional.
+6. Add `Cross-Origin-Opener-Policy: same-origin` to the `hosting.headers` block in
+   `firebase.json` (skip COEP: no SharedArrayBuffer use and it breaks cross-origin
+   assets; revisit via report-only only if ever needed).
+   `X-Permitted-Cross-Domain-Policies: none` is scanner-score-only, optional.
 
 ## Tier 2 — Console / edge settings (no code; needs your Firebase/Vercel/GCP access)
 
@@ -65,17 +68,20 @@ header check, `npm audit` clean except one tracked moderate (uuid chain).
    enroll — keep their sessions short. (Native Firebase web passkeys:
    unverified/contradictory — re-check console "Sign-in method → Passkey"
    before building.)
-4. **HSTS**: Vercel already sends `strict-transport-security` (2 years) and
-   308-redirects HTTP — nothing to do unless Cloudflare fronts the domain
-   (then: SSL Full (strict) + HSTS toggle in Edge Certificates).
+4. **HSTS**: add a `Strict-Transport-Security` header to the `hosting.headers`
+   block in `firebase.json`. Firebase Hosting serves HTTPS and redirects HTTP but
+   does not send HSTS itself — this is now a code change in this repo rather than a
+   console setting.
 5. **Data safety**: enable Firestore PITR (7-day window) + a scheduled daily
    backup (~30-day retention); Cloud Billing budget alert (~50/90%);
    least-privilege IAM for the server service account (never owner;
    prefer Workload Identity Federation over a JSON key; rotate any JSON key
    ≥ every 90 days); confirm web API-key restrictions.
-6. **Vercel Firewall** rate-limit rule for `/api/auth/(verify-code|director-sign-in)`
-   (10 req/60 s per IP, Deny) — a global edge layer in front of the in-memory
-   limiter (plan gating unverified).
+6. **An edge/WAF rate limit in front of the API** for
+   `/v1/auth/(verify-code|director-sign-in)` (10 req/60 s per IP, deny) — a global
+   layer ahead of the API's in-memory limiter, which is per-instance and resets on
+   restart. Separately, that limiter itself needs a shared store (Redis or a
+   Firestore counter) before the API runs more than one instance.
 7. **Driver-code lifecycle**: add `issuedAt`/`expiresAt` to `driverCodes`
    docs; `verify-code` rejects expired codes; rotate on policy (30–90 days);
    alert on hash-miss storms (wrong-code sweeps are otherwise invisible —
@@ -87,8 +93,10 @@ header check, `npm audit` clean except one tracked moderate (uuid chain).
    repos. `.github/dependabot.yml` (npm, weekly, grouped). Dismiss the uuid
    GHSA-w5hq-g745-h8pq alert with reason `tolerable_risk` + tracking comment
    (do NOT use `ignore` — it doesn't silence alerts). Re-check quarterly.
-2. **First CI workflow** (PR): `npm ci` → `npm run lint` → `npm run build` →
-   `npm audit --audit-level=high` (the uuid moderate does NOT fail the gate).
+2. **First CI workflows** (PR) — one per repo, since they are independent:
+   `npm ci` → `npm run lint` → `npm run typecheck` → `npm run build` →
+   `npm audit --audit-level=high`. The web repo's build also produces the Hosting
+   bundle; the API repo's produces `dist/index.js`.
 3. **Firestore rules tests in CI**: `@firebase/rules-unit-testing` +
    `firebase emulators:exec --only firestore --project demo-schoolbus` (no
    login needed for Firestore-only; needs JDK 21 + Node ≥ 20 in CI; pin
@@ -99,9 +107,9 @@ header check, `npm audit` clean except one tracked moderate (uuid chain).
 4. **gitleaks** pre-commit hook (`pre-commit-config.yaml`, pin latest v8 tag)
    + `gitleaks-action` in CI (GitHub-native secret scanning is paid on private
    repos; free tier is public-only).
-5. **Sentry free tier** (Vercel's "Error Monitoring" product no longer exists;
-   Hobby logs expire after 1 hour): `npx @sentry/wizard@latest -i nextjs`,
-   tag Firebase auth error codes, alert on auth-failure spikes (e.g. a single
+5. **Sentry free tier**: `npx @sentry/wizard@latest -i react` for the web app and
+   `-i node` (or manual `@sentry/node`) for the API — two projects, two DSNs. Tag
+   Firebase auth error codes, and alert on auth-failure spikes (e.g. a single
    auth-error code exceeding `max(5, 3×7-day daily avg)` in a 10-min window —
    guidance, verify condition syntax in the Sentry UI). Free tier: 5k
    errors/month.
@@ -132,29 +140,39 @@ header check, `npm audit` clean except one tracked moderate (uuid chain).
    ENFORCE; availability/pricing per project unverified).
 3. **HttpOnly session cookies**: exchange the existing custom-token flow for a
    `__Host-` `createSessionCookie` (14-day) + `verifySessionCookie(token,
-   checkRevoked: true)` in `/api` handlers; call `revokeRefreshTokens(uid)` on
+   checkRevoked: true)` in the School-bus-API's handlers; call
+   `revokeRefreshTokens(uid)` on
    role demotion / termination / "sign out everywhere". Kills XSS token theft
    from localStorage. Larger migration (keep `onAuthStateChanged` for
    Firestore UI). Firebase also ships `Persistence.COOKIE` (beta) for
    client/server sync.
-4. **CSP with nonces** via Next 16 `proxy.ts` (middleware renamed to proxy in
-   v16; Node runtime): per-request nonce + `strict-dynamic`, rolled out as
-   `Content-Security-Policy-Report-Only` first. Cost: forces dynamic rendering
-   (no static/CDN caching; PPR-incompatible). Firebase connect-src hosts must
-   be allowed; fonts stay `'self'` once self-hosted.
+4. **Content-Security-Policy.** Firebase Hosting serves a static SPA, so the old
+   plan of per-request nonces from a Next.js proxy/middleware is no longer
+   available. What is reachable now is a **static** CSP in the `firebase.json`
+   `hosting.headers` block (no nonces), rolled out as
+   `Content-Security-Policy-Report-Only` first. It must allow the Firebase
+   connect-src hosts (`*.googleapis.com`, `*.firebaseio.com`,
+   `firestore.googleapis.com`) and the Google Fonts origins until Material Symbols
+   is self-hosted (Tier 1.3); `'unsafe-inline'` is likely needed for styles. A
+   nonce-based CSP would require serving the shell from a host with edge
+   middleware, or from the API itself.
 5. **SAST**: Semgrep CE (free, intra-file only — misses cross-file bugs) now;
    CodeQL only if GitHub Code Security is ever purchased (~$30/active
    committer/mo, private repos; `codeql-action` init@v4 + `security-extended`).
 6. **osv-scanner** scheduled scan (aggregates beyond npm advisory feed; SARIF
    upload on private repos may need Code Security — test `upload-sarif: false`
    first).
-7. **uuid 11.1.1 override** (optional clean-audit): root `"overrides": {
-   "uuid": "^11.1.1" }` — legal since uuid is transitive; 9→11 crosses
-   breaking majors (v11 keeps CJS), so run the full test/build after; advisory
-   (GHSA-w5hq-g745-h8pq / CVE-2026-41907) only affects v3/v5/v6 caller-buffer
-   paths — the Google libs use v4, so current risk is negligible.
+7. **Resolve the API repo's `npm audit` findings** — currently **9** (8 moderate,
+   1 low). Every moderate is the single `firebase-admin` → `@google-cloud/*` →
+   `google-gax` / `teeny-request` / `retry-request` / `uuid` chain, and is fixed by
+   `firebase-admin@>=14.4`; the repo pins `^13.10.0`, so this needs a deliberate
+   major bump (re-verify `cert`/`initializeApp`/`getAuth`/`getFirestore`/
+   transactions afterwards). The low is `esbuild`, a devDependency of tsup/tsx.
+   The **web repo is now at 0 vulnerabilities** — moving `firebase-admin` out
+   carried the entire chain with it.
 8. **Uptime checks** (UptimeRobot free / Better Stack free / Sentry free
-   uptime monitor) probing `/` + a future `/api/health`. Note: an HTTP 200
+   uptime monitor) probing the web app's `/` and the API's `/health` (which
+   already exists and deliberately does not touch Firebase). Note: an HTTP 200
    does not exercise Firestore rules — real auth/backend health comes from
    the Tier 3.5 logs/alerts.
 

@@ -1,5 +1,3 @@
-"use client";
-
 import { Icon } from "@/components/Icon";
 import type { RunSegmentId } from "@/data/dashboard";
 import { useLocale } from "@/lib/i18n/context";

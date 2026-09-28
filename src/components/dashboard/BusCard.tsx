@@ -1,5 +1,3 @@
-"use client";
-
 import type { Bus } from "@/data/dashboard";
 import { useLocale } from "@/lib/i18n/context";
 import { toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";

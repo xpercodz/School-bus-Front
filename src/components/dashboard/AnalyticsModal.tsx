@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { Dialog } from "@/components/Dialog";
 import { Icon } from "@/components/Icon";

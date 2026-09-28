@@ -1,10 +1,8 @@
-"use client";
-
 import { useEffect, useState, type FormEvent } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link, useNavigate } from "react-router-dom";
 import { signInWithCustomToken } from "firebase/auth";
 import { auth, isFirebaseConfigured } from "@/lib/firebase";
+import { ApiError, directorSignIn, verifyDriverCode } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useUserProfile } from "@/lib/user-profile";
 import { useLocale } from "@/lib/i18n/context";
@@ -44,7 +42,7 @@ function normalizeDigits(value: string): string {
 type Mode = "driver" | "director";
 
 export default function LoginPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { user, status } = useAuth();
   const { profile, loading: profileLoading } = useUserProfile();
   const { t } = useLocale();
@@ -64,9 +62,9 @@ export default function LoginPage() {
   // Already signed in → land on the right area for the role.
   useEffect(() => {
     if (status === "ready" && user && !profileLoading) {
-      router.replace(profile.role === "director" ? "/dashboard" : "/");
+      navigate(profile.role === "director" ? "/dashboard" : "/", { replace: true });
     }
-  }, [status, user, profileLoading, profile.role, router]);
+  }, [status, user, profileLoading, profile.role, navigate]);
 
   // Tick the lockout clock so an active block is reflected without Date.now()
   // in render (30s granularity is plenty for a 15-minute block).
@@ -87,13 +85,7 @@ export default function LoginPage() {
     setCodeSubmitting(true);
     setCodeError(null);
     try {
-      const res = await fetch("/api/auth/verify-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
-      });
-      if (!res.ok) throw new Error("invalid code");
-      const { token } = (await res.json()) as { token: string };
+      const token = await verifyDriverCode(code);
       await signInWithCustomToken(auth, token);
       window.localStorage.removeItem(LOCKOUT_KEY);
       setLockout({ fails: 0, until: 0 });
@@ -111,11 +103,11 @@ export default function LoginPage() {
   }
 
   /**
-   * Director sign-in goes through /api/auth/director-sign-in: the server checks
-   * the email/password against Firebase Auth AND requires the account's
-   * `users/{uid}` profile to be a director before returning a custom token. A
-   * driver account typed into the Director tab is rejected with a clear error
-   * instead of silently landing on the driver app.
+   * Director sign-in goes through the API: the server checks the email/password
+   * against Firebase Auth AND requires the account's `users/{uid}` profile to be
+   * a director before returning a custom token. A driver account typed into the
+   * Director tab is rejected with a clear error instead of silently landing on
+   * the driver app.
    */
   async function handleDirectorSubmit(event: FormEvent) {
     event.preventDefault();
@@ -123,29 +115,18 @@ export default function LoginPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch("/api/auth/director-sign-in", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
-      if (res.status === 403) {
-        setError(t("login.notDirector"));
-        return;
-      }
-      if (res.status === 429) {
-        setError(t("login.tooManyAttempts"));
-        return;
-      }
-      if (!res.ok) {
-        // 401 (wrong email/password) and anything else → generic message.
-        setError(t("login.fallbackError"));
-        return;
-      }
-      const { token } = (await res.json()) as { token: string };
+      const token = await directorSignIn(email.trim(), password);
       await signInWithCustomToken(auth, token);
       // The role-based redirect effect above lands the user on /dashboard.
-    } catch {
-      setError(t("login.fallbackError"));
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setError(t("login.notDirector"));
+      } else if (err instanceof ApiError && err.status === 429) {
+        setError(t("login.tooManyAttempts"));
+      } else {
+        // 401 (wrong email/password) and anything else → generic message.
+        setError(t("login.fallbackError"));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -164,7 +145,7 @@ export default function LoginPage() {
             {t("login.notConfiguredBody", { code: ".env.local" })}
           </p>
           <Link
-            href="/"
+            to="/"
             className="mt-6 inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-label-lg text-on-primary"
           >
             {t("login.backToApp")}

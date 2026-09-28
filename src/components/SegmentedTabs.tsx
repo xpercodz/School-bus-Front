@@ -1,5 +1,3 @@
-"use client";
-
 import { useRef, type KeyboardEvent } from "react";
 import type { StudentStatus } from "@/data/students";
 import { TABS, type TabId } from "@/data/students";
