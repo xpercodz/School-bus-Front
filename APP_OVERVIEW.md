@@ -7,12 +7,28 @@ director) — and a **Hono HTTP API** (`../School-bus-API`) that owns every
 privileged, Admin-SDK operation. This is the canonical architecture document for
 this repo — keep it accurate as the project evolves.
 
+## Which repository is which
+
+| Repository | Role | Stack | Deployed to |
+| --- | --- | --- | --- |
+| **`School-bus-Front`** — *this repo* | **Frontend.** The entire user interface. | Vite 8 + React 19 + React Router 7 + Tailwind v4 | Firebase Hosting (static files) |
+| **`School-bus-API`** — *separate repo* | **Backend.** The privileged HTTP API only. | Hono 4 on Node 22 | Standalone Node server |
+
+Everything a user sees or taps lives in **this** repository. Everything that needs
+the Firebase **Admin SDK** — creating Auth users, reading and writing `users`
+profiles, hashing driver access codes — lives in **`School-bus-API`**, because
+none of it may ever run in a browser.
+
+The asymmetry is deliberate: **this repo has no server.** It is static files on a
+CDN plus a browser bundle that talks to Firestore directly for realtime and
+offline data, and calls the API for privileged work.
+
 ## Two repositories
 
 The former single Next.js app was split into two independent git repos with
 independent deploys. The boundary is deliberate, not incidental.
 
-**`School-bus-Mobile` (this repo) — the web client.**
+**`School-bus-Front` (this repo) — the web client.**
 Vite 8 + React 19 + React Router 7 SPA (TypeScript, Tailwind v4 via
 `@tailwindcss/vite`). Next.js is **gone entirely** — no Next dependency, no
 `src/app/` directory, no server, no route handlers. Deployed as static files to

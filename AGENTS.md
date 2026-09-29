@@ -1,4 +1,4 @@
-# Agent notes — School-bus-Mobile (frontend)
+# Agent notes — School-bus-Front (frontend)
 
 This repository is the **web client only** (Vite + React 19 + React Router SPA).
 The privileged backend is a **separate repository** at `../School-bus-API`
