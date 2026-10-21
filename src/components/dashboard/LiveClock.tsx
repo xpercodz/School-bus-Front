@@ -21,7 +21,7 @@ export function LiveClock() {
   }, []);
 
   return (
-    <span className="font-mono text-sm tabular-nums text-dash-on-surface-variant">
+    <span className="text-sm tabular-nums text-dash-on-surface-variant">
       {now ? formatTime(now, locale) : "--:--:--"}
     </span>
   );

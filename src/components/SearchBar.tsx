@@ -13,8 +13,8 @@ export function SearchBar({ query, onChange }: SearchBarProps) {
     <div className="relative">
       <Icon
         name="search"
-        size={24}
-        className="absolute start-4 top-1/2 -translate-y-1/2 text-on-surface-variant"
+        size={18}
+        className="absolute start-3 top-1/2 -translate-y-1/2 text-on-surface-variant"
       />
       <input
         type="text"
@@ -22,16 +22,16 @@ export function SearchBar({ query, onChange }: SearchBarProps) {
         placeholder={t("mobile.searchPlaceholder")}
         value={query}
         onChange={(event) => onChange(event.target.value)}
-        className="h-14 w-full rounded-full bg-surface-container-high ps-12 pe-14 text-body-lg text-on-surface transition-colors placeholder:text-on-surface-variant focus:bg-surface-container-highest focus:outline-none focus:ring-2 focus:ring-primary"
+        className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest ps-10 pe-12 text-[15px] text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
       />
       {query !== "" && (
         <button
           type="button"
           aria-label={t("mobile.clearSearchAria")}
           onClick={() => onChange("")}
-          className="absolute end-2 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-variant"
+          className="absolute end-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded text-on-surface-variant hover:bg-surface-container"
         >
-          <Icon name="close" />
+          <Icon name="close" size={20} />
         </button>
       )}
     </div>

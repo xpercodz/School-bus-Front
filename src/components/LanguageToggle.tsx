@@ -18,8 +18,8 @@ export function LanguageToggle({ variant = "default" }: LanguageToggleProps) {
 
   const classes =
     variant === "dash"
-      ? "flex h-12 items-center gap-1.5 rounded-full px-3 text-dash-label-md text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary"
-      : "flex h-12 items-center gap-1.5 rounded-full px-3 text-label-lg text-on-surface-variant transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
+      ? "flex h-9 items-center gap-1.5 rounded-md px-2 text-[12.5px] text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container-low hover:text-dash-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary"
+      : "flex h-11 items-center gap-1.5 rounded-md px-2 text-[13.5px] text-on-surface-variant transition-colors hover:bg-surface-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
 
   return (
     <button
@@ -28,7 +28,11 @@ export function LanguageToggle({ variant = "default" }: LanguageToggleProps) {
       aria-label={t("common.changeLanguageAria")}
       className={classes}
     >
-      <Icon name="translate" size={20} variant={variant === "dash" ? "outlined" : "rounded"} />
+      <Icon
+        name="translate"
+        size={variant === "dash" ? 16 : 20}
+        variant={variant === "dash" ? "outlined" : "rounded"}
+      />
       <span>{label}</span>
     </button>
   );

@@ -29,12 +29,22 @@ header check, `npm audit` clean except one tracked moderate (uuid chain).
    messages; never surface raw error strings (OWASP Top 10 2025 A10 "Mishandling of
    Exceptional Conditions", ASVS 5.0 V16.5). The API half is already done — see
    `onError` in `School-bus-API/src/app.ts`.
-3. Self-host the Material Symbols icon font via
-   `@fontsource/material-symbols-rounded` (5.3.8, + outlined variant; both verified
-   on npm, OFL-1.1, SLSA provenance) and remove the Google Fonts `<link>` +
-   preconnects in `index.html` — removes the app's only remaining external runtime
-   asset load (privacy + no-SRI hole). Text fonts (Inter, JetBrains Mono, IBM Plex
-   Sans Arabic) are already self-hosted via `@fontsource`.
+3. ~~Self-host the Material Symbols icon font~~ — **DONE**, but *not* the way this
+   item originally proposed. The plan was `@fontsource/material-symbols-rounded`;
+   that package ships the **full** variable font, measured at **5.2 MiB per
+   family** (1.4 MiB even for the `fill`-only variant the app needs, since it uses
+   both FILL 1 and FILL 0). Self-hosting that naively would have inflated the
+   service-worker precache from 1.77 MiB to ~4.5 MiB — trading a CDN dependency for
+   a much worse payload.
+   Instead `scripts/build-icon-font.mjs` asks the Google Fonts API for a **subset**
+   containing only the 42 glyphs the app actually references, committing **98 KiB
+   for both families** to `public/fonts/`. ~97x smaller, same-origin, and precached
+   so icons render offline from first paint. The Google Fonts `<link>` + preconnects
+   are gone, which removes the app's only remaining external runtime asset load
+   (privacy + no-SRI hole). Text fonts (Inter, JetBrains Mono, IBM Plex Sans Arabic)
+   remain self-hosted via `@fontsource`.
+   **Follow-on obligation:** this makes the icon font a build artifact — re-run
+   `node scripts/build-icon-font.mjs` whenever an icon is added or removed.
 4. CSV hardening: also neutralize full-width formula triggers (`＝＋－＠`),
    tab/CR/LF-leading cells, and mid-field separator tricks (OWASP CSV
    Injection; note: no sanitizer is safe for every spreadsheet consumer).
@@ -152,8 +162,9 @@ header check, `npm audit` clean except one tracked moderate (uuid chain).
    `hosting.headers` block (no nonces), rolled out as
    `Content-Security-Policy-Report-Only` first. It must allow the Firebase
    connect-src hosts (`*.googleapis.com`, `*.firebaseio.com`,
-   `firestore.googleapis.com`) and the Google Fonts origins until Material Symbols
-   is self-hosted (Tier 1.3); `'unsafe-inline'` is likely needed for styles. A
+   `firestore.googleapis.com`); no Google Fonts origins are needed any more, since
+   Material Symbols is now a self-hosted subset (Tier 1.3) — `font-src 'self'`
+   suffices. `'unsafe-inline'` is likely needed for styles. A
    nonce-based CSP would require serving the shell from a host with edge
    middleware, or from the API itself.
 5. **SAST**: Semgrep CE (free, intra-file only — misses cross-file bugs) now;

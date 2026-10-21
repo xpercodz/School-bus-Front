@@ -38,7 +38,7 @@ export function PaginationBar({ list }: PaginationBarProps) {
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="text-dash-body-sm text-dash-on-surface-variant">
+      <p className="text-[12.5px] text-dash-on-surface-variant">
         {t("studentList.showing", {
           start: digits(list.start),
           end: digits(list.end),
@@ -53,13 +53,13 @@ export function PaginationBar({ list }: PaginationBarProps) {
             pages: digits(list.totalPages),
           })}
         >
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <button
               type="button"
               aria-label={t("studentList.previousAria")}
               disabled={list.page <= 1}
               onClick={() => list.setPage(list.page - 1)}
-              className="flex h-9 w-9 items-center justify-center rounded text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container hover:text-dash-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Icon name={prevIcon} size={18} variant="outlined" />
             </button>
@@ -67,7 +67,7 @@ export function PaginationBar({ list }: PaginationBarProps) {
               p === "…" ? (
                 <span
                   key={`ellipsis-${index}`}
-                  className="px-1 text-dash-body-sm text-dash-on-surface-variant"
+                  className="px-1 text-[12.5px] text-dash-on-surface-variant"
                   aria-hidden="true"
                 >
                   …
@@ -80,8 +80,8 @@ export function PaginationBar({ list }: PaginationBarProps) {
                   onClick={() => list.setPage(p)}
                   className={`flex h-9 min-w-9 items-center justify-center rounded px-2 text-dash-label-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary ${
                     p === list.page
-                      ? "bg-dash-primary-container font-bold text-dash-on-primary-container"
-                      : "text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container-high"
+                      ? "bg-dash-on-surface font-medium text-white"
+                      : "text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container"
                   }`}
                 >
                   {digits(p)}
@@ -93,7 +93,7 @@ export function PaginationBar({ list }: PaginationBarProps) {
               aria-label={t("studentList.nextAria")}
               disabled={list.page >= list.totalPages}
               onClick={() => list.setPage(list.page + 1)}
-              className="flex h-9 w-9 items-center justify-center rounded text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container hover:text-dash-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Icon name={nextIcon} size={18} variant="outlined" />
             </button>

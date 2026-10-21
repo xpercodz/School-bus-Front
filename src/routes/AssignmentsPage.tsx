@@ -22,8 +22,7 @@ import { toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
  * straight to Firestore; the tables update in realtime.
  */
 export default function AssignmentsPage() {
-  const { t, locale, dir } = useLocale();
-  const ltr = dir === "ltr";
+  const { t, locale } = useLocale();
   const { user } = useAuth();
   const uid = user?.uid;
   const { showToast } = useToast();
@@ -37,9 +36,7 @@ export default function AssignmentsPage() {
 
   const sectionTitle = (icon: string, label: string) => (
     <h2
-      className={`flex items-center gap-2 border-b border-dash-outline-variant pb-2 text-dash-label-md uppercase text-dash-on-surface ${
-        ltr ? "tracking-widest" : ""
-      }`}
+      className="flex items-center gap-2 text-[15px] font-semibold text-dash-on-surface"
     >
       <Icon name={icon} size={18} variant="outlined" />
       {label}
@@ -82,11 +79,11 @@ export default function AssignmentsPage() {
 
   return (
     <>
-      <div className="border-b border-dash-outline-variant bg-dash-surface-container-low px-4 py-3 sm:px-6">
+      <div className="px-4 pb-4 pt-5 sm:px-6 sm:pt-6">
         <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-dash-headline-lg text-dash-on-surface">{t("assignments.title")}</h1>
-            <p className="text-dash-body-sm text-dash-on-surface-variant">{t("assignments.subtitle")}</p>
+            <p className="text-[13px] text-dash-on-surface-variant">{t("assignments.subtitle")}</p>
           </div>
         </div>
       </div>
@@ -101,9 +98,9 @@ export default function AssignmentsPage() {
             {/* Drivers — one row per bus */}
             <section className="flex flex-col gap-4">
               {sectionTitle("directions_bus", t("assignments.drivers"))}
-              <div className="overflow-x-auto rounded border border-dash-outline-variant bg-dash-surface">
+              <div className="overflow-x-auto rounded-lg border border-dash-outline-variant bg-dash-surface">
                 <table className="w-full min-w-[560px] border-collapse text-start">
-                  <thead className="border-b border-dash-outline-variant bg-dash-surface-container text-dash-label-md uppercase text-dash-on-surface-variant">
+                  <thead className="border-b border-dash-outline-variant text-[11.5px] text-dash-on-surface-variant">
                     <tr>
                       <th scope="col" className="h-10 px-4 py-2 font-medium">{t("assignments.th.bus")}</th>
                       <th scope="col" className="h-10 px-4 py-2 font-medium">{t("assignments.th.driver")}</th>
@@ -121,7 +118,7 @@ export default function AssignmentsPage() {
                             aria-label={`${t("assignments.th.driver")} — ${translateDataLabel(bus.name, locale, t)}`}
                             value={bus.driverUid ?? ""}
                             onChange={(e) => handleDriverChange(bus.id, e.target.value)}
-                            className="h-9 rounded border border-dash-outline-variant bg-dash-surface px-2 text-dash-body-sm text-dash-on-surface focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary"
+                            className="h-9 rounded-lg border border-dash-outline-variant bg-dash-surface px-2 text-dash-body-sm text-dash-on-surface focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary"
                           >
                             <option value="">{t("assignments.unassigned")}</option>
                             {staff.map((s) => (
@@ -131,7 +128,7 @@ export default function AssignmentsPage() {
                             ))}
                           </select>
                         </td>
-                        <td className="px-4 py-3 font-mono">
+                        <td className="px-4 py-3 tabular-nums">
                           {toLocaleDigits(String(counts[bus.id] ?? 0), locale)}
                         </td>
                       </tr>
@@ -157,28 +154,28 @@ export default function AssignmentsPage() {
                   value={students.search}
                   onChange={(e) => students.setSearch(e.target.value)}
                   placeholder={t("studentList.searchPlaceholder")}
-                  className="h-10 w-full rounded border border-dash-outline-variant bg-dash-surface ps-9 pe-3 text-dash-body-sm text-dash-on-surface transition-all placeholder:text-dash-outline focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary"
+                  className="h-10 w-full rounded-lg border border-dash-outline-variant bg-dash-surface ps-9 pe-3 text-dash-body-sm text-dash-on-surface transition-colors placeholder:text-dash-outline focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary"
                 />
               </div>
 
               {students.loading && students.students.length === 0 ? (
-                <div role="status" className="flex items-center gap-2 py-8 text-dash-body-sm text-dash-on-surface-variant">
+                <div role="status" className="flex items-center gap-2 py-8 text-[13px] text-dash-on-surface-variant">
                   <Icon name="progress_activity" size={16} variant="outlined" className="animate-spin" />
                   {t("assignments.loadingStudents")}
                 </div>
               ) : filteredStudents.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-10 text-center">
                   <Icon name="search_off" size={32} variant="outlined" className="text-dash-on-surface-variant" />
-                  <p className="text-dash-body-sm text-dash-on-surface-variant">{t("assignments.studentsEmpty")}</p>
+                  <p className="text-[13px] text-dash-on-surface-variant">{t("assignments.studentsEmpty")}</p>
                   {students.search && (
-                    <p className="text-dash-body-sm text-dash-on-surface-variant">{t("assignments.studentsEmptyHint")}</p>
+                    <p className="text-[13px] text-dash-on-surface-variant">{t("assignments.studentsEmptyHint")}</p>
                   )}
                 </div>
               ) : (
                 <>
-                  <div className="overflow-x-auto rounded border border-dash-outline-variant bg-dash-surface">
+                  <div className="overflow-x-auto rounded-lg border border-dash-outline-variant bg-dash-surface">
                     <table className="w-full min-w-[560px] border-collapse text-start">
-                      <thead className="border-b border-dash-outline-variant bg-dash-surface-container text-dash-label-md uppercase text-dash-on-surface-variant">
+                      <thead className="border-b border-dash-outline-variant text-[11.5px] text-dash-on-surface-variant">
                         <tr>
                           <th scope="col" className="h-10 px-4 py-2 font-medium">{t("assignments.th.studentName")}</th>
                           <th scope="col" className="h-10 px-4 py-2 font-medium">{t("assignments.th.grade")}</th>
@@ -195,7 +192,7 @@ export default function AssignmentsPage() {
                                 aria-label={`${t("assignments.th.currentBus")} — ${student.name}`}
                                 value={student.busId ?? ""}
                                 onChange={(e) => handleStudentBusChange(student, e.target.value)}
-                                className="h-9 rounded border border-dash-outline-variant bg-dash-surface px-2 text-dash-body-sm text-dash-on-surface focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary"
+                                className="h-9 rounded-lg border border-dash-outline-variant bg-dash-surface px-2 text-dash-body-sm text-dash-on-surface focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary"
                               >
                                 <option value="">{t("assignments.noBus")}</option>
                                 {buses.map((bus) => (

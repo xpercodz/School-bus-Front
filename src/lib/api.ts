@@ -18,8 +18,20 @@ import {
 } from "@/lib/api-contract";
 import { auth } from "@/lib/firebase";
 
-/** Base URL of the API, without a trailing slash. */
-const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+/**
+ * Base URL of the API, without a trailing slash.
+ *
+ * `VITE_API_URL` is deliberately tri-state:
+ * - a URL (local dev: `http://localhost:8080`) — the API is on another origin;
+ * - **empty** — the API is same-origin, which is how production runs: Firebase
+ *   Hosting rewrites `/v1/**` to the Cloud Run service (see `firebase.json`), so
+ *   there is no CORS preflight in play at all;
+ * - **unset** — a misconfiguration, and `post()` fails loudly below. That
+ *   distinction is the point: silently guessing "same-origin" in dev would send
+ *   requests to the Vite dev server and fail confusingly.
+ */
+const RAW_API_URL = import.meta.env.VITE_API_URL as string | undefined;
+const API_URL = (RAW_API_URL ?? "").replace(/\/+$/, "");
 
 /** Codes this client synthesizes when a request never reached the API. */
 export type ClientErrorCode =
@@ -60,7 +72,8 @@ async function post<T>(
   body: unknown,
   { authenticated = false }: PostOptions = {},
 ): Promise<T> {
-  if (!API_URL) throw new ApiError(0, "not_configured");
+  // Unset is a misconfiguration; empty means same-origin (see RAW_API_URL).
+  if (RAW_API_URL === undefined) throw new ApiError(0, "not_configured");
 
   let response: Response;
   try {

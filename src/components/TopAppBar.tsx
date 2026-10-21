@@ -11,22 +11,26 @@ import { formatDate, toLocaleDigits, translateDataLabel } from "@/lib/i18n/forma
 interface TopAppBarProps {
   runMeta: { busId: string; runType: string; date: string };
   runStatus: "IN_PROGRESS" | "COMPLETED";
-  /** False when live mode has no run doc yet (shows "No run started"). */
+  /** False when live mode has no run doc yet (shows "No run dispatched"). */
   runExists: boolean;
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <dt className="text-label-lg text-on-surface-variant">{label}</dt>
-      <dd className="text-label-lg font-medium text-on-surface">{value}</dd>
+    <div className="flex items-center justify-between gap-4 py-2.5">
+      <dt className="text-[12.5px] text-on-surface-variant">{label}</dt>
+      <dd className="text-[13px] font-medium text-on-surface">{value}</dd>
     </div>
   );
 }
 
-/** Mobile top bar — brand, language toggle, and an overflow menu (run details / sign out). */
+/**
+ * Driver app bar: the bus and its run in two compact lines, the language toggle
+ * and the overflow menu. No oversized two-line marketing title — the roster is
+ * the screen.
+ */
 export function TopAppBar({ runMeta, runStatus, runExists }: TopAppBarProps) {
-  const { t, dir, locale } = useLocale();
+  const { t, locale } = useLocale();
   const { user } = useAuth();
   const signOut = useSignOut();
 
@@ -34,8 +38,26 @@ export function TopAppBar({ runMeta, runStatus, runExists }: TopAppBarProps) {
   const [view, setView] = useState<"menu" | "details">("menu");
   const [confirmSignOut, setConfirmSignOut] = useState(false);
 
-  const ltr = dir === "ltr";
-  const backIcon = ltr ? "arrow_back" : "arrow_forward";
+  const busNumber = runMeta.busId
+    ? toLocaleDigits(runMeta.busId.replace(/^bus/, ""), locale)
+    : null;
+  const busLabel = runMeta.busId
+    ? translateDataLabel(`Bus ${runMeta.busId.replace(/^bus/, "")}`, locale, t)
+    : "—";
+  const title = busNumber
+    ? `${t("mobile.appBarTitle", { bus: busNumber })} · ${t("mobile.runTitle")}`
+    : t("mobile.appBarTitleNoBus");
+
+  const statusLabel = !runExists
+    ? t("mobile.runNotStarted")
+    : runStatus === "COMPLETED"
+      ? t("mobile.runCompleted")
+      : t("mobile.runInProgress");
+  const statusDot = !runExists
+    ? "bg-outline"
+    : runStatus === "COMPLETED"
+      ? "bg-success"
+      : "bg-primary";
 
   function openMenu() {
     setView("menu");
@@ -48,33 +70,36 @@ export function TopAppBar({ runMeta, runStatus, runExists }: TopAppBarProps) {
     await signOut();
   }
 
-  const busNumber = runMeta.busId
-    ? toLocaleDigits(runMeta.busId.replace(/^bus/, ""), locale)
-    : null;
-  const busLabel = runMeta.busId
-    ? translateDataLabel(`Bus ${runMeta.busId.replace(/^bus/, "")}`, locale, t)
-    : "—";
-
   return (
-    <header className="sticky top-0 z-50 flex h-16 items-center justify-between bg-surface px-4">
-      <div className="flex items-center gap-2">
-        <Icon name="directions_bus" />
-        <h1 className="text-headline-md">
-          {busNumber
-            ? t("mobile.appBarTitle", { bus: busNumber })
-            : t("mobile.appBarTitleNoBus")}
-        </h1>
-      </div>
-      <div className="flex items-center gap-1">
-        <LanguageToggle />
-        <button
-          type="button"
-          aria-label={t("mobile.moreOptionsAria")}
-          onClick={openMenu}
-          className="flex h-12 w-12 items-center justify-center rounded-full text-on-surface transition-colors hover:bg-surface-container-high"
-        >
-          <Icon name="more_vert" />
-        </button>
+    <header className="sticky top-0 z-50 border-b border-outline-variant bg-surface">
+      <div className="flex h-14 items-center justify-between gap-2 px-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md bg-surface-container text-on-surface">
+            <Icon name="directions_bus" size={20} />
+          </span>
+          <div className="min-w-0">
+            <h1 className="truncate text-[16px] font-semibold leading-5 text-on-surface">
+              {title}
+            </h1>
+            <p className="flex items-center gap-1.5 truncate text-[11.5px] leading-4 text-on-surface-variant">
+              <span className={`h-1.5 w-1.5 flex-none rounded-full ${statusDot}`} aria-hidden="true" />
+              {statusLabel}
+              <span aria-hidden="true">·</span>
+              {formatDate(runMeta.date, locale)}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-none items-center gap-0.5">
+          <LanguageToggle />
+          <button
+            type="button"
+            aria-label={t("mobile.moreOptionsAria")}
+            onClick={openMenu}
+            className="flex h-11 w-11 items-center justify-center rounded-md text-on-surface-variant hover:bg-surface-container"
+          >
+            <Icon name="more_vert" size={22} />
+          </button>
+        </div>
       </div>
 
       <Dialog
@@ -84,42 +109,40 @@ export function TopAppBar({ runMeta, runStatus, runExists }: TopAppBarProps) {
         placement="bottom"
       >
         {view === "menu" ? (
-          <div className="flex flex-col p-2">
+          <div className="flex flex-col gap-0.5 p-2">
             <button
               type="button"
               onClick={() => setView("details")}
-              className="flex h-14 items-center gap-3 rounded-full px-4 text-label-lg text-on-surface transition-colors hover:bg-surface-container-high"
+              className="flex h-12 items-center gap-3 rounded-md px-3 text-[14px] text-on-surface hover:bg-surface-container"
             >
-              <Icon name="info" />
+              <Icon name="info" size={20} />
               {t("runDetails.title")}
             </button>
             {user && (
               <button
                 type="button"
                 onClick={() => setConfirmSignOut(true)}
-                className="flex h-14 items-center gap-3 rounded-full px-4 text-label-lg text-error transition-colors hover:bg-error-container/40"
+                className="flex h-12 items-center gap-3 rounded-md px-3 text-[14px] text-error hover:bg-error-container/50"
               >
-                <Icon name="logout" />
+                <Icon name="logout" size={20} />
                 {t("settings.signOut")}
               </button>
             )}
           </div>
         ) : (
-          <div className="flex flex-col gap-4 p-4">
+          <div className="flex flex-col gap-3 p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-headline-md text-on-surface">
-                {t("runDetails.title")}
-              </h2>
+              <h2 className="text-[17px] font-semibold text-on-surface">{t("runDetails.title")}</h2>
               <button
                 type="button"
                 onClick={() => setView("menu")}
                 aria-label={t("dialog.close")}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high"
+                className="flex h-9 w-9 items-center justify-center rounded-md text-on-surface-variant hover:bg-surface-container"
               >
-                <Icon name={backIcon} />
+                <Icon name="arrow_back" size={20} />
               </button>
             </div>
-            <dl className="space-y-3">
+            <dl className="divide-y divide-outline-variant">
               <DetailRow label={t("runDetails.bus")} value={busLabel} />
               <DetailRow
                 label={t("runDetails.type")}
@@ -129,22 +152,8 @@ export function TopAppBar({ runMeta, runStatus, runExists }: TopAppBarProps) {
                     : "runType.morningPickup",
                 )}
               />
-              <DetailRow
-                label={t("runDetails.date")}
-                value={formatDate(runMeta.date, locale)}
-              />
-              <DetailRow
-                label={t("runDetails.status")}
-                value={
-                  runExists
-                    ? t(
-                        runStatus === "COMPLETED"
-                          ? "dashboard.completed"
-                          : "dashboard.inProgress",
-                      )
-                    : t("runDetails.noRun")
-                }
-              />
+              <DetailRow label={t("runDetails.date")} value={formatDate(runMeta.date, locale)} />
+              <DetailRow label={t("runDetails.status")} value={statusLabel} />
             </dl>
           </div>
         )}

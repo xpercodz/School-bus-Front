@@ -33,9 +33,9 @@ const WRAPPER_CLASS: Record<Placement, string> = {
 };
 
 const PANEL_CLASS: Record<Placement, string> = {
-  center: "w-full max-w-md rounded-2xl bg-surface-container-low",
-  bottom: "w-full max-w-lg rounded-t-2xl bg-surface-container-low",
-  end: "h-full w-80 max-w-[90vw] rounded-s-2xl bg-surface-container-low",
+  center: "w-full max-w-md rounded-lg bg-surface",
+  bottom: "w-full max-w-lg rounded-t-lg bg-surface",
+  end: "h-full w-80 max-w-[90vw] border-s border-outline-variant bg-surface",
 };
 
 // Entry animation per placement: center/bottom fade in via keyframes (a

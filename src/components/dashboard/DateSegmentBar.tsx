@@ -38,7 +38,7 @@ export function DateSegmentBar({
   const dateRootRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex flex-wrap items-center gap-3">
       {/* Date chip — opens the date picker popover. */}
       <div ref={dateRootRef} className="relative">
         <button
@@ -47,7 +47,7 @@ export function DateSegmentBar({
           aria-haspopup="dialog"
           aria-expanded={pickerOpen}
           aria-label={t("dashboard.selectDate")}
-          className="flex h-12 items-center gap-2 rounded border border-dash-outline-variant bg-dash-surface px-3 text-dash-label-md text-dash-on-surface transition-colors hover:border-dash-outline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary"
+          className="flex h-11 items-center gap-2 rounded-md border border-dash-outline-variant bg-dash-surface px-2.5 text-[12.5px] text-dash-on-surface transition-colors hover:border-dash-outline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary sm:h-9"
         >
           <Icon name="calendar_today" size={16} variant="outlined" />
           <span>{date ? formatDate(date, locale) : t("dashboard.today")}</span>

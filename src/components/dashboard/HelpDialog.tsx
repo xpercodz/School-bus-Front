@@ -19,7 +19,7 @@ export function HelpDialog({ open, onClose }: HelpDialogProps) {
           type="button"
           onClick={onClose}
           aria-label={t("dialog.close")}
-          className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high"
+          className="flex h-9 w-9 items-center justify-center rounded-md text-on-surface-variant transition-colors hover:bg-surface-container"
         >
           <Icon name="close" variant="outlined" />
         </button>

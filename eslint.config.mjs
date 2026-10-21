@@ -20,4 +20,15 @@ export default tseslint.config(
       "react-hooks/exhaustive-deps": "warn",
     },
   },
+  {
+    // Node-side maintenance scripts (the offline smoke test drives Chrome over
+    // CDP). Not browser code, so it needs Node globals instead.
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: "module",
+      // `WebSocket` is a Node 22 global but isn't in globals.node yet.
+      globals: { ...globals.node, WebSocket: "readonly" },
+    },
+  },
 );

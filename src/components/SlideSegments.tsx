@@ -21,27 +21,28 @@ interface SlideSegmentsProps<T extends string> {
 }
 
 const TRACK_CLASS: Record<Variant, string> = {
-  pill: "overflow-hidden rounded-full bg-surface-container-high p-1",
-  box: "overflow-hidden rounded border border-outline-variant bg-surface p-1",
-  "dash-box": "overflow-hidden rounded border border-dash-outline-variant bg-dash-surface p-1",
+  pill: "h-11 overflow-hidden rounded-md border border-outline-variant bg-surface-container-high p-0.5",
+  box: "h-11 overflow-hidden rounded-md border border-outline-variant bg-surface p-0.5",
+  "dash-box":
+    "h-10 overflow-hidden rounded-md border border-dash-outline-variant bg-dash-surface-container-low p-0.5 sm:h-9",
 };
 
 const THUMB_CLASS: Record<Variant, string> = {
-  pill: "rounded-full bg-primary",
+  pill: "rounded border border-outline-variant bg-surface-container-lowest",
   box: "rounded bg-primary-container",
-  "dash-box": "rounded bg-dash-primary-container",
+  "dash-box": "rounded bg-dash-surface",
 };
 
 const LABEL_CLASS: Record<Variant, string> = {
-  pill: "text-label-lg",
+  pill: "text-[13.5px]",
   box: "text-label-lg",
-  "dash-box": "text-dash-label-md",
+  "dash-box": "text-[12.5px]",
 };
 
 const ACTIVE_CLASS: Record<Variant, string> = {
-  pill: "text-on-primary",
-  box: "text-on-primary-container font-bold",
-  "dash-box": "text-dash-on-primary-container font-bold",
+  pill: "text-on-surface font-medium",
+  box: "text-on-primary-container font-medium",
+  "dash-box": "text-dash-on-surface font-medium",
 };
 
 const IDLE_CLASS: Record<Variant, string> = {
@@ -102,14 +103,14 @@ export function SlideSegments<T extends string>({
       role="group"
       aria-label={ariaLabel}
       onKeyDown={handleKeyDown}
-      className={`relative flex h-12 items-stretch ${TRACK_CLASS[variant]}`}
+      className={`relative flex items-stretch ${TRACK_CLASS[variant]}`}
     >
       {/* Sliding highlight thumb. z-0 under the option buttons. */}
       <div
         aria-hidden="true"
-        className={`absolute start-1 top-1 bottom-1 ${THUMB_CLASS[variant]} shadow-sm`}
+        className={`absolute start-0.5 top-0.5 bottom-0.5 ${THUMB_CLASS[variant]}`}
         style={{
-          width: `calc((100% - 8px) / ${Math.max(1, options.length)})`,
+          width: `calc((100% - 4px) / ${Math.max(1, options.length)})`,
           transform: thumbTransform,
           transition: "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}

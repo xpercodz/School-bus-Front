@@ -32,30 +32,27 @@ export interface StatusMeta {
 export const STATUS_META: Record<StudentStatus, StatusMeta> = {
   BOARDED: {
     icon: "check_circle",
-    // text-on-success (#137333) rather than text-success: passes WCAG AA on the 10% tint
-    pillClassName: "bg-success/10 text-on-success hover:bg-success/20",
+    pillClassName: "bg-success/10 text-on-success hover:bg-success/15",
     cardClassName: "",
     nameClassName: "",
   },
   WAITING: {
     icon: "schedule",
-    pillClassName:
-      "border border-outline text-on-surface-variant hover:bg-surface-container-high",
+    pillClassName: "bg-waiting/10 text-waiting hover:bg-waiting/15",
     cardClassName: "",
     nameClassName: "",
   },
   DROPPED_OFF: {
     icon: "how_to_reg",
-    pillClassName: "bg-primary text-on-primary hover:bg-primary/90",
+    pillClassName: "bg-primary-container text-on-primary-container hover:bg-primary-container/80",
     cardClassName: "",
     nameClassName: "",
   },
   ABSENT: {
     icon: "cancel",
-    pillClassName: "bg-error text-on-error hover:bg-error/90",
-    cardClassName: "bg-error-container/20 border-error/50",
-    // on-error-container (#93000a) rather than error: passes WCAG AA on the light tint (4.35 -> 8.5)
-    nameClassName: "text-on-error-container",
+    pillClassName: "bg-error-container text-on-error-container hover:bg-error-container/80",
+    cardClassName: "",
+    nameClassName: "",
   },
 };
 

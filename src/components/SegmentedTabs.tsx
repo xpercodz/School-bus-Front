@@ -70,10 +70,10 @@ export function SegmentedTabs({ active, counts, onSelect }: SegmentedTabsProps) 
               tabRefs.current[tab.id] = el;
             }}
             onClick={() => onSelect(tab.id)}
-            className={`flex h-12 min-w-20 flex-1 items-center justify-center whitespace-nowrap border-b-2 px-4 text-label-lg transition-colors hover:bg-surface-container/50 ${
+            className={`flex h-11 min-w-[76px] flex-1 items-center justify-center whitespace-nowrap border-b-2 px-3 text-[13.5px] transition-colors ${
               isActive
-                ? "border-primary text-primary"
-                : "border-transparent text-on-surface-variant"
+                ? "border-on-surface font-medium text-on-surface"
+                : "border-transparent text-on-surface-variant hover:text-on-surface"
             }`}
           >
             {t(TAB_LABEL_KEY[tab.id])} ({toLocaleDigits(String(count), locale)})

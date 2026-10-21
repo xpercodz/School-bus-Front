@@ -53,7 +53,7 @@ export function StudentActionSheet({
           type="button"
           onClick={onClose}
           aria-label={t("dialog.close")}
-          className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high"
+          className="flex h-9 w-9 items-center justify-center rounded-md text-on-surface-variant transition-colors hover:bg-surface-container"
         >
           <Icon name="close" />
         </button>
@@ -62,7 +62,7 @@ export function StudentActionSheet({
         <button
           type="button"
           onClick={handleViewHistory}
-          className="flex h-14 items-center gap-3 rounded-full px-4 text-label-lg text-on-surface transition-colors hover:bg-surface-container-high"
+          className="flex h-12 items-center gap-3 rounded-md px-3 text-[14px] text-on-surface transition-colors hover:bg-surface-container"
         >
           <Icon name="history" />
           {t("kebab.viewHistory")}
@@ -71,7 +71,7 @@ export function StudentActionSheet({
           <button
             type="button"
             onClick={handleMarkAbsent}
-            className="flex h-14 items-center gap-3 rounded-full px-4 text-label-lg text-error transition-colors hover:bg-error-container/40"
+            className="flex h-12 items-center gap-3 rounded-md px-3 text-[14px] text-error transition-colors hover:bg-error-container/40"
           >
             <Icon name="cancel" />
             {t("kebab.markAbsent")}

@@ -8,6 +8,10 @@
 .env
 .env.*
 !.env.example
+# Production env IS committed: it holds no secrets (the Firebase web config is
+# public by design and lives in the gitignored .env.local), and committing it is
+# what stops a deploy from silently shipping the localhost API URL.
+!.env.production
 
 # firebase service-account key (secret — never commit; needed only by the
 # School-bus-API repo, which has its own copy)
@@ -34,3 +38,6 @@ firebase-debug.log
 
 # environment-local npm cache (scratch — never committed)
 /.npm-cache
+
+# local agent tooling (not part of the app)
+/.agent

@@ -36,7 +36,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="flex h-12 items-center justify-center rounded-full px-6 text-label-lg text-on-surface-variant transition-colors hover:bg-surface-container-high disabled:opacity-50"
+            className="flex h-10 items-center justify-center rounded-md px-5 text-[13.5px] text-on-surface-variant transition-colors hover:bg-surface-container disabled:opacity-50"
           >
             {cancelLabel}
           </button>
@@ -44,7 +44,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className="flex h-12 min-w-24 items-center justify-center gap-2 rounded-full bg-primary px-6 text-label-lg text-on-primary transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="flex h-10 min-w-20 items-center justify-center gap-2 rounded-md bg-on-surface px-5 text-[13.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {busy ? (
               <Icon name="progress_activity" size={20} className="animate-spin" />

@@ -4,19 +4,47 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
-    <meta name="theme-color" content="#005bbf" />
+    <meta name="theme-color" content="#f3f4f1" />
     <!-- Title + description are set per-route and per-locale by App.tsx. -->
     <title>School Bus Transit</title>
     <meta name="description" content="School bus attendance and transit monitoring" />
 
-    <!-- Material Symbols Rounded + Outlined. Self-hosting these via
-         @fontsource is a tracked hardening item (SECURITY_ROADMAP Tier 1) —
-         this CDN link is the app's only external runtime asset load. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Install-to-home-screen. The <link rel="manifest"> is injected at build
+         time by vite-plugin-pwa (see vite.config.ts). These are the iOS-specific
+         tags, which Safari does not read from the manifest:
+         - apple-touch-icon is a separate 180x180 opaque PNG, because iOS ignores
+           manifest icons and composites transparency onto black.
+         - apple-mobile-web-app-capable is what actually launches it standalone.
+         Installing matters beyond cosmetics on iOS: Safari caps script-writable
+         storage for non-installed sites and evicts it, which would drop the
+         offline attendance queue. -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="School Bus" />
+
+    <!-- Material Symbols Rounded + Outlined are self-hosted (see the @font-face
+         block in src/globals.css). These were previously loaded from the Google
+         Fonts CDN, which was the app's only external runtime asset — and on a
+         slow connection that request could lose the race to first paint, leaving
+         every icon rendered as its literal ligature name. The subset is ~98 KiB
+         same-origin, so preloading it removes the CSS->font waterfall.
+         `crossorigin` is required even for same-origin fonts: font fetches are
+         always CORS, and a mismatched preload is fetched twice. -->
     <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:wght,FILL@100..700,0..1&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="preload"
+      href="/fonts/material-symbols-rounded-subset.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/material-symbols-outlined-subset.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
   </head>
   <body>

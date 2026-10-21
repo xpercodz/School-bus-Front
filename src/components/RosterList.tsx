@@ -23,16 +23,16 @@ export function RosterList({
 
   if (students.length === 0) {
     return (
-      <div role="status" className="flex flex-col items-center gap-2 py-16 text-center">
-        <Icon name="search_off" size={32} className="text-on-surface-variant" />
-        <p className="text-body-lg font-medium">{t("mobile.emptyTitle")}</p>
-        <p className="text-body-md text-on-surface-variant">{t("mobile.emptySubtitle")}</p>
+      <div role="status" className="flex flex-col items-center gap-1.5 py-14 text-center">
+        <Icon name="search_off" size={24} className="text-outline" />
+        <p className="text-[15px] font-medium text-on-surface">{t("mobile.emptyTitle")}</p>
+        <p className="text-[12.5px] text-on-surface-variant">{t("mobile.emptySubtitle")}</p>
       </div>
     );
   }
 
   return (
-    <ul className="flex flex-col gap-4">
+    <ul className="divide-y divide-outline-variant overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest">
       {students.map((student) => (
         <li key={student.id}>
           <StudentCard

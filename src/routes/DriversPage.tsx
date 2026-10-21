@@ -28,8 +28,7 @@ interface NewDriver {
  * to (edited on the Assignments page).
  */
 export default function DriversPage() {
-  const { t, locale, dir } = useLocale();
-  const ltr = dir === "ltr";
+  const { t, locale } = useLocale();
   const { showToast } = useToast();
 
   const staff = useStaffUsers();
@@ -46,9 +45,7 @@ export default function DriversPage() {
 
   const sectionTitle = (icon: string, label: string) => (
     <h2
-      className={`flex items-center gap-2 border-b border-dash-outline-variant pb-2 text-dash-label-md uppercase text-dash-on-surface ${
-        ltr ? "tracking-widest" : ""
-      }`}
+      className="flex items-center gap-2 text-[15px] font-semibold text-dash-on-surface"
     >
       <Icon name={icon} size={18} variant="outlined" />
       {label}
@@ -105,11 +102,11 @@ export default function DriversPage() {
 
   return (
     <>
-      <div className="border-b border-dash-outline-variant bg-dash-surface-container-low px-4 py-3 sm:px-6">
+      <div className="px-4 pb-4 pt-5 sm:px-6 sm:pt-6">
         <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-dash-headline-lg text-dash-on-surface">{t("drivers.title")}</h1>
-            <p className="text-dash-body-sm text-dash-on-surface-variant">{t("drivers.subtitle")}</p>
+            <p className="text-[13px] text-dash-on-surface-variant">{t("drivers.subtitle")}</p>
           </div>
         </div>
       </div>
@@ -126,7 +123,7 @@ export default function DriversPage() {
               {sectionTitle("person_add", t("drivers.addTitle"))}
               <form
                 onSubmit={handleCreate}
-                className="flex flex-wrap items-end gap-3 rounded border border-dash-outline-variant bg-dash-surface p-4"
+                className="flex flex-wrap items-end gap-3 rounded-lg border border-dash-outline-variant bg-dash-surface p-4"
               >
                 <div className="min-w-56 flex-1">
                   <label htmlFor="driver-name" className="text-dash-label-md text-dash-on-surface">
@@ -138,13 +135,13 @@ export default function DriversPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder={t("drivers.namePlaceholder")}
-                    className="mt-1 h-10 w-full rounded border border-dash-outline-variant bg-dash-surface px-3 text-dash-body-sm text-dash-on-surface transition-all placeholder:text-dash-outline focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary"
+                    className="mt-1 h-10 w-full rounded-lg border border-dash-outline-variant bg-dash-surface px-3 text-dash-body-sm text-dash-on-surface transition-colors placeholder:text-dash-outline focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={creating || !name.trim()}
-                  className="flex h-10 items-center gap-2 rounded-full bg-dash-primary px-5 text-dash-label-md text-dash-on-primary transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary disabled:opacity-50"
+                  className="flex h-10 items-center gap-2 rounded-md bg-dash-on-surface px-4 text-[12.5px] font-medium text-white transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary disabled:opacity-50"
                 >
                   {creating && (
                     <Icon name="progress_activity" size={16} variant="outlined" className="animate-spin" />
@@ -158,15 +155,15 @@ export default function DriversPage() {
             <section className="flex flex-col gap-4">
               {sectionTitle("badge", t("drivers.accessCodes"))}
               {staff.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 rounded border border-dash-outline-variant bg-dash-surface py-10 text-center">
+                <div className="flex flex-col items-center gap-2 rounded-lg border border-dash-outline-variant bg-dash-surface py-10 text-center">
                   <Icon name="badge" size={32} variant="outlined" className="text-dash-on-surface-variant" />
-                  <p className="text-dash-body-sm text-dash-on-surface-variant">{t("drivers.empty")}</p>
-                  <p className="text-dash-body-sm text-dash-on-surface-variant">{t("drivers.emptyHint")}</p>
+                  <p className="text-[13px] text-dash-on-surface-variant">{t("drivers.empty")}</p>
+                  <p className="text-[13px] text-dash-on-surface-variant">{t("drivers.emptyHint")}</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded border border-dash-outline-variant bg-dash-surface">
+                <div className="overflow-x-auto rounded-lg border border-dash-outline-variant bg-dash-surface">
                   <table className="w-full min-w-[560px] border-collapse text-start">
-                    <thead className="border-b border-dash-outline-variant bg-dash-surface-container text-dash-label-md uppercase text-dash-on-surface-variant">
+                    <thead className="border-b border-dash-outline-variant text-[11.5px] text-dash-on-surface-variant">
                       <tr>
                         <th scope="col" className="h-10 px-4 py-2 font-medium">{t("drivers.th.name")}</th>
                         <th scope="col" className="h-10 px-4 py-2 font-medium">{t("drivers.th.bus")}</th>
@@ -187,7 +184,7 @@ export default function DriversPage() {
                             <td className="px-4 py-3">
                               {code ? (
                                 <div className="flex items-center gap-3">
-                                  <span className="font-mono text-dash-body-sm tracking-widest">
+                                  <span className="text-[13px] tabular-nums tracking-[0.18em]">
                                     {shown ? toLocaleDigits(code, locale) : "••••••"}
                                   </span>
                                   <div className="flex items-center gap-1">
@@ -258,7 +255,7 @@ export default function DriversPage() {
           </p>
           {newDriver && (
             <div className="flex items-center justify-center gap-3">
-              <span className="font-mono text-headline-md tracking-[0.35em] text-primary">
+              <span className="tabular-nums text-headline-md tracking-[0.35em] text-primary">
                 {toLocaleDigits(newDriver.code, locale)}
               </span>
               <button
@@ -275,7 +272,7 @@ export default function DriversPage() {
             <button
               type="button"
               onClick={() => setNewDriverOpen(false)}
-              className="flex h-12 items-center justify-center rounded-full px-6 text-label-lg text-on-surface-variant transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="flex h-10 items-center justify-center rounded-md px-5 text-[13.5px] text-on-surface-variant transition-colors hover:bg-surface-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               {t("dialog.close")}
             </button>

@@ -3,23 +3,28 @@ import type { RunSegmentId } from "@/data/dashboard";
 import { useDashboardData, todayDateStr } from "@/lib/school-data";
 import { useStudentList } from "@/lib/use-student-list";
 import { buildAttendanceCsv, downloadCsv } from "@/lib/csv";
+import { useSchoolName } from "@/lib/school";
 import { useToast } from "@/components/Toast";
-import { BusCard } from "@/components/dashboard/BusCard";
 import { FilterBar } from "@/components/dashboard/FilterBar";
+import { FleetList } from "@/components/dashboard/FleetList";
 import { Icon } from "@/components/Icon";
 import { LiveMapSkeleton } from "@/components/dashboard/DashboardSkeletons";
-import { MetricCard } from "@/components/dashboard/MetricCard";
+import { ManifestSummary } from "@/components/dashboard/Summary";
+import { PageHeader } from "@/components/dashboard/PageHeader";
+import { DispatchModal } from "@/components/dashboard/DispatchModal";
 import { StudentHistorySheet } from "@/components/StudentHistorySheet";
 import { StudentList } from "@/components/dashboard/StudentList";
 import { useLocale } from "@/lib/i18n/context";
-import { toLocaleDigits } from "@/lib/i18n/format";
+import { formatDate, toLocaleDigits } from "@/lib/i18n/format";
 
 export default function DashboardPage() {
   const [date, setDate] = useState<string | null>(null);
   const [segment, setSegment] = useState<RunSegmentId>("morning");
-  const { kpis, buses, attendance, loading, live } = useDashboardData(date, segment);
-  const { t, dir, locale } = useLocale();
-  const ltr = dir === "ltr";
+  const [dispatchOpen, setDispatchOpen] = useState(false);
+  const { kpis, summary, finding, buses, attendance, loading, live } =
+    useDashboardData(date, segment);
+  const { t, locale } = useLocale();
+  const schoolName = useSchoolName();
   const [historyStudent, setHistoryStudent] = useState<string | null>(null);
   const { showToast } = useToast();
 
@@ -31,9 +36,17 @@ export default function DashboardPage() {
   );
   const list = useStudentList(segmentRows);
 
+  const effectiveDate = date ?? todayDateStr();
+  const subtitle = t("dashboard.scope", {
+    school: schoolName ?? t("dashboard.loading"),
+    date: formatDate(effectiveDate, locale),
+    segment: t(
+      segment === "morning" ? "runType.morningPickup" : "runType.afternoonDropoff",
+    ),
+  });
+
   function handleExport() {
-    const dateStr = date ?? todayDateStr();
-    downloadCsv(`attendance-${dateStr}.csv`, buildAttendanceCsv(list.filtered, t, locale));
+    downloadCsv(`attendance-${effectiveDate}.csv`, buildAttendanceCsv(list.filtered, t, locale));
     showToast(
       t("toast.exported", {
         count: toLocaleDigits(String(list.filtered.length), locale),
@@ -41,21 +54,49 @@ export default function DashboardPage() {
     );
   }
 
-  // Counts derived from data so the header can never disagree with the grid.
-  const enRoute = buses.filter((bus) => bus.status === "IN_PROGRESS").length;
-
   return (
     <>
+      <div className="mx-auto w-full max-w-[1440px] px-4 pb-4 pt-5 sm:px-6 sm:pt-6">
+        <PageHeader
+          title={t("dashboard.title")}
+          subtitle={subtitle}
+          finding={live && !loading ? finding : undefined}
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={handleExport}
+                className="flex h-11 items-center gap-2 rounded-md border border-dash-outline-variant bg-dash-surface px-3 text-[12.5px] text-dash-on-surface transition-colors hover:bg-dash-surface-container-low sm:h-9"
+              >
+                <Icon name="download" size={16} variant="outlined" className="text-dash-outline" />
+                {t("dashboard.export")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDispatchOpen(true)}
+                className="flex h-11 items-center gap-2 rounded-md bg-dash-on-surface px-3.5 text-[12.5px] font-medium text-white transition-opacity hover:opacity-90 sm:h-9"
+              >
+                <Icon name="directions_bus" size={16} variant="outlined" />
+                {t("dashboard.addRun")}
+              </button>
+            </>
+          }
+        />
+      </div>
+
       <FilterBar
         segment={segment}
         onSegmentChange={setSegment}
         date={date}
         onDateChange={setDate}
-        onExport={handleExport}
       />
-      <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-6 p-4 sm:p-6">
+
+      <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-6 px-4 py-5 sm:px-6">
         {!live && (
-          <div role="status" className="flex items-center gap-2 text-dash-body-sm text-dash-on-surface-variant">
+          <div
+            role="status"
+            className="flex items-center gap-2 text-[13px] text-dash-on-surface-variant"
+          >
             <Icon name="info" size={16} variant="outlined" />
             {t("dashboard.liveUnavailable")}
           </div>
@@ -66,43 +107,14 @@ export default function DashboardPage() {
           </div>
         ) : (
           <>
-        {/* KPI cards */}
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {kpis.map((kpi) => (
-            <MetricCard key={kpi.id} kpi={kpi} />
-          ))}
-        </section>
-
-        {/* Active fleet */}
-        <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between border-b border-dash-outline-variant pb-2">
-            <h2
-              className={`flex items-center gap-2 text-dash-label-md text-dash-on-surface uppercase ${
-                ltr ? "tracking-widest" : ""
-              }`}
-            >
-              <Icon name="directions_bus" size={18} variant="outlined" />
-              {t("dashboard.activeFleet")}
-            </h2>
-            <span className="text-dash-body-sm text-dash-on-surface-variant">
-              {enRoute === 1
-                ? t("dashboard.enRouteOne", { count: toLocaleDigits(String(enRoute), locale) })
-                : t("dashboard.enRouteMany", { count: toLocaleDigits(String(enRoute), locale) })}
-            </span>
-          </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {buses.map((bus) => (
-              <BusCard key={bus.id} bus={bus} />
-            ))}
-          </div>
-        </section>
-
-        {/* Live attendance */}
-        <StudentList list={list} onViewHistory={setHistoryStudent} />
+            <ManifestSummary summary={summary} kpis={kpis} />
+            <FleetList buses={buses} />
+            <StudentList list={list} onViewHistory={setHistoryStudent} />
           </>
         )}
       </div>
 
+      <DispatchModal open={dispatchOpen} onClose={() => setDispatchOpen(false)} />
       <StudentHistorySheet
         studentName={historyStudent}
         onClose={() => setHistoryStudent(null)}

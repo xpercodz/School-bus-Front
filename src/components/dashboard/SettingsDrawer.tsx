@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Icon } from "@/components/Icon";
@@ -14,10 +14,8 @@ interface SettingsDrawerProps {
   onClose: () => void;
 }
 
-/** Closed accordion state: zero width. scaleX is hinged at the screen edge
- *  (transform-origin below), so the panel unfolds outward like an accordion
- *  instead of translating in from the side. */
-const START_SCALE = "scaleX(0)";
+/** Closed state: a short slide from the screen edge. */
+const START_SCALE = "translateX(16px)";
 /** Hinge (transform-origin): the screen edge the panel stays attached to —
  *  right in LTR (drawer on the right), left in RTL (drawer on the left). */
 const HINGE_ORIGIN = "right center";
@@ -180,15 +178,15 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
         aria-label={t("settings.title")}
         tabIndex={-1}
         style={{
-          transform: entered ? "scaleX(1)" : START_SCALE,
+          transform: entered ? "translateX(0)" : START_SCALE,
           transformOrigin: hingeOrigin,
           transition: `transform ${ENTRY_MS}ms ${ENTRY_EASING}`,
         }}
-        className="relative flex h-full w-80 max-w-[90vw] flex-col overflow-hidden rounded-s-2xl bg-surface-container-low shadow-card outline-none"
+        className="relative flex h-full w-[360px] max-w-[90vw] flex-col overflow-hidden border-s border-outline-variant bg-surface outline-none"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-outline-variant px-4 py-3">
-          <h2 className="text-headline-md text-on-surface">{t("settings.title")}</h2>
+        <div className="flex items-center justify-between border-b border-outline-variant px-5 py-4">
+          <h2 className="text-[17px] font-semibold text-on-surface">{t("settings.title")}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -201,37 +199,44 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
 
         {/* Body */}
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          <div className="flex flex-col gap-6 p-4">
+          <div className="flex flex-col gap-6 p-5">
             <section className="flex flex-col gap-3">
-              <h3 className="text-dash-label-md uppercase text-dash-on-surface-variant">
+              <h3 className="text-[12px] font-medium text-dash-on-surface-variant">
                 {t("settings.account")}
               </h3>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-dash-body-sm text-dash-on-surface-variant">
+              <div className="flex items-start justify-between gap-4">
+                <span className="flex-none text-[12.5px] text-dash-on-surface-variant">
                   {t("settings.email")}
                 </span>
-                <span className="truncate text-dash-body-sm font-medium text-dash-on-surface">
+                <span className="min-w-0 truncate text-[12.5px] font-medium text-dash-on-surface">
                   {user?.email ?? "—"}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-4">
-                <span className="text-dash-body-sm text-dash-on-surface-variant">
+                <span className="text-[12.5px] text-dash-on-surface-variant">
                   {t("settings.role")}
                 </span>
-                <span className="text-dash-body-sm font-medium text-dash-on-surface">
+                <span className="text-[12.5px] font-medium text-dash-on-surface">
                   {roleLabel}
                 </span>
               </div>
             </section>
 
             <section className="flex flex-col gap-3">
-              <h3 className="text-dash-label-md uppercase text-dash-on-surface-variant">
+              <h3 className="text-[12px] font-medium text-dash-on-surface-variant">
                 {t("settings.language")}
               </h3>
               <LanguageToggle variant="dash" />
             </section>
 
-            <LogoutButton label={t("settings.signOut")} onClick={() => setConfirmSignOut(true)} />
+            <button
+              type="button"
+              onClick={() => setConfirmSignOut(true)}
+              className="flex h-10 items-center gap-2 self-start rounded-md border border-error/40 px-3 text-[13px] font-medium text-error transition-colors hover:bg-error-container/50"
+            >
+              <Icon name="logout" size={18} variant="outlined" />
+              {t("settings.signOut")}
+            </button>
           </div>
         </div>
       </div>
@@ -248,61 +253,5 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
       />
     </div>,
     document.body,
-  );
-}
-
-/**
- * Expanding logout button: a red circle with the door icon that grows into a
- * pill on hover while the label slides out next to the icon (not pinned to the
- * far edge). Ported from a styled-components reference to Tailwind (no new
- * dependencies). The label sits in normal flow right after the icon, so the
- * layout mirrors automatically in RTL (icon on the inline-start, label
- * extending inline-end). The expanded width is measured from the actual label
- * text so long (Arabic) and short (English) labels both fit without clipping
- * or a big empty tail.
- */
-function LogoutButton({ label, onClick }: { label: string; onClick: () => void }) {
-  const [openWidth, setOpenWidth] = useState(170);
-
-  // Measure the real label width and size the hover expansion to the text.
-  // The measuring copy is appended to <body> — NOT inside the drawer — because
-  // the drawer's entry animation scales the whole panel (accordion unfold):
-  // measuring inside would return the mid-animation (scaled) width and cache a
-  // half-sized expansion, which is exactly what made the pill open "half way"
-  // after the first close/reopen.
-  useEffect(() => {
-    const measure = () => {
-      const host = document.createElement("span");
-      host.textContent = label;
-      host.style.cssText =
-        "position:fixed;visibility:hidden;left:0;top:0;white-space:nowrap;" +
-        "font-size:15px;font-weight:600;";
-      document.body.appendChild(host);
-      const labelWidth = Math.ceil(host.getBoundingClientRect().width);
-      host.remove();
-      // 45px icon cell + inline-start gap + right padding for the rounded end.
-      setOpenWidth(labelWidth + 45 + 26);
-    };
-    const raf = requestAnimationFrame(measure);
-    return () => cancelAnimationFrame(raf);
-  }, [label]);
-
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      style={{ "--logout-open-w": `${openWidth}px` } as CSSProperties}
-      className="group relative flex h-[45px] w-[45px] cursor-pointer items-center overflow-hidden rounded-full bg-[#ff4141] shadow-[2px_2px_10px_rgba(0,0,0,0.199)] outline-none transition-all duration-300 ease-in-out hover:w-[var(--logout-open-w)] hover:rounded-[40px] focus-visible:ring-2 focus-visible:ring-white/80 active:translate-x-0.5 active:translate-y-0.5"
-    >
-      {/* Icon cell — shifts slightly inline-end on hover (like the reference). */}
-      <span className="flex h-full w-[45px] shrink-0 items-center justify-center transition-all duration-300 ease-in-out group-hover:ps-[16px]">
-        <Icon name="logout" size={18} className="text-white" />
-      </span>
-      {/* Label — folded to zero width next to the icon; expands + fades in. */}
-      <span className="flex h-full max-w-0 items-center overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 ease-in-out group-hover:max-w-[300px] group-hover:opacity-100">
-        <span className="pe-4 text-[15px] font-semibold text-white">{label}</span>
-      </span>
-    </button>
   );
 }

@@ -23,16 +23,15 @@ import { useAuth } from "@/lib/auth";
 import type { Student, StudentStatus } from "@/data/students";
 import { STATUS_CYCLE } from "@/data/students";
 import {
-  KPIS,
   type AttendanceRow,
   type Bus,
+  type DashboardSummary,
   type KPI,
-  type KPIBase,
   type RunSegmentId,
 } from "@/data/dashboard";
 import { useLocale } from "@/lib/i18n/context";
-import { formatTime } from "@/lib/i18n/format";
-import type { MessageKey, TFunction } from "@/lib/i18n/types";
+import { formatTime, toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
+
 import { fetchSchoolId } from "@/lib/school-id";
 import { useCursorPage } from "@/lib/use-cursor-page";
 
@@ -61,20 +60,42 @@ function runTypeFromRunId(runId: string): "morning" | "afternoon" {
   return runId.split("-").at(-1) === "afternoon" ? "afternoon" : "morning";
 }
 
-/** Build dashboard KPI cards with the active locale's label/footer text. */
-function buildKpis(
-  base: readonly KPIBase[],
-  values: number[],
-  t: TFunction,
-): KPI[] {
-  return base.map((kpi, index) => ({
-    ...kpi,
-    label: t(`kpi.${kpi.id}.label` as MessageKey),
-    footer: t(`kpi.${kpi.id}.footer` as MessageKey),
-    value: values[index] ?? kpi.value,
-  }));
+/**
+ * Whether a snapshot should end a hook's loading state.
+ *
+ * Firestore fires every listener immediately with whatever the local cache
+ * holds, *before* the server has answered. On a cold start over slow wifi that
+ * first snapshot is empty — and settling on it is what flashes an empty screen
+ * (KPI zeros, "No students found") that then fills in. It reads as "the data is
+ * gone" when nothing has actually been fetched yet.
+ *
+ * So:
+ * - a server read always settles (`fromCache === false`) — it is authoritative,
+ *   even when it is legitimately empty;
+ * - a cache read settles if it actually holds documents, because those are real
+ *   rows and showing them immediately is the whole point of the offline cache;
+ * - an *empty* cache read settles only when we are offline, where there is
+ *   genuinely nothing left to wait for (otherwise the skeleton would never end).
+ */
+function settlesLoading(fromCache: boolean, hasData: boolean): boolean {
+  if (!fromCache) return true;
+  if (hasData) return true;
+  return typeof navigator !== "undefined" && navigator.onLine === false;
 }
 
+/**
+ * Ceiling on any hook's loading state.
+ *
+ * `settlesLoading` waits for a *server* snapshot — but Firestore retries a
+ * failing connection indefinitely and never surfaces an error, so a black-holed
+ * network (or a service worker eating the connection) leaves the skeletons up
+ * forever. That is strictly worse than the empty flash this replaced, and it is
+ * exactly what happened in production. After this long, settle anyway and show
+ * whatever the cache holds, even if that is nothing.
+ */
+const LOADING_SETTLE_TIMEOUT_MS = 10_000;
+
+/** Build dashboard KPI cells from the same counts the summary uses. */
 function countByStatus(rows: AttendanceDoc[], status: StudentStatus): number {
   return rows.filter((row) => row.status === status).length;
 }
@@ -138,6 +159,8 @@ function useDriverBus(): DriverBus {
     const firestore = db;
     let cancelled = false;
     const unsubscribers: (() => void)[] = [];
+    // Ceiling: never leave the skeleton up forever.
+    const settleTimer = setTimeout(() => setLoadedUid(uid), LOADING_SETTLE_TIMEOUT_MS);
 
     void fetchSchoolId(uid).then((schoolId) => {
       if (cancelled) return;
@@ -155,7 +178,10 @@ function useDriverBus(): DriverBus {
           (snap) => {
             if (cancelled) return;
             setBusId(snap.docs[0]?.id ?? null);
-            setLoadedUid(uid);
+            // Not on an empty cache read — see settlesLoading.
+            if (settlesLoading(snap.metadata.fromCache, snap.size > 0)) {
+              setLoadedUid(uid);
+            }
           },
           () => {
             if (!cancelled) setLoadedUid(uid);
@@ -166,6 +192,7 @@ function useDriverBus(): DriverBus {
 
     return () => {
       cancelled = true;
+      clearTimeout(settleTimer);
       unsubscribers.forEach((u) => u());
     };
   }, [live, uid]);
@@ -216,6 +243,8 @@ export function useRunRoster(): RunRoster {
     let cancelled = false;
     const unsubscribers: (() => void)[] = [];
     const effectKey = `${uid}|${busId ?? ""}`;
+    // Ceiling: never leave the skeleton up forever.
+    const settleTimer = setTimeout(() => setLoadedKey(effectKey), LOADING_SETTLE_TIMEOUT_MS);
 
     void fetchSchoolId(uid).then((schoolId) => {
       if (cancelled) return;
@@ -249,7 +278,10 @@ export function useRunRoster(): RunRoster {
               })
               .sort((a, b) => a.name.localeCompare(b.name));
             setRoster(list);
-            setLoadedKey(effectKey);
+            // Not on an empty cache read — see settlesLoading.
+            if (settlesLoading(snap.metadata.fromCache, snap.size > 0)) {
+              setLoadedKey(effectKey);
+            }
           },
           () => setLoadedKey(effectKey),
         ),
@@ -271,6 +303,7 @@ export function useRunRoster(): RunRoster {
 
     return () => {
       cancelled = true;
+      clearTimeout(settleTimer);
       unsubscribers.forEach((u) => u());
     };
   }, [live, uid, busId, busLoading]);
@@ -367,6 +400,9 @@ export function useRunRoster(): RunRoster {
 
 export interface DashboardData {
   kpis: readonly KPI[];
+  summary: DashboardSummary;
+  /** The one fact that needs attention today, phrased for the title row. */
+  finding: string;
   buses: readonly Bus[];
   attendance: readonly AttendanceRow[];
   loading: boolean;
@@ -399,6 +435,11 @@ export function useDashboardData(
     const firestore = db;
     let cancelled = false;
     const unsubscribers: (() => void)[] = [];
+    // Ceiling: never leave the skeleton up forever.
+    const settleTimer = setTimeout(
+      () => setLoadedKey(`${uid}|${effectiveDate}`),
+      LOADING_SETTLE_TIMEOUT_MS,
+    );
     // Clear prior-date data on a date change so stale rows never linger while
     // the new date loads (or forever if the new query errors). Deferred to a
     // microtask to keep setState out of the synchronous effect body.
@@ -469,7 +510,10 @@ export function useDashboardData(
               };
             }),
           );
-          setLoadedKey(`${uid}|${effectiveDate}`);
+          // Not on an empty cache read — see settlesLoading.
+          if (settlesLoading(snap.metadata.fromCache, snap.size > 0)) {
+            setLoadedKey(`${uid}|${effectiveDate}`);
+          }
         },
         () => setLoadedKey(`${uid}|${effectiveDate}`),
       );
@@ -478,6 +522,7 @@ export function useDashboardData(
 
     return () => {
       cancelled = true;
+      clearTimeout(settleTimer);
       unsubscribers.forEach((u) => u());
     };
   }, [live, uid, effectiveDate]);
@@ -487,6 +532,19 @@ export function useDashboardData(
       // No mock fallback — the dashboard renders only live Firestore data.
       return {
         kpis: [],
+        summary: {
+          total: 0,
+          onboard: 0,
+          dropped: 0,
+          waiting: 0,
+          absent: 0,
+          unaccounted: 0,
+          accounted: 0,
+          activeBuses: 0,
+          totalBuses: 0,
+          completedWithWaiting: null,
+        },
+        finding: "",
         buses: [],
         attendance: [],
         loading: false,
@@ -508,16 +566,13 @@ export function useDashboardData(
     // page applies one uniform segment+search filter).
     const segAtt = attendance.filter((a) => runTypeFromRunId(a.runId) === segment);
 
+    const total = segAtt.length;
     const onboard = countByStatus(segAtt, "BOARDED");
     const dropped = countByStatus(segAtt, "DROPPED_OFF");
     const waiting = countByStatus(segAtt, "WAITING");
     const absent = countByStatus(segAtt, "ABSENT");
-
-    const kpis: KPI[] = buildKpis(
-      KPIS,
-      [segAtt.length, onboard, dropped, absent + waiting],
-      t,
-    );
+    const unaccounted = waiting + absent;
+    const accounted = onboard + dropped;
 
     // Only fleet buses with a run of the selected segment are "active" — a bus
     // with no run shouldn't claim IN_PROGRESS with 0% stats.
@@ -530,7 +585,7 @@ export function useDashboardData(
         const run = runs.find(
           (r) => r.busId === bus.id && runTypeFromRunId(r.id) === segment,
         );
-        const total = busAtt.length;
+        const busTotal = busAtt.length;
         const onboardCount = countByStatus(busAtt, "BOARDED");
         const droppedCount = countByStatus(busAtt, "DROPPED_OFF");
         return {
@@ -538,14 +593,101 @@ export function useDashboardData(
           name: bus.name,
           driver: bus.driver,
           status: run?.status ?? "IN_PROGRESS",
-          progress: total === 0 ? 0 : Math.round(((onboardCount + droppedCount) / total) * 100),
+          progress:
+            busTotal === 0
+              ? 0
+              : Math.round(((onboardCount + droppedCount) / busTotal) * 100),
           onboard: onboardCount,
           droppedOff: droppedCount,
           waiting: countByStatus(busAtt, "WAITING"),
         };
       });
 
-    return { kpis, buses: busList, attendance: rows, loading, live: true };
+    const activeBuses = busList.filter((bus) => bus.status === "IN_PROGRESS").length;
+    const completedWithWaiting =
+      busList.find((bus) => bus.status === "COMPLETED" && bus.waiting > 0) ?? null;
+    const summary: DashboardSummary = {
+      total,
+      onboard,
+      dropped,
+      waiting,
+      absent,
+      unaccounted,
+      accounted,
+      activeBuses,
+      totalBuses: busList.length,
+      completedWithWaiting: completedWithWaiting
+        ? { name: completedWithWaiting.name, waiting: completedWithWaiting.waiting }
+        : null,
+    };
+
+    const digits = (n: number) => toLocaleDigits(String(n), locale);
+    const percent = (n: number) => (total === 0 ? 0 : Math.round((n / total) * 100));
+
+    // Every number here is computed from the same segmented rows the table
+    // shows. No static "+5 in the last minute": a delta that is not measured is
+    // a lie the screen repeats all day.
+    const kpis: KPI[] = [
+      {
+        id: "total",
+        label: t("kpi.total.label"),
+        value: total,
+        footer: t("kpi.total.footer", { count: digits(busList.length) }),
+        tone: "neutral",
+      },
+      {
+        id: "onboard",
+        label: t("kpi.onboard.label"),
+        value: onboard,
+        footer: t("kpi.onboard.footer", { percent: digits(percent(onboard)) }),
+        tone: onboard > 0 ? "positive" : "neutral",
+        pulse: onboard > 0,
+      },
+      {
+        id: "dropped",
+        label: t("kpi.dropped.label"),
+        value: dropped,
+        footer: t("kpi.dropped.footer", { percent: digits(percent(dropped)) }),
+        tone: "neutral",
+      },
+      {
+        id: "absent",
+        label: t("kpi.absent.label"),
+        value: unaccounted,
+        footer: t("kpi.absent.footer", {
+          waiting: digits(waiting),
+          absent: digits(absent),
+        }),
+        tone: unaccounted > 0 ? "warning" : "neutral",
+      },
+    ];
+
+    let finding: string;
+    if (total === 0) {
+      finding = t("dashboard.finding.empty");
+    } else if (completedWithWaiting) {
+      finding = t("dashboard.finding.completedWithWaiting", {
+        bus: translateDataLabel(completedWithWaiting.name, locale, t),
+        count: digits(completedWithWaiting.waiting),
+      });
+    } else if (unaccounted === 0) {
+      finding = t("dashboard.finding.allClear", { total: digits(total) });
+    } else {
+      finding = t("dashboard.finding.open", {
+        count: digits(unaccounted),
+        total: digits(total),
+      });
+    }
+
+    return {
+      kpis,
+      summary,
+      finding,
+      buses: busList,
+      attendance: rows,
+      loading,
+      live: true,
+    };
   }, [live, attendance, buses, runs, loading, locale, t, segment]);
 
   return data;

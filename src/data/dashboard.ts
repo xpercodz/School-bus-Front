@@ -1,9 +1,8 @@
 /**
- * Director dashboard ("School Transit Live Monitor") — layout config + types.
+ * Director dashboard ("Live monitor") — layout config + types.
  *
- * No mock data lives here anymore: KPIs are derived from Firestore attendance
- * in `useDashboardData`, buses/rows come from Firestore, and the app shows a
- * sign-in prompt when there is no live data.
+ * No mock data lives here: KPIs are derived from Firestore attendance in
+ * `useDashboardData`, and buses/rows come from Firestore.
  *
  * User-facing labels (KPIs, nav, run segments) are resolved by components via
  * `t()` (i18n) — only ids and layout config live here.
@@ -11,12 +10,24 @@
 
 import type { StudentStatus } from "@/data/students";
 
-/** Dashboard badge classes per status — scoped to the dash palette (bg-dash-*). */
+/**
+ * Attendance badge classes per status. Pale tint + dark ink of the same hue;
+ * no solid fills, so one "Dropped off" row cannot out-shout the live state of
+ * the run. The dot colour lives in `STATUS_DOT`.
+ */
 export const DASH_STATUS_META: Record<StudentStatus, string> = {
-  BOARDED: "bg-dash-success-container text-dash-on-success-container border-dash-success/30",
-  DROPPED_OFF: "bg-dash-success text-dash-on-success border-dash-success",
-  ABSENT: "bg-dash-error-container text-dash-on-error-container border-dash-error/30",
-  WAITING: "bg-dash-warning-container text-dash-on-warning-container border-dash-warning/50",
+  BOARDED: "bg-dash-success-container text-dash-on-success-container",
+  DROPPED_OFF: "bg-dash-primary-container text-dash-on-primary-container",
+  ABSENT: "bg-dash-error-container text-dash-on-error-container",
+  WAITING: "bg-dash-warning-container text-dash-on-warning-container",
+};
+
+/** The tiny mark that carries the status beside its label. */
+export const STATUS_DOT: Record<StudentStatus, string> = {
+  BOARDED: "bg-dash-success",
+  DROPPED_OFF: "bg-dash-primary",
+  ABSENT: "bg-dash-error",
+  WAITING: "bg-dash-warning",
 };
 
 /** Student-list status filter options — "All" plus every status. */
@@ -30,27 +41,39 @@ export const STUDENT_STATUS_FILTERS: readonly ("ALL" | StudentStatus)[] = [
 
 export type StudentStatusFilter = (typeof STUDENT_STATUS_FILTERS)[number];
 
-export type MetricTone = "default" | "success" | "error";
+export type MetricTone = "neutral" | "positive" | "warning" | "negative";
 
 export interface KPI {
-  id: string;
+  id: "total" | "onboard" | "dropped" | "absent";
   label: string;
   value: number;
+  /** A short, computed caption — never a static slogan. */
   footer: string;
   tone: MetricTone;
-  /** Override the label accent color (e.g. a success-colored label on a default card). */
-  labelAccent?: "success" | "error";
-  /** Show a live-pulse dot beside the label. */
+  /** A live mark beside the label (only while the run is actually moving). */
   pulse?: boolean;
-  /** Optional trailing glyph in the footer row. */
-  footerIcon?: string;
 }
 
 /**
- * KPI config without the localizable label/footer — those are filled in by
- * `useDashboardData` from the active locale so the same cards translate.
+ * The screen's answer, in one object: every count is computed once in
+ * `useDashboardData` and read by the summary, the KPI strip and the finding
+ * line, so two cards can never disagree.
  */
-export type KPIBase = Omit<KPI, "label" | "footer">;
+export interface DashboardSummary {
+  total: number;
+  onboard: number;
+  dropped: number;
+  waiting: number;
+  absent: number;
+  /** Waiting + absent: students the school cannot yet account for. */
+  unaccounted: number;
+  /** Onboard + dropped. */
+  accounted: number;
+  activeBuses: number;
+  totalBuses: number;
+  /** The first finished run that still has students waiting, if any. */
+  completedWithWaiting: { name: string; waiting: number } | null;
+}
 
 export interface Bus {
   id: string;
@@ -66,8 +89,8 @@ export interface Bus {
 export interface NavItem {
   id: string;
   icon: string;
-  /** Only set for the built page; other sections are inert in the UI-only build. */
-  href?: string;
+  href: string;
+  group: "operate" | "manage";
 }
 
 export interface AttendanceRow {
@@ -82,22 +105,16 @@ export interface AttendanceRow {
   dropOffTime: string;
 }
 
-export const KPIS: readonly KPIBase[] = [
-  { id: "total", value: 0, tone: "default" },
-  { id: "onboard", value: 0, tone: "success", pulse: true },
-  { id: "dropped", value: 0, tone: "default", labelAccent: "success" },
-  { id: "absent", value: 0, tone: "error", footerIcon: "warning" },
-];
-
+/**
+ * Only destinations that exist. Fleet status lives on the Live monitor, and
+ * Routes has no screen yet, so neither is a nav row — a dead nav item reads as
+ * a broken product.
+ */
 export const NAV_ITEMS: readonly NavItem[] = [
-  { id: "live-map", icon: "map", href: "/dashboard" },
-  // Fleet Status / Routes have no page yet (fleet is covered by the live map).
-  { id: "fleet", icon: "directions_bus" },
-  { id: "routes", icon: "route" },
-  // Analytics is not a route anymore — it opens as a modal from Reports.
-  { id: "reports", icon: "assessment", href: "/dashboard/reports" },
-  { id: "assignments", icon: "assignment_ind", href: "/dashboard/assignments" },
-  { id: "drivers", icon: "badge", href: "/dashboard/drivers" },
+  { id: "live-map", icon: "map", href: "/dashboard", group: "operate" },
+  { id: "reports", icon: "assessment", href: "/dashboard/reports", group: "operate" },
+  { id: "assignments", icon: "assignment_ind", href: "/dashboard/assignments", group: "manage" },
+  { id: "drivers", icon: "badge", href: "/dashboard/drivers", group: "manage" },
 ];
 
 /** Map the current pathname to the active sidebar item id (shell pages → live-map). */

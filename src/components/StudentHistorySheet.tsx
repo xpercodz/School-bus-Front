@@ -81,7 +81,7 @@ export function StudentHistorySheet({
                   </p>
                 </div>
                 <span
-                  className={`inline-flex flex-shrink-0 items-center gap-1 rounded-full px-3 py-1 text-label-lg uppercase ${STATUS_META[entry.status].pillClassName}`}
+                  className={`inline-flex flex-shrink-0 items-center gap-1 rounded px-2 py-0.5 text-[11.5px] font-medium ${STATUS_META[entry.status].pillClassName}`}
                 >
                   <Icon name={STATUS_META[entry.status].icon} size={16} />
                   {t(statusKey(entry.status))}
@@ -96,7 +96,7 @@ export function StudentHistorySheet({
             type="button"
             onClick={loadMore}
             disabled={loading}
-            className="mb-4 mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-full border border-outline text-label-lg text-on-surface-variant transition-colors hover:bg-surface-container-high disabled:opacity-50"
+            className="mb-4 mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-md border border-outline-variant text-[13.5px] text-on-surface-variant transition-colors hover:bg-surface-container disabled:opacity-50"
           >
             {t("history.loadMore")}
           </button>

@@ -1,5 +1,5 @@
 import type { AttendanceRow } from "@/data/dashboard";
-import { DASH_STATUS_META } from "@/data/dashboard";
+import { DASH_STATUS_META, STATUS_DOT } from "@/data/dashboard";
 import type { StudentStatus } from "@/data/students";
 import { Icon } from "@/components/Icon";
 import { useLocale } from "@/lib/i18n/context";
@@ -11,131 +11,147 @@ interface AttendanceTableProps {
   onViewHistory?: (name: string) => void;
 }
 
-/** Row background tint by status — tints the whole row, mirrors code.html. */
-function rowTint(status: StudentStatus): string {
-  if (status === "BOARDED") return "bg-dash-success-container/10";
-  if (status === "WAITING") return "bg-dash-warning-container/20";
-  return "";
+/** A pale status chip with the same hue's dot. No solid fills in the roster. */
+function StatusBadge({ status }: { status: StudentStatus }) {
+  const { t } = useLocale();
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded px-2 py-0.5 text-[11.5px] font-medium ${DASH_STATUS_META[status]}`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[status]}`} aria-hidden="true" />
+      {t(statusKey(status))}
+    </span>
+  );
 }
 
-/** Dim "--:--:--" placeholders so a missing timestamp reads lighter than a real one. */
-function timeCellClass(value: string): string {
-  return value === "--:--:--" ? "text-dash-on-surface-variant" : "text-dash-on-surface";
+/** A missing timestamp is a dash, never a dimmed placeholder string. */
+function timeText(value: string): string {
+  return value.startsWith("--") ? "—" : value;
 }
 
-/** Live student attendance table — rows come from Firestore via useDashboardData. */
+/**
+ * Live student attendance. A real table at md+, and a two-line list of the same
+ * rows below it — never a sideways-scrolling page on a phone.
+ */
 export function AttendanceTable({ rows, onViewHistory }: AttendanceTableProps) {
-  const { t, locale, dir } = useLocale();
-  const ltr = dir === "ltr";
+  const { t, locale } = useLocale();
+  const digits = (n: string) => toLocaleDigits(n, locale);
+
+  const empty = (
+    <div className="flex flex-col items-center gap-1.5 px-4 py-12 text-center">
+      <Icon name="search_off" size={24} variant="outlined" className="text-dash-outline" />
+      <p className="text-[13.5px] font-medium text-dash-on-surface">{t("dashboard.emptyTitle")}</p>
+      <p className="text-[12.5px] text-dash-on-surface-variant">{t("dashboard.emptySubtitle")}</p>
+    </div>
+  );
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex items-center justify-between border-b border-dash-outline-variant pb-2">
-        <h2
-          className={`flex items-center gap-2 text-dash-label-md uppercase text-dash-on-surface ${
-            ltr ? "tracking-widest" : ""
-          }`}
-        >
-          <Icon name="history_edu" size={18} variant="outlined" />
-          {t("dashboard.liveAttendance")}
-        </h2>
-        <div className="flex items-center gap-2 text-dash-label-md text-dash-success">
-          <span className="pulse-dot h-2 w-2 rounded-full bg-dash-success" aria-hidden="true" />
-          {t("dashboard.liveUpdating")}
-        </div>
+    <div className="overflow-hidden rounded-lg border border-dash-outline-variant bg-dash-surface">
+      {/* Phone: two-line rows. */}
+      <div className="md:hidden">
+        {rows.length === 0 ? (
+          empty
+        ) : (
+          rows.map((row) => (
+            <div
+              key={row.id}
+              className="border-b border-dash-outline-variant px-4 py-3 last:border-b-0"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-[14px] font-medium text-dash-on-surface">{row.name}</p>
+                  <p className="mt-0.5 text-[12px] text-dash-on-surface-variant">
+                    {translateDataLabel(row.grade, locale, t)} · {digits(row.bus)}
+                  </p>
+                </div>
+                <div className="flex flex-none items-center gap-1">
+                  <StatusBadge status={row.status} />
+                  <button
+                    type="button"
+                    onClick={() => onViewHistory?.(row.name)}
+                    aria-label={t("dashboard.historyAria", { name: row.name })}
+                    className="flex h-11 w-11 items-center justify-center rounded-md text-dash-on-surface-variant hover:bg-dash-surface-container-low"
+                  >
+                    <Icon name="history" size={18} variant="outlined" />
+                  </button>
+                </div>
+              </div>
+              <p className="mt-1.5 text-[11.5px] text-dash-on-surface-variant">
+                {t("dashboard.th.morningBoarded")} {timeText(row.morningBoarded)} ·{" "}
+                {t("dashboard.th.dropOffTime")} {timeText(row.dropOffTime)}
+              </p>
+            </div>
+          ))
+        )}
       </div>
-      <div className="overflow-x-auto rounded border border-dash-outline-variant bg-dash-surface">
-        <table className="w-full min-w-[800px] border-collapse text-start">
+
+      {/* Desktop: rules and alignment, no fill band and no zebra. */}
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[720px] border-collapse text-start">
           <caption className="sr-only">{t("dashboard.caption")}</caption>
-          <thead
-            className={`border-b border-dash-outline-variant bg-dash-surface-container text-dash-label-md uppercase text-dash-on-surface-variant ${
-              ltr ? "tracking-wider" : ""
-            }`}
-          >
-            <tr>
-              <th scope="col" className="h-12 px-4 py-3 font-medium">
+          <thead>
+            <tr className="border-b border-dash-outline-variant">
+              <th scope="col" className="h-10 px-4 text-[11.5px] font-normal text-dash-on-surface-variant">
                 {t("dashboard.th.studentName")}
               </th>
-              <th scope="col" className="h-12 px-4 py-3 font-medium">
+              <th scope="col" className="h-10 px-4 text-[11.5px] font-normal text-dash-on-surface-variant">
                 {t("dashboard.th.grade")}
               </th>
-              <th scope="col" className="h-12 px-4 py-3 font-medium">
+              <th scope="col" className="h-10 px-4 text-[11.5px] font-normal text-dash-on-surface-variant">
                 {t("dashboard.th.bus")}
               </th>
-              <th scope="col" className="h-12 px-4 py-3 font-medium">
+              <th scope="col" className="h-10 px-4 text-[11.5px] font-normal text-dash-on-surface-variant">
                 {t("dashboard.th.morningBoarded")}
               </th>
-              <th scope="col" className="h-12 px-4 py-3 font-medium">
+              <th scope="col" className="h-10 px-4 text-[11.5px] font-normal text-dash-on-surface-variant">
                 {t("dashboard.th.dropOffTime")}
               </th>
-              <th scope="col" className="h-12 px-4 py-3 font-medium">
+              <th scope="col" className="h-10 px-4 text-[11.5px] font-normal text-dash-on-surface-variant">
                 {t("dashboard.th.currentStatus")}
               </th>
-              <th scope="col" className="h-12 px-4 py-3 text-end font-medium">
+              <th scope="col" className="h-10 px-4 text-end text-[11.5px] font-normal text-dash-on-surface-variant">
                 {t("dashboard.th.actions")}
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-dash-outline-variant text-dash-body-sm text-dash-on-surface">
+          <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-16 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <Icon name="search_off" size={32} variant="outlined" />
-                    <p className="font-medium text-dash-on-surface">{t("dashboard.emptyTitle")}</p>
-                    <p className="text-dash-body-sm text-dash-on-surface-variant">
-                      {t("dashboard.emptySubtitle")}
-                    </p>
-                  </div>
-                </td>
+                <td colSpan={7}>{empty}</td>
               </tr>
             ) : (
               rows.map((row) => (
                 <tr
                   key={row.id}
-                  className={`transition-colors hover:bg-dash-surface-container-low ${rowTint(row.status)}`}
+                  className="border-b border-dash-outline-variant last:border-b-0 hover:bg-dash-surface-container-low"
                 >
-                  <th scope="row" className="h-12 px-4 py-2 font-medium text-dash-on-surface">
+                  <th scope="row" className="h-11 px-4 text-[13.5px] font-medium text-dash-on-surface">
                     {row.name}
                   </th>
-                  <td className="px-4 py-2 text-dash-on-surface-variant">
+                  <td className="px-4 text-[13px] text-dash-on-surface-variant">
                     {translateDataLabel(row.grade, locale, t)}
                   </td>
-                  <td className="px-4 py-2 font-mono text-dash-body-sm">
-                    {toLocaleDigits(row.bus, locale)}
+                  <td className="px-4 text-[13px] tabular-nums text-dash-on-surface-variant">
+                    {digits(row.bus)}
                   </td>
-                  <td className={`px-4 py-2 font-mono text-dash-body-sm ${timeCellClass(row.morningBoarded)}`}>
-                    {row.morningBoarded}
+                  <td className="px-4 text-[13px] tabular-nums text-dash-on-surface">
+                    {timeText(row.morningBoarded)}
                   </td>
-                  <td className={`px-4 py-2 font-mono text-dash-body-sm ${timeCellClass(row.dropOffTime)}`}>
-                    {row.dropOffTime}
+                  <td className="px-4 text-[13px] tabular-nums text-dash-on-surface">
+                    {timeText(row.dropOffTime)}
                   </td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-bold uppercase ${DASH_STATUS_META[row.status]}`}
-                    >
-                      {t(statusKey(row.status))}
-                    </span>
+                  <td className="px-4">
+                    <StatusBadge status={row.status} />
                   </td>
-                  <td className="px-4 py-2 text-end">
-                    {/* Call is deferred — no contact numbers on file yet; keep it honestly disabled. */}
-                    <button
-                      type="button"
-                      disabled
-                      aria-disabled="true"
-                      title={t("dashboard.noContactNumber")}
-                      aria-label={t("dashboard.callAria", { name: row.name })}
-                      className="inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-full text-dash-outline opacity-60"
-                    >
-                      <Icon name="call" size={16} variant="outlined" />
-                    </button>
+                  <td className="px-4 text-end">
                     <button
                       type="button"
                       onClick={() => onViewHistory?.(row.name)}
                       aria-label={t("dashboard.historyAria", { name: row.name })}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container-high hover:text-dash-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary"
+                      className="inline-flex h-8 items-center gap-1.5 rounded px-2 text-[12.5px] text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container hover:text-dash-on-surface"
                     >
                       <Icon name="history" size={16} variant="outlined" />
+                      {t("dashboard.th.actions")}
                     </button>
                   </td>
                 </tr>
@@ -144,6 +160,6 @@ export function AttendanceTable({ rows, onViewHistory }: AttendanceTableProps) {
           </tbody>
         </table>
       </div>
-    </section>
+    </div>
   );
 }

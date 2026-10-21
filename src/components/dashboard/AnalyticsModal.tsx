@@ -98,7 +98,7 @@ export function AnalyticsModal({ open, onClose, date, byBus, segment }: Analytic
       open={open}
       onClose={onClose}
       title={t("analytics.title")}
-      panelClassName="w-full max-w-4xl rounded-2xl bg-dash-surface-container-low print:hidden"
+      panelClassName="w-full max-w-4xl rounded-lg bg-dash-surface print:hidden"
     >
       {open && <AnalyticsBody date={date} byBus={byBus} segment={segment} onClose={onClose} />}
     </Dialog>
@@ -121,8 +121,7 @@ function AnalyticsBody({
   segment: RunSegmentId;
   onClose: () => void;
 }) {
-  const { t, dir, locale } = useLocale();
-  const ltr = dir === "ltr";
+  const { t, locale } = useLocale();
 
   const [trendStart, setTrendStart] = useState<string | null>(null);
   const [trendEnd, setTrendEnd] = useState<string | null>(null);
@@ -153,9 +152,7 @@ function AnalyticsBody({
 
   const sectionTitle = (icon: string, label: string) => (
     <h2
-      className={`flex items-center gap-2 border-b border-dash-outline-variant pb-2 text-dash-label-md uppercase text-dash-on-surface ${
-        ltr ? "tracking-widest" : ""
-      }`}
+      className="flex items-center gap-2 text-[15px] font-semibold text-dash-on-surface"
     >
       <Icon name={icon} size={18} variant="outlined" />
       {label}
@@ -204,7 +201,7 @@ function AnalyticsBody({
               {sectionTitle("directions_bus", t("analytics.perBus"))}
               <div className="overflow-x-auto rounded border border-dash-outline-variant bg-dash-surface">
                 <table className="w-full min-w-[560px] border-collapse text-start">
-                  <thead className="border-b border-dash-outline-variant bg-dash-surface-container text-dash-label-md uppercase text-dash-on-surface-variant">
+                  <thead className="border-b border-dash-outline-variant text-[11.5px] text-dash-on-surface-variant">
                     <tr>
                       <th scope="col" className="h-10 px-4 py-2 font-medium">{t("dashboard.th.bus")}</th>
                       <th scope="col" className="h-10 px-4 py-2 font-medium">{t("dashboard.th.assigned")}</th>
@@ -218,7 +215,7 @@ function AnalyticsBody({
                         <td className="px-4 py-3 font-medium">
                           {translateDataLabel(s.bus, locale, t)}
                         </td>
-                        <td className="px-4 py-3 font-mono">
+                        <td className="px-4 py-3 tabular-nums">
                           {toLocaleDigits(String(s.assigned), locale)}
                         </td>
                         <td className="px-4 py-3">

@@ -162,7 +162,7 @@ function Calendar({
         >
           <Icon name={prevIcon} size={20} variant="outlined" />
         </button>
-        <span className="text-dash-label-md uppercase text-dash-on-surface">
+        <span className="text-[12.5px] font-medium text-dash-on-surface">
           {monthLabel(view.year, view.month, locale)}
         </span>
         <button
@@ -180,7 +180,7 @@ function Calendar({
         {Array.from({ length: 7 }, (_, offset) => (
           <div
             key={offset}
-            className="flex h-7 items-center justify-center text-dash-label-md uppercase text-dash-on-surface-variant"
+            className="flex h-7 items-center justify-center text-[11px] text-dash-on-surface-variant"
           >
             {weekdayLabel(offset, locale)}
           </div>
@@ -197,7 +197,7 @@ function Calendar({
           const cellClass = [
             "flex h-9 w-full items-center justify-center rounded text-dash-body-sm transition-colors",
             isSelected
-              ? "bg-dash-primary font-semibold text-dash-on-primary"
+              ? "bg-dash-on-surface font-medium text-white"
               : isToday
                 ? "font-semibold text-dash-primary ring-1 ring-dash-primary"
                 : "text-dash-on-surface hover:bg-dash-surface-container-high",

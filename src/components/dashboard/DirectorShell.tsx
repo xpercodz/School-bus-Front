@@ -3,26 +3,27 @@ import { useLocation } from "react-router-dom";
 import { RequireRole } from "@/components/RequireRole";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { TopBar } from "@/components/dashboard/TopBar";
+import { HelpDialog } from "@/components/dashboard/HelpDialog";
+import { SettingsDrawer } from "@/components/dashboard/SettingsDrawer";
 import { activeIdFromPathname } from "@/data/dashboard";
 import { useSchoolName } from "@/lib/school";
 
 /**
- * Director-only shell for /dashboard (and its sub-pages): guards access
- * (redirects to /login or / by role), then renders the sidebar + sticky top
- * bar. The active sidebar item follows the current path; the school name comes
- * from the signed-in user's tenant so each school sees its own. On desktop
- * (≥lg) the sidebar is a fixed rail; below that it's an off-canvas drawer
- * opened from the top bar's hamburger.
+ * Director-only shell for /dashboard and its sub-pages: role guard, a labelled
+ * desktop rail, a phone header with a nav drawer, and the shared Help/Settings
+ * dialogs. Dialogs live here (not inside the rail) so opening Settings from the
+ * mobile drawer does not unmount it when the drawer closes.
  */
 export function DirectorShell({ children }: { children: ReactNode }) {
   const schoolName = useSchoolName();
   const { pathname } = useLocation();
   const activeId = activeIdFromPathname(pathname);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Close the drawer when the viewport crosses up to desktop, so an open
-  // drawer can never overlay the fixed sidebar after a resize. (The drawer
-  // only opens below lg, so no initial sync check is needed.)
+  // drawer can never overlay the fixed sidebar after a resize.
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
     function onChange(event: MediaQueryListEvent) {
@@ -33,8 +34,7 @@ export function DirectorShell({ children }: { children: ReactNode }) {
   }, []);
 
   // Close the drawer on route change (nav clicks close it via Sidebar; this
-  // also covers browser back/forward). Adjusting state during render is the
-  // documented "respond to a prop change" pattern — not an effect.
+  // also covers browser back/forward).
   const [prevPathname, setPrevPathname] = useState(pathname);
   if (prevPathname !== pathname) {
     setPrevPathname(pathname);
@@ -49,14 +49,20 @@ export function DirectorShell({ children }: { children: ReactNode }) {
           schoolName={schoolName}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          onOpenHelp={() => setHelpOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
         />
-        <div className="ms-0 flex min-h-dvh flex-col lg:ms-64 print:ms-0">
+        <div className="flex min-h-dvh flex-col lg:ms-[236px] print:ms-0">
           <TopBar
             onOpenNav={() => setSidebarOpen(true)}
             navOpen={sidebarOpen}
+            schoolName={schoolName}
           />
           <main className="flex-1">{children}</main>
         </div>
+
+        <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+        <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </div>
     </RequireRole>
   );
