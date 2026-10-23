@@ -2,7 +2,11 @@
 <html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <meta name="theme-color" content="#f3f4f1" />
     <!-- Title + description are set per-route and per-locale by App.tsx. -->
@@ -24,11 +28,50 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="School Bus" />
 
+    <!-- Theme resolution before first paint. Keep in sync with src/lib/theme.ts
+         (THEME_STORAGE_KEY / THEME_COLORS). Without this an explicit dark-mode
+         user would see a white flash on every cold boot, because React cannot
+         run until the bundle downloads. `color-scheme` is set here too so
+         native scrollbars, selects and date pickers match the first paint. -->
+    <script>
+      (function () {
+        try {
+          var root = document.documentElement;
+          var stored = null;
+          try {
+            stored = localStorage.getItem("sb:theme");
+          } catch (error) {}
+          var prefersDark =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches;
+          // "light" is the only stored value that forces light; a missing or
+          // unknown value follows the OS, exactly like readStoredTheme().
+          var dark = stored === "dark" || (stored !== "light" && prefersDark);
+          root.classList.toggle("dark", dark);
+          root.dataset.theme = dark ? "dark" : "light";
+          root.style.colorScheme = dark ? "dark" : "light";
+          root.classList.add("js");
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", dark ? "#101413" : "#f3f4f1");
+          var statusBar = document.querySelector(
+            'meta[name="apple-mobile-web-app-status-bar-style"]',
+          );
+          if (statusBar) {
+            statusBar.setAttribute(
+              "content",
+              dark ? "black-translucent" : "default",
+            );
+          }
+        } catch (error) {}
+      })();
+    </script>
+
+
     <!-- Material Symbols Rounded + Outlined are self-hosted (see the @font-face
          block in src/globals.css). These were previously loaded from the Google
          Fonts CDN, which was the app's only external runtime asset — and on a
          slow connection that request could lose the race to first paint, leaving
-         every icon rendered as its literal ligature name. The subset is ~98 KiB
+         every icon rendered as its literal ligature name. The subset is ~115 KiB
          same-origin, so preloading it removes the CSS->font waterfall.
          `crossorigin` is required even for same-origin fonts: font fetches are
          always CORS, and a mismatched preload is fetched twice. -->

@@ -16,6 +16,7 @@ import "@fontsource/ibm-plex-sans-arabic/600.css";
 import "@fontsource/ibm-plex-sans-arabic/700.css";
 
 import { App } from "@/App";
+import { installEntranceSkip } from "@/lib/motion";
 import { requestPersistentStorage } from "@/lib/persistent-storage";
 import { reloadOnServiceWorkerUpdate } from "@/lib/service-worker";
 import "@/globals.css";
@@ -27,6 +28,10 @@ void requestPersistentStorage();
 // Keeps an open page from running stale JS against a freshly deployed worker's
 // precache (see the module for the failure this prevents).
 reloadOnServiceWorkerUpdate();
+
+// A screen entrance longer than ~400ms gets an out: the first pointer/key/scroll
+// finishes whatever entrance is still running (see src/lib/motion.ts).
+installEntranceSkip();
 
 const container = document.getElementById("root");
 if (!container) {

@@ -9,7 +9,7 @@ export function RosterSkeleton() {
   return (
     <div className="flex flex-col gap-3">
       {/* Summary strip */}
-      <div className="overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest">
+      <div className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
         <div className="grid grid-cols-4 divide-x divide-outline-variant">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="px-2 py-3 text-center">
@@ -29,7 +29,7 @@ export function RosterSkeleton() {
         ))}
       </div>
       {/* Roster rows */}
-      <ul className="divide-y divide-outline-variant overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest">
+      <ul className="divide-y divide-outline-variant overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
         {[0, 1, 2, 3, 4, 5].map((i) => (
           <li key={i} className="flex items-center gap-2 px-3 py-2.5">
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">

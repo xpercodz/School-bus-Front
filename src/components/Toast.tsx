@@ -10,6 +10,7 @@ import {
 interface ToastItem {
   id: number;
   message: string;
+  leaving?: boolean;
 }
 
 interface ToastContextValue {
@@ -18,10 +19,16 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
+/** How long a toast stays fully visible before it starts leaving. */
+const VISIBLE_MS = 2800;
+/** Exit duration; matches the .toast-out keyframe in globals.css. */
+const EXIT_MS = 160;
+
 /**
  * Lightweight app-wide toast feedback. Callers pass already-translated strings
  * (translation happens at the call site where `t` is available). Toasts render
- * bottom-center above everything (z-100) and auto-dismiss after 3s.
+ * bottom-center above everything (z-100), above the mobile action bar, and
+ * auto-dismiss after ~3s.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
@@ -29,10 +36,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const showToast = useCallback((message: string) => {
     const id = ++idRef.current;
-    setItems((prev) => [...prev, { id, message }]);
+    setItems((prev) => [...prev.slice(-2), { id, message }]);
+
+    // Mark it leaving first so the CSS exit can run, then unmount it.
+    window.setTimeout(() => {
+      setItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, leaving: true } : item)),
+      );
+    }, VISIBLE_MS);
+
     window.setTimeout(() => {
       setItems((prev) => prev.filter((item) => item.id !== id));
-    }, 3000);
+    }, VISIBLE_MS + EXIT_MS);
   }, []);
 
   return (
@@ -40,13 +55,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-4 z-[100] flex flex-col items-center gap-2 px-4"
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[100] flex flex-col items-center gap-2 px-4 sm:bottom-6"
       >
         {items.map((item) => (
           <div
             key={item.id}
             role="status"
-            className="pointer-events-auto max-w-sm rounded-full bg-on-surface px-4 py-2 text-body-md text-surface shadow-card"
+            className={`pointer-events-auto max-w-sm rounded-xl bg-on-surface px-4 py-2.5 text-[13px] leading-5 text-surface shadow-float ${
+              item.leaving ? "toast-out" : "toast-in"
+            }`}
           >
             {item.message}
           </div>

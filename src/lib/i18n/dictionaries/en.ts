@@ -28,6 +28,8 @@ export const messages = {
   "login.password": "Password",
   "login.emailPlaceholder": "you@school.edu",
   "login.passwordPlaceholder": "••••••••",
+  "login.showPassword": "Show password",
+  "login.hidePassword": "Hide password",
   "login.signIn": "Sign in",
   "login.fallbackError": "Sign in failed. Check your email and password.",
   "login.notDirector":
@@ -112,7 +114,13 @@ export const messages = {
   "nav.assignments": "Assignments",
   "nav.drivers": "Drivers",
   "nav.dispatch": "Dispatch vehicle",
+  "nav.primaryAria": "Primary navigation",
   "nav.operate": "Operate",
+  // Short labels for the phone bottom bar (4 destinations).
+  "nav.shortLive": "Live",
+  "nav.shortReports": "Reports",
+  "nav.shortAssignments": "Assign",
+  "nav.shortDrivers": "Drivers",
   "nav.manage": "Manage",
 
   // Dashboard screen
@@ -250,6 +258,7 @@ export const messages = {
   "settings.account": "Account",
   "settings.email": "Email",
   "settings.role": "Role",
+  "settings.appearance": "Appearance",
   "settings.language": "Language",
   "settings.signOut": "Sign out",
 
@@ -297,6 +306,7 @@ export const messages = {
   // Assignments (director — driver ↔ bus, student ↔ bus)
   "assignments.title": "Assignments",
   "assignments.subtitle": "Assign drivers and students to buses",
+  "assignments.busesEmpty": "No buses have been set up yet.",
   "assignments.drivers": "Drivers",
   "assignments.th.bus": "Bus",
   "assignments.th.driver": "Assigned Driver",
@@ -347,6 +357,14 @@ export const messages = {
 
   // Common
   "common.changeLanguageAria": "Change language",
+
+  // Appearance (dark mode)
+  "theme.aria": "Appearance",
+  "theme.system": "System",
+  "theme.light": "Light",
+  "theme.dark": "Dark",
+  "theme.toggleToDark": "Switch to dark theme",
+  "theme.toggleToLight": "Switch to light theme",
   "common.loading": "Loading",
 };
 

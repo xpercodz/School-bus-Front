@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { RequireRole } from "@/components/RequireRole";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { TopBar } from "@/components/dashboard/TopBar";
+import { MobileNav } from "@/components/dashboard/MobileNav";
 import { HelpDialog } from "@/components/dashboard/HelpDialog";
 import { SettingsDrawer } from "@/components/dashboard/SettingsDrawer";
 import { activeIdFromPathname } from "@/data/dashboard";
@@ -58,8 +59,17 @@ export function DirectorShell({ children }: { children: ReactNode }) {
             navOpen={sidebarOpen}
             schoolName={schoolName}
           />
-          <main className="flex-1">{children}</main>
+          {/* Keyed by route so each screen arrives once with the shared
+              page-enter animation; the bottom bar owns its own space. */}
+          <main
+            key={pathname}
+            className="page-enter flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0"
+          >
+            {children}
+          </main>
         </div>
+
+        <MobileNav />
 
         <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
         <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />

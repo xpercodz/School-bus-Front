@@ -70,6 +70,24 @@ export function formatDate(dateStr: string | null, locale: Locale): string {
 }
 
 /**
+ * Day + month without the year, for the compact driver app bar where the full
+ * date ("Oct 22, 2026") crowds the run status out of the line.
+ */
+export function formatDayMonth(dateStr: string | null, locale: Locale): string {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return dateStr;
+  const date = new Date(y, m - 1, d);
+  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) {
+    return dateStr;
+  }
+  return cachedFormatter(localeCode(locale), {
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
+/**
  * Rewrite a translatable prefix embedded in stored data — "Bus 04" → "حافلة ٠٤"
  * and "Grade 4B" → "الصف ٤B". Pass-through for anything else (proper nouns).
  */

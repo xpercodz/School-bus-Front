@@ -9,6 +9,7 @@ import { useLocale } from "@/lib/i18n/context";
 import { Icon } from "@/components/Icon";
 import { ProductMark } from "@/components/ProductMark";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { SlideSegments } from "@/components/SlideSegments";
 
 /** Driver access-code lockout: 5 wrong codes → 15-minute block (localStorage). */
@@ -57,6 +58,7 @@ export default function LoginPage() {
   const [now, setNow] = useState(0);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -135,11 +137,12 @@ export default function LoginPage() {
 
   if (!isFirebaseConfigured) {
     return (
-      <div className="relative flex min-h-dvh bg-surface px-4 py-10">
-        <div className="absolute end-4 top-4">
+      <div className="flex min-h-dvh flex-col bg-surface px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
+        <div className="flex justify-end gap-1">
+          <ThemeToggle />
           <LanguageToggle />
         </div>
-        <div className="m-auto w-full max-w-[400px] rounded-xl border border-outline-variant bg-surface-container-lowest p-6 text-center sm:p-8">
+        <div className="page-enter m-auto w-full max-w-[400px] rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 text-center sm:p-8">
           <Icon name="cloud_off" size={40} className="mx-auto text-on-surface-variant" />
           <h1 className="mt-4 text-headline-md">{t("login.notConfiguredTitle")}</h1>
           <p className="mt-2 text-body-md text-on-surface-variant">
@@ -147,7 +150,7 @@ export default function LoginPage() {
           </p>
           <Link
             to="/"
-            className="mt-6 inline-flex h-10 items-center justify-center rounded-md bg-on-surface px-5 text-[14px] font-medium text-white"
+            className="mt-6 inline-flex h-10 items-center justify-center rounded-md bg-on-surface px-5 text-[14px] font-medium text-surface"
           >
             {t("login.backToApp")}
           </Link>
@@ -157,11 +160,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-dvh bg-surface px-4 py-10">
-      <div className="absolute end-4 top-4">
+    <div className="flex min-h-dvh flex-col bg-surface px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
+      <div className="flex justify-end gap-1">
+        <ThemeToggle />
         <LanguageToggle />
       </div>
-      <div className="m-auto w-full max-w-[400px] rounded-xl border border-outline-variant bg-surface-container-lowest p-6 sm:p-8">
+      <div className="page-enter m-auto w-full max-w-[400px] rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 sm:p-8">
         <div className="flex items-center gap-2.5">
           <ProductMark size={32} />
           <h1 className="text-headline-md">{t("login.heading")}</h1>
@@ -186,7 +190,7 @@ export default function LoginPage() {
         {mode === "driver" ? (
           <form onSubmit={handleCodeSubmit} className="mt-6 flex flex-col gap-4">
             <div>
-              <label htmlFor="code" className="text-[12.5px] font-medium text-on-surface">
+              <label htmlFor="code" className="text-[13px] font-medium text-on-surface">
                 {t("login.code")}
               </label>
               <input
@@ -194,11 +198,14 @@ export default function LoginPage() {
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint="done"
                 maxLength={6}
                 required
                 value={code}
                 onChange={(e) => setCode(normalizeDigits(e.target.value).replace(/\D/g, ""))}
-                className="mt-1.5 h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 text-center text-[18px] tracking-[0.35em] tabular-nums text-on-surface outline-none placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary"
+                className="mt-1.5 h-12 w-full rounded-lg border border-control-outline bg-surface-container-lowest px-3 text-center text-[20px] tracking-[0.35em] tabular-nums text-on-surface outline-none transition-[border-color,box-shadow] duration-[var(--t-hover)] placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/35"
                 placeholder={t("login.codePlaceholder")}
                 aria-describedby="code-hint"
               />
@@ -225,7 +232,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={codeSubmitting || (now > 0 && lockout.until > now)}
-              className="flex h-11 items-center justify-center gap-2 rounded-md bg-on-surface text-[14px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="press flex h-12 items-center justify-center gap-2 rounded-lg bg-on-surface text-[14.5px] font-medium text-surface hover:opacity-90 disabled:opacity-50"
             >
               {codeSubmitting ? (
                 <Icon name="progress_activity" className="animate-spin" />
@@ -238,34 +245,54 @@ export default function LoginPage() {
         ) : (
           <form onSubmit={handleDirectorSubmit} className="mt-6 flex flex-col gap-4">
             <div>
-              <label htmlFor="email" className="text-[12.5px] font-medium text-on-surface">
+              <label htmlFor="email" className="text-[13px] font-medium text-on-surface">
                 {t("login.email")}
               </label>
               <input
                 id="email"
                 type="email"
                 autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint="next"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1.5 h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 text-[15px] text-on-surface outline-none placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary"
+                className="mt-1.5 h-12 w-full rounded-lg border border-control-outline bg-surface-container-lowest px-3 text-[16px] text-on-surface outline-none transition-[border-color,box-shadow] duration-[var(--t-hover)] placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/35 sm:text-[15px]"
                 placeholder={t("login.emailPlaceholder")}
               />
             </div>
             <div>
-              <label htmlFor="password" className="text-[12.5px] font-medium text-on-surface">
+              <label htmlFor="password" className="text-[13px] font-medium text-on-surface">
                 {t("login.password")}
               </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1.5 h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 text-[15px] text-on-surface outline-none placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary"
-                placeholder={t("login.passwordPlaceholder")}
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="mt-1.5 h-12 w-full rounded-lg border border-control-outline bg-surface-container-lowest ps-3 pe-12 text-[16px] text-on-surface outline-none transition-[border-color,box-shadow] duration-[var(--t-hover)] placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/35 sm:text-[15px]"
+                  placeholder={t("login.passwordPlaceholder")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((shown) => !shown)}
+                  aria-label={t(showPassword ? "login.hidePassword" : "login.showPassword")}
+                  aria-pressed={showPassword}
+                  className="press absolute end-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container"
+                >
+                  <span key={showPassword ? "hide" : "show"} className="icon-pop flex items-center">
+                    <Icon name={showPassword ? "visibility_off" : "visibility"} size={20} />
+                  </span>
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -277,7 +304,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="flex h-11 items-center justify-center gap-2 rounded-md bg-on-surface text-[14px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="press flex h-12 items-center justify-center gap-2 rounded-lg bg-on-surface text-[14.5px] font-medium text-surface hover:opacity-90 disabled:opacity-50"
             >
               {submitting ? (
                 <Icon name="progress_activity" className="animate-spin" />

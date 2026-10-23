@@ -2,6 +2,7 @@ import type { AttendanceRow } from "@/data/dashboard";
 import { DASH_STATUS_META, STATUS_DOT } from "@/data/dashboard";
 import type { StudentStatus } from "@/data/students";
 import { Icon } from "@/components/Icon";
+import { staggerStyle } from "@/lib/motion";
 import { useLocale } from "@/lib/i18n/context";
 import { statusKey, toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
 
@@ -32,13 +33,16 @@ function timeText(value: string): string {
 /**
  * Live student attendance. A real table at md+, and a two-line list of the same
  * rows below it — never a sideways-scrolling page on a phone.
+ *
+ * The phone rows are read-only (the only control is the 44px History button),
+ * so they carry no hover fill; the desktop rules are unchanged.
  */
 export function AttendanceTable({ rows, onViewHistory }: AttendanceTableProps) {
   const { t, locale } = useLocale();
   const digits = (n: string) => toLocaleDigits(n, locale);
 
   const empty = (
-    <div className="flex flex-col items-center gap-1.5 px-4 py-12 text-center">
+    <div className="flex w-full flex-col items-center gap-1.5 px-4 py-12 text-center">
       <Icon name="search_off" size={24} variant="outlined" className="text-dash-outline" />
       <p className="text-[13.5px] font-medium text-dash-on-surface">{t("dashboard.emptyTitle")}</p>
       <p className="text-[12.5px] text-dash-on-surface-variant">{t("dashboard.emptySubtitle")}</p>
@@ -47,20 +51,25 @@ export function AttendanceTable({ rows, onViewHistory }: AttendanceTableProps) {
 
   return (
     <div className="overflow-hidden rounded-lg border border-dash-outline-variant bg-dash-surface">
-      {/* Phone: two-line rows. */}
+      {/* Phone: identity first, then the two timestamps. */}
       <div className="md:hidden">
         {rows.length === 0 ? (
           empty
         ) : (
-          rows.map((row) => (
+          rows.map((row, index) => (
             <div
               key={row.id}
-              className="border-b border-dash-outline-variant px-4 py-3 last:border-b-0"
+              style={staggerStyle(index, rows.length)}
+              className="stagger-in border-b border-dash-outline-variant px-4 py-3.5 last:border-b-0"
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-[14px] font-medium text-dash-on-surface">{row.name}</p>
-                  <p className="mt-0.5 text-[12px] text-dash-on-surface-variant">
+                <div className="min-w-0 flex-1">
+                  {/* Two lines, never a hidden identity: a long name gets the
+                      full width instead of an ellipsis. */}
+                  <p className="line-clamp-2 text-[14px] leading-5 font-medium break-words text-dash-on-surface">
+                    {row.name}
+                  </p>
+                  <p className="mt-0.5 truncate text-[12px] text-dash-on-surface-variant">
                     {translateDataLabel(row.grade, locale, t)} · {digits(row.bus)}
                   </p>
                 </div>
@@ -70,7 +79,7 @@ export function AttendanceTable({ rows, onViewHistory }: AttendanceTableProps) {
                     type="button"
                     onClick={() => onViewHistory?.(row.name)}
                     aria-label={t("dashboard.historyAria", { name: row.name })}
-                    className="flex h-11 w-11 items-center justify-center rounded-md text-dash-on-surface-variant hover:bg-dash-surface-container-low"
+                    className="press flex h-11 w-11 flex-none items-center justify-center rounded-md text-dash-on-surface-variant md:hover:bg-dash-surface-container-low"
                   >
                     <Icon name="history" size={18} variant="outlined" />
                   </button>
@@ -148,7 +157,7 @@ export function AttendanceTable({ rows, onViewHistory }: AttendanceTableProps) {
                       type="button"
                       onClick={() => onViewHistory?.(row.name)}
                       aria-label={t("dashboard.historyAria", { name: row.name })}
-                      className="inline-flex h-8 items-center gap-1.5 rounded px-2 text-[12.5px] text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container hover:text-dash-on-surface"
+                      className="press inline-flex h-8 items-center gap-1.5 rounded px-2 text-[12.5px] text-dash-on-surface-variant hover:bg-dash-surface-container hover:text-dash-on-surface pointer-coarse:h-11 pointer-coarse:px-3"
                     >
                       <Icon name="history" size={16} variant="outlined" />
                       {t("dashboard.th.actions")}

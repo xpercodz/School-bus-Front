@@ -26,6 +26,11 @@ interface DateSegmentBarProps {
  * run-segment control. Used by the Live Map FilterBar and Reports (whose
  * toolbar launches the Analytics modal).
  * The segment control is a sliding-thumb segmented control (SlideSegments).
+ *
+ * The two labels are long ("Afternoon drop-off"), so the segment control gets
+ * its own full-width line whenever the chip leaves it less than a comfortable
+ * width — 320–390px phones — and sits beside the chip only when the labels
+ * genuinely fit. Nothing clips and nothing pushes the page sideways.
  */
 export function DateSegmentBar({
   date,
@@ -38,19 +43,19 @@ export function DateSegmentBar({
   const dateRootRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex w-full flex-wrap items-center gap-2 sm:gap-3">
       {/* Date chip — opens the date picker popover. */}
-      <div ref={dateRootRef} className="relative">
+      <div ref={dateRootRef} className="relative flex-none">
         <button
           type="button"
           onClick={() => setPickerOpen((open) => !open)}
           aria-haspopup="dialog"
           aria-expanded={pickerOpen}
           aria-label={t("dashboard.selectDate")}
-          className="flex h-11 items-center gap-2 rounded-md border border-dash-outline-variant bg-dash-surface px-2.5 text-[12.5px] text-dash-on-surface transition-colors hover:border-dash-outline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary sm:h-9"
+          className="press flex h-11 items-center gap-2 rounded-md border border-dash-control-outline bg-dash-surface px-2.5 text-[12.5px] text-dash-on-surface hover:border-dash-outline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary sm:h-9"
         >
           <Icon name="calendar_today" size={16} variant="outlined" />
-          <span>{date ? formatDate(date, locale) : t("dashboard.today")}</span>
+          <span className="whitespace-nowrap">{date ? formatDate(date, locale) : t("dashboard.today")}</span>
           <Icon name="arrow_drop_down" size={16} variant="outlined" />
         </button>
         <DatePickerPopover
@@ -62,17 +67,19 @@ export function DateSegmentBar({
         />
       </div>
 
-      {/* Run type segmented control — sliding thumb. */}
-      <SlideSegments
-        variant="dash-box"
-        ariaLabel={t("dashboard.runTypeAria")}
-        options={RUN_SEGMENTS.map((item) => ({
-          id: item.id,
-          label: t(SEGMENT_LABEL_KEY[item.id]),
-        }))}
-        value={segment}
-        onChange={onSegmentChange}
-      />
+      {/* Run type segmented control — sliding thumb. Full-width on phones. */}
+      <div className="min-w-0 flex-1 basis-64 sm:basis-auto sm:flex-none">
+        <SlideSegments
+          variant="dash-box"
+          ariaLabel={t("dashboard.runTypeAria")}
+          options={RUN_SEGMENTS.map((item) => ({
+            id: item.id,
+            label: t(SEGMENT_LABEL_KEY[item.id]),
+          }))}
+          value={segment}
+          onChange={onSegmentChange}
+        />
+      </div>
     </div>
   );
 }

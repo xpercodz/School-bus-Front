@@ -9,7 +9,7 @@
   height: 72px;
   margin-left: -36px;
   margin-top: -36px;
-  animation: loader-fade-in 0.4s ease-out;
+  animation: loader-fade-in var(--t-enter) var(--ease-out-soft);
 }
 
 .box {
@@ -24,7 +24,10 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: #fff;
+  /* Brand splash colours are theme-aware (globals.css --loader-*): the light
+     splash is route blue with white boxes, the dark one is deep ink with a
+     lifted route-blue box. */
+  background: var(--loader-fg, #fff);
 }
 
 .box:nth-child(3n) {
@@ -43,6 +46,13 @@
 
 .box:last-child {
   margin-bottom: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader,
+  .box {
+    animation: none;
+  }
 }
 
 @keyframes loader-fade-in {

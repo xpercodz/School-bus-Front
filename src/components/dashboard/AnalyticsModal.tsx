@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Dialog } from "@/components/Dialog";
 import { Icon } from "@/components/Icon";
+import { staggerStyle } from "@/lib/motion";
 import type { BusSummary, TrendDay } from "@/lib/school-data";
 import { useAttendanceTrend } from "@/lib/school-data";
 import { useLocale } from "@/lib/i18n/context";
 import {
   formatDate,
+  formatDayMonth,
   toLocaleDigits,
   translateDataLabel,
 } from "@/lib/i18n/format";
@@ -25,15 +27,27 @@ function daysBetween(start: string, end: string): number {
 /**
  * Segmented horizontal bar showing a share of a total.
  */
-function RateBar({ value, total, tone }: { value: number; total: number; tone: string }) {
+function RateBar({
+  value,
+  total,
+  tone,
+  trackClassName = "w-24",
+}: {
+  value: number;
+  total: number;
+  tone: string;
+  trackClassName?: string;
+}) {
   const { locale } = useLocale();
   const pct = total === 0 ? 0 : Math.round((value / total) * 100);
   return (
-    <div className="flex items-center gap-2">
-      <div className="h-2 w-24 rounded bg-dash-surface-container-highest">
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div
+        className={`h-2 min-w-0 overflow-hidden rounded bg-dash-surface-container-highest ${trackClassName}`}
+      >
         <div className={`h-full rounded ${tone}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-dash-body-sm text-dash-on-surface-variant">
+      <span className="flex-none text-dash-body-sm tabular-nums text-dash-on-surface-variant">
         {toLocaleDigits(String(pct), locale)}%
       </span>
     </div>
@@ -50,7 +64,10 @@ function TrendBar({ day, max }: { day: TrendDay; max: number }) {
     { count: day.waiting, label: t("status.waiting"), cls: "bg-dash-warning" },
   ];
   return (
-    <div className="flex min-w-8 flex-col items-center gap-1">
+    <div
+      className="flex min-w-8 shrink-0 flex-col items-center gap-1.5"
+      title={formatDate(day.date, locale)}
+    >
       <div className="flex h-36 w-8 flex-col-reverse justify-end overflow-hidden rounded-t bg-dash-surface-container-highest/40">
         {segments.map((seg) =>
           seg.count === 0 ? null : (
@@ -64,8 +81,10 @@ function TrendBar({ day, max }: { day: TrendDay; max: number }) {
           ),
         )}
       </div>
-      <span className="text-[10px] text-dash-on-surface-variant">
-        {formatDate(day.date, locale)}
+      {/* Axis label: 11px, day + month, never wraps inside the 32px column.
+          The column may grow to fit a longer Arabic month and the row scrolls. */}
+      <span className="whitespace-nowrap text-center text-[11px] leading-tight text-dash-on-surface-variant">
+        {formatDayMonth(day.date, locale)}
       </span>
     </div>
   );
@@ -83,12 +102,16 @@ interface AnalyticsModalProps {
 }
 
 /**
- * Attendance analytics for the report the director is viewing — a modal opened
- * from the Reports toolbar. Shows the two views the printable report doesn't:
- * a visual per-bus rate-bar comparison and the multi-day trend chart. All
- * single-day data comes from the Reports page (no re-query); only the trend
+ * Attendance analytics for the report the director is viewing — an overlay
+ * opened from the Reports toolbar. Shows the two views the printable report
+ * doesn't: a visual per-bus rate-bar comparison and the multi-day trend chart.
+ * All single-day data comes from the Reports page (no re-query); only the trend
  * fetches Firestore, and only while the modal is open (the body mounts on
  * open, DispatchModal-style).
+ *
+ * On a phone it is an 88dvh bottom sheet (the Dialog's auto placement); from
+ * sm up it is the wide centered dialog. The panel classes are supplied in full
+ * because `panelClassName` replaces the placement defaults, not extends them.
  */
 export function AnalyticsModal({ open, onClose, date, byBus, segment }: AnalyticsModalProps) {
   const { t } = useLocale();
@@ -98,7 +121,8 @@ export function AnalyticsModal({ open, onClose, date, byBus, segment }: Analytic
       open={open}
       onClose={onClose}
       title={t("analytics.title")}
-      panelClassName="w-full max-w-4xl rounded-lg bg-dash-surface print:hidden"
+      exitAnimation={false}
+      panelClassName="w-full max-w-4xl max-h-[88dvh] rounded-t-2xl bg-dash-surface pb-[env(safe-area-inset-bottom)] sm:max-h-[85dvh] sm:rounded-xl sm:pb-0 print:hidden"
     >
       {open && <AnalyticsBody date={date} byBus={byBus} segment={segment} onClose={onClose} />}
     </Dialog>
@@ -159,12 +183,18 @@ function AnalyticsBody({
     </h2>
   );
 
+  const dateInputClass =
+    "h-11 w-full min-w-0 rounded-lg border border-dash-control-outline bg-dash-surface px-3 text-[16px] text-dash-on-surface outline-none transition-[border-color,box-shadow] duration-[var(--t-hover)] focus:border-dash-primary focus:ring-2 focus:ring-dash-primary/35 sm:h-10 sm:w-auto sm:text-dash-body-sm";
+
   return (
     <>
-      <div className="flex items-center justify-between gap-4 border-b border-dash-outline-variant bg-dash-surface-container-low px-4 py-3">
+      {/* Sticky inside the sheet/dialog scroll area, solid (no glass). */}
+      <header className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-dash-outline-variant bg-dash-surface-container-low px-4 py-2.5 sm:px-6 sm:py-3">
         <div className="min-w-0">
-          <h2 className="text-dash-headline-lg text-dash-on-surface">{t("analytics.title")}</h2>
-          <p className="text-dash-body-sm text-dash-on-surface-variant">
+          <h2 className="text-[18px] font-semibold leading-6 text-dash-on-surface sm:text-dash-headline-lg">
+            {t("analytics.title")}
+          </h2>
+          <p className="mt-0.5 text-dash-body-sm text-dash-on-surface-variant">
             {date ? formatDate(date, locale) : t("dashboard.today")}
             {" · "}
             {t(SEGMENT_LABEL_KEY[segment])}
@@ -174,11 +204,11 @@ function AnalyticsBody({
           type="button"
           onClick={onClose}
           aria-label={t("dialog.close")}
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary"
+          className="press flex h-11 w-11 flex-none items-center justify-center rounded-full text-dash-on-surface-variant hover:bg-dash-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary"
         >
           <Icon name="close" size={20} variant="outlined" />
         </button>
-      </div>
+      </header>
 
       <div className="flex flex-col gap-6 px-4 py-4 sm:px-6 sm:py-5">
         {byBus.length === 0 ? (
@@ -199,7 +229,57 @@ function AnalyticsBody({
             {/* Per-bus comparison */}
             <section className="flex flex-col gap-4">
               {sectionTitle("directions_bus", t("analytics.perBus"))}
-              <div className="overflow-x-auto rounded border border-dash-outline-variant bg-dash-surface">
+
+              {/* Phones: one compact card per bus — no sideways-scrolling
+                  table. Bar tracks flex to the card width. */}
+              <ul className="flex flex-col gap-2 md:hidden">
+                {byBus.map((s, index) => (
+                  <li
+                    key={s.bus}
+                    className="stagger-in rounded-lg border border-dash-outline-variant bg-dash-surface-container-low px-3 py-3"
+                    style={staggerStyle(index, byBus.length)}
+                  >
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="min-w-0 truncate text-[14px] font-medium text-dash-on-surface">
+                        {translateDataLabel(s.bus, locale, t)}
+                      </span>
+                      <span className="flex-none text-[12.5px] text-dash-on-surface-variant">
+                        {t("dashboard.th.assigned")}{" "}
+                        <span className="font-medium tabular-nums text-dash-on-surface">
+                          {toLocaleDigits(String(s.assigned), locale)}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="mt-2.5 flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="w-16 flex-none text-[12px] text-dash-on-surface-variant">
+                          {t("status.boarded")}
+                        </span>
+                        <RateBar
+                          value={s.boarded}
+                          total={s.assigned}
+                          tone="bg-dash-success"
+                          trackClassName="flex-1"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-16 flex-none text-[12px] text-dash-on-surface-variant">
+                          {t("status.absent")}
+                        </span>
+                        <RateBar
+                          value={s.absent}
+                          total={s.assigned}
+                          tone="bg-dash-error"
+                          trackClassName="flex-1"
+                        />
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              {/* md and up: the table. */}
+              <div className="hidden overflow-x-auto rounded border border-dash-outline-variant bg-dash-surface md:block">
                 <table className="w-full min-w-[560px] border-collapse text-start">
                   <thead className="border-b border-dash-outline-variant text-[11.5px] text-dash-on-surface-variant">
                     <tr>
@@ -236,23 +316,23 @@ function AnalyticsBody({
               {sectionTitle("monitoring", t("analytics.trendTitle"))}
               <p className="text-dash-body-sm text-dash-on-surface-variant">{t("analytics.trendHint")}</p>
 
-              <div className="flex flex-wrap items-end gap-4">
-                <label className="flex flex-col gap-1">
+              <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-end sm:gap-4">
+                <label className="flex min-w-0 flex-col gap-1">
                   <span className="text-dash-body-sm text-dash-on-surface-variant">{t("analytics.startDate")}</span>
                   <input
                     type="date"
                     value={trendStart ?? ""}
                     onChange={(e) => setTrendStart(e.target.value || null)}
-                    className="h-10 rounded border border-dash-outline-variant bg-dash-surface px-3 text-dash-body-sm text-dash-on-surface focus:border-dash-primary focus:outline-none"
+                    className={dateInputClass}
                   />
                 </label>
-                <label className="flex flex-col gap-1">
+                <label className="flex min-w-0 flex-col gap-1">
                   <span className="text-dash-body-sm text-dash-on-surface-variant">{t("analytics.endDate")}</span>
                   <input
                     type="date"
                     value={trendEnd ?? ""}
                     onChange={(e) => setTrendEnd(e.target.value || null)}
-                    className="h-10 rounded border border-dash-outline-variant bg-dash-surface px-3 text-dash-body-sm text-dash-on-surface focus:border-dash-primary focus:outline-none"
+                    className={dateInputClass}
                   />
                 </label>
               </div>
@@ -272,29 +352,30 @@ function AnalyticsBody({
                   <p className="text-dash-body-sm text-dash-on-surface-variant">{t("analytics.trendEmpty")}</p>
                 </div>
               ) : (
-                <div className="flex gap-2 overflow-x-auto pb-1">
+                <div className="flex gap-2 overflow-x-auto pb-2">
                   {trend.days.map((day) => (
                     <TrendBar key={day.date} day={day} max={maxTotal} />
                   ))}
                 </div>
               )}
 
-              {/* Legend */}
-              <div className="flex flex-wrap gap-4 text-dash-body-sm text-dash-on-surface-variant">
+              {/* Two columns on the narrowest screens, one flowing row above
+                  sm — never four cramped columns. */}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-dash-body-sm text-dash-on-surface-variant sm:flex sm:flex-wrap sm:gap-4">
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-3 rounded bg-dash-success" aria-hidden="true" />
+                  <span className="h-2 w-3 flex-none rounded bg-dash-success" aria-hidden="true" />
                   {t("status.boarded")}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-3 rounded bg-dash-primary" aria-hidden="true" />
+                  <span className="h-2 w-3 flex-none rounded bg-dash-primary" aria-hidden="true" />
                   {t("status.droppedOff")}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-3 rounded bg-dash-error" aria-hidden="true" />
+                  <span className="h-2 w-3 flex-none rounded bg-dash-error" aria-hidden="true" />
                   {t("status.absent")}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-3 rounded bg-dash-warning" aria-hidden="true" />
+                  <span className="h-2 w-3 flex-none rounded bg-dash-warning" aria-hidden="true" />
                   {t("status.waiting")}
                 </span>
               </div>

@@ -319,12 +319,24 @@ export function useRunRoster(): RunRoster {
     void fetchSchoolId(uid).then((schoolId) => {
       if (!schoolId) return;
       const runId = buildRunId(busId, todayDateStr(), ROSTER_RUN_TYPE);
-      // Record boarding/drop-off timestamps so the dashboard columns populate.
-      const patch: { status: StudentStatus; boardedAt?: FieldValue; droppedOffAt?: FieldValue } = {
-        status: next,
-      };
-      if (next === "BOARDED") patch.boardedAt = serverTimestamp();
-      else if (next === "DROPPED_OFF") patch.droppedOffAt = serverTimestamp();
+      // Record boarding/drop-off timestamps so the dashboard columns populate,
+      // and clear the one that no longer applies when the driver cycles back.
+      // Without this, a row that went BOARDED → WAITING would keep a stale
+      // "Board at" time on the dashboard.
+      const patch: {
+        status: StudentStatus;
+        boardedAt?: FieldValue | null;
+        droppedOffAt?: FieldValue | null;
+      } = { status: next };
+      if (next === "BOARDED") {
+        patch.boardedAt = serverTimestamp();
+        patch.droppedOffAt = null;
+      } else if (next === "DROPPED_OFF") {
+        patch.droppedOffAt = serverTimestamp();
+      } else {
+        patch.boardedAt = null;
+        patch.droppedOffAt = null;
+      }
       void setDoc(
         doc(firestore, "schools", schoolId, "attendance", `${runId}__${id}`),
         patch,
@@ -372,7 +384,9 @@ export function useRunRoster(): RunRoster {
       const runId = buildRunId(busId, todayDateStr(), ROSTER_RUN_TYPE);
       void setDoc(
         doc(firestore, "schools", schoolId, "attendance", `${runId}__${id}`),
-        { status: "ABSENT" },
+        // A correction to "absent" must not leave a boarded/dropped time
+        // behind: the roster and the dashboard columns would contradict it.
+        { status: "ABSENT", boardedAt: null, droppedOffAt: null },
         { merge: true },
       );
     });

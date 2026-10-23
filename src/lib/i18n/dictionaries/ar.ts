@@ -30,6 +30,8 @@ export const messages: Messages = {
   "login.password": "كلمة المرور",
   "login.emailPlaceholder": "you@school.edu",
   "login.passwordPlaceholder": "••••••••",
+  "login.showPassword": "إظهار كلمة المرور",
+  "login.hidePassword": "إخفاء كلمة المرور",
   "login.signIn": "تسجيل الدخول",
   "login.fallbackError": "فشل تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور.",
   "login.notDirector":
@@ -113,7 +115,13 @@ export const messages: Messages = {
   "nav.assignments": "التعيينات",
   "nav.drivers": "السائقون",
   "nav.dispatch": "إرسال حافلة",
+  "nav.primaryAria": "التنقل الرئيسي",
   "nav.operate": "التشغيل",
+  // تسميات قصيرة لشريط التنقل السفلي في الهاتف.
+  "nav.shortLive": "مباشر",
+  "nav.shortReports": "تقارير",
+  "nav.shortAssignments": "تعيين",
+  "nav.shortDrivers": "سائقون",
   "nav.manage": "الإدارة",
 
   // Dashboard screen
@@ -252,6 +260,7 @@ export const messages: Messages = {
   "settings.account": "الحساب",
   "settings.email": "البريد الإلكتروني",
   "settings.role": "الدور",
+  "settings.appearance": "المظهر",
   "settings.language": "اللغة",
   "settings.signOut": "تسجيل الخروج",
 
@@ -299,6 +308,7 @@ export const messages: Messages = {
   // Assignments (director — driver ↔ bus, student ↔ bus)
   "assignments.title": "التعيينات",
   "assignments.subtitle": "تعيين السائقين والطلاب للحافلات",
+  "assignments.busesEmpty": "لم تُضبط أي حافلات بعد.",
   "assignments.drivers": "السائقون",
   "assignments.th.bus": "الحافلة",
   "assignments.th.driver": "السائق المعيّن",
@@ -349,5 +359,13 @@ export const messages: Messages = {
 
   // Common
   "common.changeLanguageAria": "تغيير اللغة",
+
+  // المظهر (الوضع الداكن)
+  "theme.aria": "المظهر",
+  "theme.system": "النظام",
+  "theme.light": "فاتح",
+  "theme.dark": "داكن",
+  "theme.toggleToDark": "التبديل إلى المظهر الداكن",
+  "theme.toggleToLight": "التبديل إلى المظهر الفاتح",
   "common.loading": "جارٍ التحميل",
 };

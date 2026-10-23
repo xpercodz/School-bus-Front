@@ -41,3 +41,6 @@ firebase-debug.log
 
 # local agent tooling (not part of the app)
 /.agent
+
+# local design-review harness (screenshots, preview)
+/.taste-skill

@@ -32,7 +32,7 @@ export interface StatusMeta {
 export const STATUS_META: Record<StudentStatus, StatusMeta> = {
   BOARDED: {
     icon: "check_circle",
-    pillClassName: "bg-success/10 text-on-success hover:bg-success/15",
+    pillClassName: "bg-success/10 text-success hover:bg-success/15",
     cardClassName: "",
     nameClassName: "",
   },
@@ -64,7 +64,7 @@ export interface ChipConfig {
 }
 
 export const CHIPS: ReadonlyArray<ChipConfig> = [
-  { status: "BOARDED", accentTextClass: "text-on-success" },
+  { status: "BOARDED", accentTextClass: "text-success" },
   { status: "DROPPED_OFF", accentTextClass: "text-primary" },
   { status: "WAITING", accentTextClass: "text-waiting" },
 ];
@@ -83,12 +83,19 @@ export const TABS: ReadonlyArray<TabConfig> = [
   { id: "DROPPED_OFF" },
 ];
 
-/** Status cycle for the demo pill interaction: tap to advance to the next. */
+/**
+ * Status cycle for the roster pill: tap to advance.
+ *
+ * ABSENT is deliberately NOT in the cycle. A single tap next to the row's
+ * kebab must never mark a child absent; that state is only reachable from the
+ * action sheet, where the action has its own label. Tapping an ABSENT pill
+ * returns it to WAITING, so a mistake made through the sheet is still one tap
+ * to undo.
+ */
 export const STATUS_CYCLE: ReadonlyArray<StudentStatus> = [
-  "BOARDED",
   "WAITING",
+  "BOARDED",
   "DROPPED_OFF",
-  "ABSENT",
 ];
 
 export function countByStatus(

@@ -7,7 +7,7 @@ import { Outlet } from "react-router-dom";
  */
 export function PhoneShell() {
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col bg-surface sm:border-x sm:border-outline-variant">
+    <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col overflow-x-clip bg-surface sm:border-x sm:border-outline-variant">
       <Outlet />
     </div>
   );

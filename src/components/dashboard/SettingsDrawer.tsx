@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { prefersReducedMotion } from "@/lib/theme";
 import { Icon } from "@/components/Icon";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { ThemeModeControl } from "@/components/ThemeModeControl";
 import { useAuth } from "@/lib/auth";
 import { useLocale } from "@/lib/i18n/context";
 import { useSignOut } from "@/lib/sign-out";
@@ -20,12 +22,6 @@ const START_SCALE = "translateX(16px)";
  *  right in LTR (drawer on the right), left in RTL (drawer on the left). */
 const HINGE_ORIGIN = "right center";
 const HINGE_ORIGIN_RTL = "left center";
-
-const ENTRY_MS = 320;
-
-/** Gentle long deceleration — the drawer glides in and settles softly instead
- *  of easing out abruptly (ease-out-quint style curve). */
-const ENTRY_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
 
 /**
  * End-drawer settings for the dashboard top bar: account, language, sign out.
@@ -56,6 +52,10 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   // true (next frame after mount) → transition to full width. Only ever
   // flips once per open.
   const [entered, setEntered] = useState(false);
+  // Reduced motion: the drawer is simply present. The `.dlg-end-panel` class
+  // removes the inline transition; this flag removes the 16px start state so
+  // there is no one-frame jump either.
+  const reducedMotion = prefersReducedMotion();
   const panelRef = useRef<HTMLDivElement>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
   // Keep the latest onClose without re-running the open-effect on every render.
@@ -95,12 +95,16 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
     document.body.style.overflow = "hidden";
 
     // Unfold to full width on the frame after mount so the browser has
-    // painted the collapsed (zero-width) state first — that's what makes the
-    // transition an accordion unfold instead of a flash.
+    // painted the collapsed state first — that's what makes the transition a
+    // glide instead of a flash. Reduced motion skips straight to open.
     let raf = 0;
-    raf = requestAnimationFrame(() => {
-      raf = requestAnimationFrame(() => setEntered(true));
-    });
+    if (prefersReducedMotion()) {
+      setEntered(true);
+    } else {
+      raf = requestAnimationFrame(() => {
+        raf = requestAnimationFrame(() => setEntered(true));
+      });
+    }
     panelRef.current?.focus();
 
     function onKeyDown(event: globalThis.KeyboardEvent) {
@@ -164,13 +168,13 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
       <div
         aria-hidden="true"
         onClick={onClose}
-        className={`fixed inset-0 bg-black/40 cursor-pointer transition-opacity duration-200 ease-out ${
-          entered ? "opacity-100" : "opacity-0"
+        className={`fixed inset-0 bg-[var(--overlay)] cursor-pointer transition-opacity duration-[var(--t-hover)] ease-[var(--ease-out-soft)] motion-reduce:transition-none ${
+          entered || reducedMotion ? "opacity-100" : "opacity-0"
         }`}
       />
 
-      {/* Panel — unfolds like an accordion via a transform TRANSITION on
-          scaleX, hinged at the screen edge (see header comment). */}
+      {/* Panel — glides the last 16px in from the screen edge with a
+          one-shot transform transition (see header comment). */}
       <div
         ref={panelRef}
         role="dialog"
@@ -178,51 +182,70 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
         aria-label={t("settings.title")}
         tabIndex={-1}
         style={{
-          transform: entered ? "translateX(0)" : START_SCALE,
+          transform:
+            entered || reducedMotion
+              ? "translateX(0)"
+              : hingeOrigin === HINGE_ORIGIN_RTL
+                ? "translateX(-16px)"
+                : START_SCALE,
           transformOrigin: hingeOrigin,
-          transition: `transform ${ENTRY_MS}ms ${ENTRY_EASING}`,
+          transition: "transform var(--t-enter) var(--ease-out-soft)",
         }}
-        className="relative flex h-full w-[360px] max-w-[90vw] flex-col overflow-hidden border-s border-outline-variant bg-surface outline-none"
+        className="dlg-end-panel relative flex h-full w-[360px] max-w-[90vw] flex-col overflow-hidden border-s border-dash-outline-variant bg-dash-surface pb-[env(safe-area-inset-bottom)] shadow-float outline-none"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-outline-variant px-5 py-4">
-          <h2 className="text-[17px] font-semibold text-on-surface">{t("settings.title")}</h2>
+        {/* Header — one palette (dashboard) end to end, so no `bg-surface`
+            panel wraps `text-dash-*` children. */}
+        <div className="flex items-center justify-between gap-3 border-b border-dash-outline-variant px-5 py-3">
+          <h2 className="min-w-0 truncate text-[17px] font-semibold text-dash-on-surface">
+            {t("settings.title")}
+          </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label={t("dialog.close")}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high"
+            className="press flex h-11 w-11 flex-none items-center justify-center rounded-full text-dash-on-surface-variant hover:bg-dash-surface-container-high"
           >
-            <Icon name="close" variant="outlined" />
+            <Icon name="close" size={22} variant="outlined" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
           <div className="flex flex-col gap-6 p-5">
             <section className="flex flex-col gap-3">
               <h3 className="text-[12px] font-medium text-dash-on-surface-variant">
                 {t("settings.account")}
               </h3>
-              <div className="flex items-start justify-between gap-4">
-                <span className="flex-none text-[12.5px] text-dash-on-surface-variant">
+              <div className="flex min-h-11 items-center justify-between gap-4">
+                <span className="flex-none text-[13px] text-dash-on-surface-variant">
                   {t("settings.email")}
                 </span>
-                <span className="min-w-0 truncate text-[12.5px] font-medium text-dash-on-surface">
+                <span className="min-w-0 truncate text-[13px] font-medium text-dash-on-surface">
                   {user?.email ?? "—"}
                 </span>
               </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-[12.5px] text-dash-on-surface-variant">
+              <div className="flex min-h-11 items-center justify-between gap-4">
+                <span className="text-[13px] text-dash-on-surface-variant">
                   {t("settings.role")}
                 </span>
-                <span className="text-[12.5px] font-medium text-dash-on-surface">
+                <span className="text-[13px] font-medium text-dash-on-surface">
                   {roleLabel}
                 </span>
               </div>
             </section>
 
-            <section className="flex flex-col gap-3">
+            {/* ThemeModeControl/LanguageToggle keep their compact dashboard
+                height on a wide screen; inside this drawer every row is a
+                44px target, so the segmented track and the language button
+                get a min-height here rather than forking the components. */}
+            <section className="flex flex-col gap-3 [&>div]:min-h-11">
+              <h3 className="text-[12px] font-medium text-dash-on-surface-variant">
+                {t("settings.appearance")}
+              </h3>
+              <ThemeModeControl />
+            </section>
+
+            <section className="flex flex-col gap-3 [&_button]:min-h-11">
               <h3 className="text-[12px] font-medium text-dash-on-surface-variant">
                 {t("settings.language")}
               </h3>
@@ -232,7 +255,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
             <button
               type="button"
               onClick={() => setConfirmSignOut(true)}
-              className="flex h-10 items-center gap-2 self-start rounded-md border border-error/40 px-3 text-[13px] font-medium text-error transition-colors hover:bg-error-container/50"
+              className="press flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-dash-error/40 text-[14px] font-medium text-dash-error hover:bg-dash-error-container/50"
             >
               <Icon name="logout" size={18} variant="outlined" />
               {t("settings.signOut")}

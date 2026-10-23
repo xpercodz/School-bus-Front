@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { RunSegmentId } from "@/data/dashboard";
 import { useDashboardData, todayDateStr } from "@/lib/school-data";
 import { useStudentList } from "@/lib/use-student-list";
+import { usePageReveal } from "@/lib/use-page-reveal";
 import { buildAttendanceCsv, downloadCsv } from "@/lib/csv";
 import { useSchoolName } from "@/lib/school";
 import { useToast } from "@/components/Toast";
@@ -25,6 +26,9 @@ export default function DashboardPage() {
     useDashboardData(date, segment);
   const { t, locale } = useLocale();
   const schoolName = useSchoolName();
+  // One coordinated reveal when the data blocks actually render; a live
+  // snapshot update does not replay it (ready does not change).
+  usePageReveal(!loading);
   const [historyStudent, setHistoryStudent] = useState<string | null>(null);
   const { showToast } = useToast();
 
@@ -66,15 +70,16 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={handleExport}
-                className="flex h-11 items-center gap-2 rounded-md border border-dash-outline-variant bg-dash-surface px-3 text-[12.5px] text-dash-on-surface transition-colors hover:bg-dash-surface-container-low sm:h-9"
+                aria-label={t("dashboard.export")}
+                className="press flex h-11 w-11 flex-none! items-center justify-center gap-2 rounded-lg border border-dash-control-outline bg-dash-surface text-[12.5px] text-dash-on-surface hover:bg-dash-surface-container-low min-[360px]:w-auto min-[360px]:px-3 sm:h-9"
               >
                 <Icon name="download" size={16} variant="outlined" className="text-dash-outline" />
-                {t("dashboard.export")}
+                <span className="hidden min-[360px]:inline">{t("dashboard.export")}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setDispatchOpen(true)}
-                className="flex h-11 items-center gap-2 rounded-md bg-dash-on-surface px-3.5 text-[12.5px] font-medium text-white transition-opacity hover:opacity-90 sm:h-9"
+                className="press flex h-11 items-center gap-2 rounded-lg bg-dash-on-surface px-3.5 text-[12.5px] font-medium text-dash-background hover:opacity-90 disabled:opacity-60 sm:h-9"
               >
                 <Icon name="directions_bus" size={16} variant="outlined" />
                 {t("dashboard.addRun")}
@@ -108,6 +113,8 @@ export default function DashboardPage() {
         ) : (
           <>
             <ManifestSummary summary={summary} kpis={kpis} />
+            {/* No Reveal here: each route row already has its own stagger, and
+                a wrapper transform on top of that moved the rows twice. */}
             <FleetList buses={buses} />
             <StudentList list={list} onViewHistory={setHistoryStudent} />
           </>

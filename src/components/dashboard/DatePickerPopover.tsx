@@ -144,13 +144,13 @@ function Calendar({
     });
 
   const navButtonClass =
-    "flex h-9 w-9 items-center justify-center rounded text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary";
+    "press flex h-11 w-11 items-center justify-center rounded text-dash-on-surface-variant hover:bg-dash-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary sm:h-9 sm:w-9";
 
   return (
     <div
       role="dialog"
       aria-label={t("dashboard.selectDate")}
-      className="absolute start-0 top-full z-20 mt-2 flex w-72 flex-col gap-3 rounded-lg border border-dash-outline-variant bg-dash-surface p-4 shadow-card"
+      className="absolute start-0 top-full z-20 mt-2 flex max-h-[70dvh] w-[min(20rem,calc(100vw_-_2rem))] flex-col gap-3 overflow-y-auto overscroll-contain rounded-lg border border-dash-outline-variant bg-dash-surface p-3 shadow-card sm:p-4"
     >
       {/* Month navigation */}
       <div className="flex items-center justify-between">
@@ -175,49 +175,54 @@ function Calendar({
         </button>
       </div>
 
-      {/* Weekday header — first column is Sunday; flows right-to-left in Arabic. */}
-      <div className="grid grid-cols-7">
-        {Array.from({ length: 7 }, (_, offset) => (
-          <div
-            key={offset}
-            className="flex h-7 items-center justify-center text-[11px] text-dash-on-surface-variant"
-          >
-            {weekdayLabel(offset, locale)}
-          </div>
-        ))}
-      </div>
-
-      {/* Day grid */}
-      <div className="grid grid-cols-7 gap-y-0.5">
-        {cells.map((day, index) => {
-          if (day === null) return <span key={index} className="h-9" aria-hidden="true" />;
-          const dateStr = toDateStr(view.year, view.month, day);
-          const isSelected = dateStr === value;
-          const isToday = dateStr === today;
-          const cellClass = [
-            "flex h-9 w-full items-center justify-center rounded text-dash-body-sm transition-colors",
-            isSelected
-              ? "bg-dash-on-surface font-medium text-white"
-              : isToday
-                ? "font-semibold text-dash-primary ring-1 ring-dash-primary"
-                : "text-dash-on-surface hover:bg-dash-surface-container-high",
-          ].join(" ");
-          return (
-            <button
-              key={index}
-              type="button"
-              aria-pressed={isSelected}
-              aria-label={dateStr}
-              onClick={() => {
-                onSelect(dateStr);
-                onClose();
-              }}
-              className={cellClass}
+      {/* The 7-column grid runs a little wider than the padded content at
+          phone sizes so each day stays a 40px+ target inside the capped
+          popover width: 40px cells even at a 320px viewport. */}
+      <div className="-mx-2 flex flex-col gap-3 sm:mx-0">
+        {/* Weekday header — first column is Sunday; flows right-to-left in Arabic. */}
+        <div className="grid grid-cols-7">
+          {Array.from({ length: 7 }, (_, offset) => (
+            <div
+              key={offset}
+              className="flex h-7 items-center justify-center text-[11px] text-dash-on-surface-variant"
             >
-              {toLocaleDigits(String(day), locale)}
-            </button>
-          );
-        })}
+              {weekdayLabel(offset, locale)}
+            </div>
+          ))}
+        </div>
+
+        {/* Day grid. 40px cells on phones; nav buttons are 44px. */}
+        <div className="grid grid-cols-7 gap-y-0.5">
+          {cells.map((day, index) => {
+            if (day === null) return <span key={index} className="h-11 sm:h-9" aria-hidden="true" />;
+            const dateStr = toDateStr(view.year, view.month, day);
+            const isSelected = dateStr === value;
+            const isToday = dateStr === today;
+            const cellClass = [
+              "press flex h-11 w-full items-center justify-center rounded text-dash-body-sm sm:h-9",
+              isSelected
+                ? "bg-dash-on-surface font-medium text-dash-background"
+                : isToday
+                  ? "font-semibold text-dash-primary ring-1 ring-dash-primary"
+                  : "text-dash-on-surface hover:bg-dash-surface-container-high",
+            ].join(" ");
+            return (
+              <button
+                key={index}
+                type="button"
+                aria-pressed={isSelected}
+                aria-label={formatDate(dateStr, locale)}
+                onClick={() => {
+                  onSelect(dateStr);
+                  onClose();
+                }}
+                className={cellClass}
+              >
+                {toLocaleDigits(String(day), locale)}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Today reset */}
@@ -227,7 +232,7 @@ function Calendar({
           onSelect(null);
           onClose();
         }}
-        className="flex h-10 items-center justify-center gap-2 rounded text-dash-label-md text-dash-primary transition-colors hover:bg-dash-primary-container/40"
+        className="press flex h-11 items-center justify-center gap-2 rounded text-dash-label-md text-dash-primary hover:bg-dash-primary-container/40 sm:h-10"
       >
         {t("dashboard.today")}
         {value && (

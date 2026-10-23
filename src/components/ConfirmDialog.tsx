@@ -13,8 +13,12 @@ interface ConfirmDialogProps {
 }
 
 /**
- * Centered, non-dismissable confirmation dialog. Localized labels come from the
- * caller (which has `t`). `busy` disables both buttons while the action runs.
+ * Non-dismissable confirmation overlay. `Dialog`'s auto placement turns it
+ * into a bottom sheet on phones, where the two actions stack: cancel first,
+ * the full-width primary last (thumb-reachable), both 44px. From sm up it is
+ * the centered dialog with side-by-side actions. Localized labels come from
+ * the caller (which has `t`). `busy` disables both buttons while the action
+ * runs and swaps the primary for a spinner.
  */
 export function ConfirmDialog({
   open,
@@ -28,15 +32,19 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Dialog open={open} onClose={onClose} title={title} dismissable={false}>
-      <div className="flex flex-col gap-6 p-6">
-        <h2 className="text-headline-md text-on-surface">{title}</h2>
-        <p className="text-body-md text-on-surface-variant">{body}</p>
-        <div className="flex justify-end gap-2">
+      <div className="flex flex-col gap-4 p-4 sm:gap-5 sm:p-6">
+        <h2 className="text-[18px] font-semibold leading-6 text-on-surface sm:text-headline-md">
+          {title}
+        </h2>
+        <p className="text-[16px] leading-6 text-on-surface-variant sm:text-body-md sm:leading-5">
+          {body}
+        </p>
+        <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="flex h-10 items-center justify-center rounded-md px-5 text-[13.5px] text-on-surface-variant transition-colors hover:bg-surface-container disabled:opacity-50"
+            className="press flex h-11 w-full items-center justify-center rounded-lg border border-outline-variant bg-surface text-[16px] font-medium text-on-surface-variant hover:bg-surface-container disabled:opacity-50 sm:h-10 sm:w-auto sm:border-0 sm:px-5 sm:text-[13.5px]"
           >
             {cancelLabel}
           </button>
@@ -44,10 +52,14 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className="flex h-10 min-w-20 items-center justify-center gap-2 rounded-md bg-on-surface px-5 text-[13.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            aria-busy={busy}
+            className="press flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-on-surface text-[16px] font-medium text-surface hover:opacity-90 disabled:opacity-50 sm:h-10 sm:w-auto sm:min-w-20 sm:px-5 sm:text-[13.5px]"
           >
             {busy ? (
-              <Icon name="progress_activity" size={20} className="animate-spin" />
+              <>
+                <Icon name="progress_activity" size={20} className="animate-spin" />
+                <span className="sr-only">{confirmLabel}</span>
+              </>
             ) : (
               confirmLabel
             )}

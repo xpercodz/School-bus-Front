@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Student } from "@/data/students";
 import { STATUS_META } from "@/data/students";
 import { Icon } from "@/components/Icon";
@@ -20,6 +20,10 @@ interface StudentCardProps {
  * the only tinted thing, and it is a 44px tap target with a sentence-case label
  * — the old pill was uppercase, solid blue for every dropped student, and wide
  * enough to truncate the name it belonged to.
+ *
+ * Status changes animate the glyph (the status name is in the button's
+ * accessible label), and the pill sits a full 8px from the kebab so a thumb
+ * reaching for "more" cannot silently mark a child absent.
  */
 export function StudentCard({
   student,
@@ -32,35 +36,45 @@ export function StudentCard({
   const { t, locale } = useLocale();
   const pillLabel = t(statusKey(student.status));
   const [actionsOpen, setActionsOpen] = useState(false);
+  // The status glyph is part of the row, not a speck that arrives after it.
+  // It pops only when the status actually changes (initial render is silent).
+  const initialStatus = useRef(student.status);
+  const statusChanged = student.status !== initialStatus.current;
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2.5">
+    <div className="flex min-h-[68px] items-center gap-2 px-3.5 py-2.5 transition-colors hover:bg-surface-container-low/60">
       <div className="min-w-0 flex-1">
-        <h3 className="truncate text-[15px] font-medium leading-6 text-on-surface">
+        <h3 className="line-clamp-2 text-[15.5px] font-medium leading-5 text-on-surface">
           {student.name}
         </h3>
-        <p className="text-[12px] leading-4 text-on-surface-variant">
+        <p className="mt-0.5 text-[12px] leading-4 text-on-surface-variant">
           {translateDataLabel(student.grade, locale, t)}
         </p>
       </div>
-      <div className="flex flex-none items-center gap-0.5">
+      <div className="flex flex-none items-center gap-2">
         <button
           type="button"
           disabled={disabled}
           aria-label={`${student.name}: ${pillLabel}`}
           onClick={() => onCycleStatus(student.id)}
-          className={`flex h-11 min-w-[104px] items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-[12px] font-medium transition-colors ${
+          data-status={student.status}
+          className={`press flex h-11 min-w-[104px] items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[12px] font-medium ${
             disabled ? "cursor-not-allowed opacity-60" : meta.pillClassName
           }`}
         >
-          <Icon name={meta.icon} size={15} />
+          <span
+            key={student.status}
+            className={`${statusChanged ? "icon-pop " : ""}flex items-center`}
+          >
+            <Icon name={meta.icon} size={15} />
+          </span>
           {pillLabel}
         </button>
         <button
           type="button"
           aria-label={t("mobile.moreOptionsForAria", { name: student.name })}
           onClick={() => setActionsOpen(true)}
-          className="flex h-11 w-10 items-center justify-center rounded-md text-on-surface-variant hover:bg-surface-container"
+          className="press flex h-11 w-11 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container"
         >
           <Icon name="more_vert" size={20} />
         </button>

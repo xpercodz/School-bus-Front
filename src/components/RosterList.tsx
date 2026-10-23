@@ -24,7 +24,9 @@ export function RosterList({
   if (students.length === 0) {
     return (
       <div role="status" className="flex flex-col items-center gap-1.5 py-14 text-center">
-        <Icon name="search_off" size={24} className="text-outline" />
+        <span className="pop-in flex items-center">
+          <Icon name="search_off" size={24} className="text-outline" />
+        </span>
         <p className="text-[15px] font-medium text-on-surface">{t("mobile.emptyTitle")}</p>
         <p className="text-[12.5px] text-on-surface-variant">{t("mobile.emptySubtitle")}</p>
       </div>
@@ -32,9 +34,9 @@ export function RosterList({
   }
 
   return (
-    <ul className="divide-y divide-outline-variant overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest">
+    <ul className="divide-y divide-outline-variant overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
       {students.map((student) => (
-        <li key={student.id}>
+        <li key={student.id} data-page-reveal>
           <StudentCard
             student={student}
             onCycleStatus={onCycleStatus}

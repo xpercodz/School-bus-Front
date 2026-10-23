@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent } from "react";
+import { useEffect, useRef, type KeyboardEvent } from "react";
 import type { StudentStatus } from "@/data/students";
 import { TABS, type TabId } from "@/data/students";
 import { useLocale } from "@/lib/i18n/context";
@@ -20,6 +20,12 @@ interface SegmentedTabsProps {
   onSelect: (tab: TabId) => void;
 }
 
+/**
+ * Status filters for the roster. A real segmented filter rather than an ARIA
+ * tablist: there is no tabpanel — the list below is filtered in place — so the
+ * buttons are `aria-pressed` toggles in a labelled group. A sliding underline
+ * carries the selection, and arrow keys move between filters as a convenience.
+ */
 export function SegmentedTabs({ active, counts, onSelect }: SegmentedTabsProps) {
   const { t, dir, locale } = useLocale();
   const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
@@ -30,9 +36,14 @@ export function SegmentedTabs({ active, counts, onSelect }: SegmentedTabsProps) 
     DROPPED_OFF: null,
     ABSENT: null,
   });
+  const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
 
-  // WAI-ARIA tabs pattern: roving tabindex + arrow-key navigation. Arrow
-  // direction is inverted in RTL so Left always means "back" visually.
+  // On a narrow phone the row scrolls sideways; keep the selected filter in
+  // view when switching from code or after an Arabic label change.
+  useEffect(() => {
+    tabRefs.current[active]?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [active]);
+
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const current = TABS.findIndex((tab) => tab.id === active);
     const forward = dir === "rtl" ? "ArrowLeft" : "ArrowRight";
@@ -51,10 +62,11 @@ export function SegmentedTabs({ active, counts, onSelect }: SegmentedTabsProps) 
 
   return (
     <div
-      role="tablist"
+      data-page-reveal
+      role="group"
       aria-label={t("tabs.filterAria")}
       onKeyDown={handleKeyDown}
-      className="no-scrollbar flex overflow-x-auto border-b border-outline-variant"
+      className="no-scrollbar relative flex overflow-x-auto border-b border-outline-variant"
     >
       {TABS.map((tab) => {
         const isActive = tab.id === active;
@@ -63,23 +75,38 @@ export function SegmentedTabs({ active, counts, onSelect }: SegmentedTabsProps) 
           <button
             key={tab.id}
             type="button"
-            role="tab"
-            aria-selected={isActive}
-            tabIndex={isActive ? 0 : -1}
+            aria-pressed={isActive}
             ref={(el) => {
               tabRefs.current[tab.id] = el;
             }}
             onClick={() => onSelect(tab.id)}
-            className={`flex h-11 min-w-[76px] flex-1 items-center justify-center whitespace-nowrap border-b-2 px-3 text-[13.5px] transition-colors ${
+            className={`press-none flex h-12 min-w-[72px] flex-1 items-center justify-center gap-1 whitespace-nowrap px-2 text-[12.5px] transition-colors ${
               isActive
-                ? "border-on-surface font-medium text-on-surface"
-                : "border-transparent text-on-surface-variant hover:text-on-surface"
+                ? "font-semibold text-on-surface"
+                : "text-on-surface-variant hover:text-on-surface"
             }`}
           >
-            {t(TAB_LABEL_KEY[tab.id])} ({toLocaleDigits(String(count), locale)})
+            {t(TAB_LABEL_KEY[tab.id])}
+            <span className="text-[11px] tabular-nums text-on-surface-variant">
+              {toLocaleDigits(String(count), locale)}
+            </span>
           </button>
         );
       })}
+      {/* Sliding underline: one fourth of the track per filter. */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 h-0.5 rounded-full bg-on-surface transition-transform duration-[var(--t-ui)] ease-[var(--ease-out-soft)] motion-reduce:transition-none"
+        style={{
+          width: `${100 / TABS.length}%`,
+          transform:
+            activeIndex === 0
+              ? "translateX(0)"
+              : dir === "rtl"
+                ? `translateX(-${activeIndex * 100}%)`
+                : `translateX(${activeIndex * 100}%)`,
+        }}
+      />
     </div>
   );
 }

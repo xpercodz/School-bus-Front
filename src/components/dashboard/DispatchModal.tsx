@@ -41,7 +41,7 @@ export function DispatchModal({ open, onClose }: DispatchModalProps) {
   const { t } = useLocale();
 
   return (
-    <Dialog open={open} onClose={onClose} title={t("dispatch.title")}>
+    <Dialog open={open} onClose={onClose} title={t("dispatch.title")} exitAnimation={false}>
       {open && <DispatchForm onClose={onClose} />}
     </Dialog>
   );
@@ -135,102 +135,120 @@ function DispatchForm({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <>
-      <div className="flex items-center justify-between border-b border-outline-variant px-4 py-3">
-        <h2 className="text-headline-md text-on-surface">{t("dispatch.title")}</h2>
+    <div className="flex flex-1 flex-col">
+      {/* Sticky sheet header — the close target stays reachable while the form
+          scrolls under it on a phone-sized bottom sheet. 16px gutters; 44px
+          close on every breakpoint. */}
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-outline-variant bg-surface px-4 py-2.5 sm:px-5">
+        <h2 className="min-w-0 truncate text-[18px] font-semibold text-on-surface sm:text-headline-md">
+          {t("dispatch.title")}
+        </h2>
         <button
           type="button"
           onClick={onClose}
           aria-label={t("dialog.close")}
-          className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high"
+          className="press flex h-11 w-11 flex-none items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high"
         >
-          <Icon name="close" />
+          <Icon name="close" size={22} />
         </button>
-      </div>
+      </header>
 
       <form
-        className="flex flex-col gap-4 p-4"
+        className="flex flex-1 flex-col"
+        aria-busy={busy}
         onSubmit={(event) => {
           event.preventDefault();
           void handleDispatch();
         }}
       >
-        <label className="flex flex-col gap-1">
-          <span className="text-label-lg text-on-surface-variant">{t("dispatch.bus")}</span>
-          <select
-            value={busId}
-            onChange={(event) => setBusId(event.target.value)}
-            disabled={busy}
-            className="h-12 rounded border border-outline-variant bg-surface px-3 text-body-md text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            <option value="">{t("dispatch.selectBus")}</option>
-            {buses.map((bus) => (
-              <option key={bus.id} value={bus.id}>
-                {translateDataLabel(bus.name, locale, t)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-col gap-4 px-4 py-4 sm:gap-5 sm:px-5 sm:py-5">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-label-lg text-on-surface-variant">{t("dispatch.bus")}</span>
+            <select
+              value={busId}
+              onChange={(event) => setBusId(event.target.value)}
+              disabled={busy}
+              className="h-12 w-full min-w-0 rounded-lg border border-control-outline bg-surface px-3 text-[16px] text-on-surface outline-none transition-[border-color,box-shadow] duration-[var(--t-hover)] focus:border-primary focus:ring-2 focus:ring-primary/35 disabled:opacity-50 sm:h-11 sm:text-[12.5px]"
+            >
+              <option value="">{t("dispatch.selectBus")}</option>
+              {buses.map((bus) => (
+                <option key={bus.id} value={bus.id}>
+                  {translateDataLabel(bus.name, locale, t)}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <fieldset className="flex flex-col gap-1">
-          <legend className="text-label-lg text-on-surface-variant">
-            {t("dispatch.runType")}
-          </legend>
-          <SlideSegments
-            variant="box"
-            ariaLabel={t("dispatch.runType")}
-            options={RUN_SEGMENTS.map((item) => ({
-              id: item.id,
-              label: t(
-                item.id === "morning"
-                  ? "runType.morningPickup"
-                  : "runType.afternoonDropoff",
-              ),
-            }))}
-            value={runType}
-            onChange={setRunType}
-          />
-        </fieldset>
+          <fieldset className="flex flex-col gap-1.5">
+            <legend className="text-label-lg text-on-surface-variant">
+              {t("dispatch.runType")}
+            </legend>
+            <SlideSegments
+              variant="box"
+              ariaLabel={t("dispatch.runType")}
+              options={RUN_SEGMENTS.map((item) => ({
+                id: item.id,
+                label: t(
+                  item.id === "morning"
+                    ? "runType.morningPickup"
+                    : "runType.afternoonDropoff",
+                ),
+              }))}
+              value={runType}
+              onChange={setRunType}
+            />
+          </fieldset>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-label-lg text-on-surface-variant">{t("dispatch.date")}</span>
-          <input
-            type="date"
-            required
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
-            className="h-12 rounded border border-outline-variant bg-surface px-3 text-body-md text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-label-lg text-on-surface-variant">{t("dispatch.date")}</span>
+            {/* 16px on phones is what stops iOS from zooming the sheet when the
+                date field takes focus. */}
+            <input
+              type="date"
+              required
+              value={date}
+              disabled={busy}
+              onChange={(event) => setDate(event.target.value)}
+              className="h-12 w-full min-w-0 rounded-lg border border-control-outline bg-surface px-3 text-[16px] text-on-surface outline-none transition-[border-color,box-shadow] duration-[var(--t-hover)] focus:border-primary focus:ring-2 focus:ring-primary/35 sm:h-11 sm:text-[12.5px]"
+            />
+          </label>
 
-        {loadError && (
-          <p role="alert" className="text-body-md text-error">
-            {t("dispatch.loadError")}
-          </p>
-        )}
+          {loadError && (
+            <p role="alert" className="text-body-md text-error">
+              {t("dispatch.loadError")}
+            </p>
+          )}
+        </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        {/* Sits at the bottom of the sheet and stays there while the fields
+            scroll: full-width stacked on a phone, side-by-side at sm+. The
+            Dialog's safe-area padding lives on the panel, not here, so the
+            primary never hides under the home indicator. */}
+        <div className="sticky bottom-0 z-10 mt-auto flex flex-col gap-2 border-t border-outline-variant bg-surface px-4 pb-3 pt-3 sm:flex-row sm:justify-end sm:px-5">
           <button
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="flex h-10 items-center justify-center rounded-md px-5 text-[13.5px] text-on-surface-variant transition-colors hover:bg-surface-container disabled:opacity-50"
+            className="press flex h-11 w-full items-center justify-center rounded-lg border border-outline-variant bg-surface text-[16px] font-medium text-on-surface-variant hover:bg-surface-container disabled:opacity-50 sm:h-10 sm:w-auto sm:border-0 sm:px-5 sm:text-[13.5px]"
           >
             {t("dialog.cancel")}
           </button>
           <button
             type="submit"
             disabled={!busId || !date || busy}
-            className="flex h-10 min-w-24 items-center justify-center gap-2 rounded-md bg-on-surface px-5 text-[13.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="press flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-on-surface text-[16px] font-medium text-surface hover:opacity-90 disabled:opacity-50 sm:h-10 sm:w-auto sm:min-w-24 sm:px-5 sm:text-[13.5px]"
           >
             {busy ? (
-              <Icon name="progress_activity" size={20} className="animate-spin" />
+              <>
+                <Icon name="progress_activity" size={20} className="animate-spin" />
+                <span className="sr-only">{t("dispatch.submit")}</span>
+              </>
             ) : (
               t("dispatch.submit")
             )}
           </button>
         </div>
       </form>
-    </>
+    </div>
   );
 }

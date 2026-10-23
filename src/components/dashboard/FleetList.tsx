@@ -3,6 +3,9 @@ import { Icon } from "@/components/Icon";
 import { useLocale } from "@/lib/i18n/context";
 import { toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
 
+/** One width/offset transition for the route line and the bead that rides it. */
+const ROUTE_MOTION = "duration-[var(--t-data)] ease-[var(--ease-out-soft)] motion-reduce:transition-none";
+
 function StatusPill({ bus }: { bus: Bus }) {
   const { t, locale } = useLocale();
   const signedOffWithWaiting = bus.status === "COMPLETED" && bus.waiting > 0;
@@ -34,14 +37,20 @@ function StatusPill({ bus }: { bus: Bus }) {
  * Routes as rows, not four identical cards: each row is one run with its own
  * route line, the bus's position on it, and the three counts that matter. The
  * line is the product's own object — a route — not decoration.
+ *
+ * Rows are not interactive, so they carry no hover fill; only the route line
+ * and its bead move (one 500ms transition per change, never a loop).
  */
 export function FleetList({ buses }: { buses: readonly Bus[] }) {
-  const { t, locale } = useLocale();
+  const { t, locale, dir } = useLocale();
   const digits = (n: number) => toLocaleDigits(String(n), locale);
   const active = buses.filter((bus) => bus.status === "IN_PROGRESS").length;
+  // The bead is centred on its point. `translate(-50%)` is physical, so in RTL
+  // it skated half a bead to the wrong side of the route mark; mirror it.
+  const beadShift = dir === "rtl" ? "translate(50%, -50%)" : "translate(-50%, -50%)";
 
   return (
-    <section aria-labelledby="routes-title" className="flex flex-col gap-3">
+    <section data-page-reveal aria-labelledby="routes-title" className="flex flex-col gap-3">
       <div className="flex items-end justify-between gap-4">
         <h2 id="routes-title" className="text-[15px] font-semibold text-dash-on-surface">
           {t("dashboard.activeFleet")}
@@ -54,7 +63,7 @@ export function FleetList({ buses }: { buses: readonly Bus[] }) {
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-dash-outline-variant bg-dash-surface">
+      <div className="lift overflow-hidden rounded-lg border border-dash-outline-variant bg-dash-surface">
         {buses.length === 0 ? (
           <p className="px-4 py-6 text-[13.5px] text-dash-on-surface-variant">
             {t("dashboard.noRoutes")}
@@ -65,7 +74,8 @@ export function FleetList({ buses }: { buses: readonly Bus[] }) {
             return (
               <article
                 key={bus.id}
-                className="grid grid-cols-1 gap-3 border-b border-dash-outline-variant px-4 py-4 last:border-b-0 md:grid-cols-[minmax(0,1.05fr)_minmax(0,1.5fr)_auto_auto] md:items-center md:gap-6"
+                data-page-reveal
+                className="press-none grid grid-cols-1 gap-3 border-b border-dash-outline-variant px-4 py-4 last:border-b-0 md:grid-cols-[minmax(0,1.05fr)_minmax(0,1.5fr)_auto_auto] md:items-center md:gap-6"
               >
                 <div className="flex min-w-0 items-start justify-between gap-3 md:block">
                   <div className="min-w-0">
@@ -93,18 +103,20 @@ export function FleetList({ buses }: { buses: readonly Bus[] }) {
                     <span
                       className={`absolute top-1/2 h-0.5 -translate-y-1/2 rounded-full ${
                         bus.status === "COMPLETED" ? "bg-dash-outline" : "bg-dash-primary"
-                      }`}
+                      } transition-[width] ${ROUTE_MOTION}`}
                       style={{ width: `${progress}%` }}
                     />
                     <span
-                      className={`absolute top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full ${
+                      className={`absolute top-1/2 flex h-5 w-5 items-center justify-center rounded-full ${
                         bus.status === "COMPLETED"
                           ? "border border-dash-outline bg-dash-surface text-dash-outline"
                           : "bg-dash-primary text-dash-on-primary"
-                      }`}
+                      } transition-[inset-inline-start] ${ROUTE_MOTION}`}
                       style={{
-                        insetInlineStart: `${progress}%`,
-                        transform: "translate(-50%, -50%)",
+                        // Clamped so a 0% or 100% bead still sits fully inside
+                        // the line instead of hanging over the card edge.
+                        insetInlineStart: `clamp(10px, ${progress}%, calc(100% - 10px))`,
+                        transform: beadShift,
                       }}
                     >
                       <Icon name="directions_bus" size={12} variant="outlined" />

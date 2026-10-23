@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Dialog } from "@/components/Dialog";
 import { Icon } from "@/components/Icon";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { ProductMark } from "@/components/ProductMark";
 import { NAV_ITEMS, type NavItem } from "@/data/dashboard";
 import { useAuth } from "@/lib/auth";
@@ -110,7 +111,7 @@ function SidebarContent({
   ];
 
   return (
-    <div className="flex h-full flex-col px-3 pb-3 pt-4">
+    <div className="flex h-full flex-col px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-4">
       <div className="flex items-start justify-between gap-2 px-2">
         <div className="flex min-w-0 items-center gap-2.5">
           <ProductMark size={30} className="flex-none" />
@@ -135,7 +136,7 @@ function SidebarContent({
         )}
       </div>
 
-      <nav className="mt-7 flex flex-1 flex-col gap-6" aria-label={t("nav.operate")}>
+      <nav className="mt-7 flex flex-1 flex-col gap-6" aria-label={t("nav.primaryAria")}>
         {groups.map((group) => {
           const items = NAV_ITEMS.filter((item) => item.group === group.id);
           if (items.length === 0) return null;
@@ -153,7 +154,7 @@ function SidebarContent({
                         to={item.href}
                         aria-current={active ? "page" : undefined}
                         onClick={() => onNavigate?.()}
-                        className={`flex h-9 items-center gap-2.5 rounded-md px-2 text-[13.5px] ${
+                        className={`press-none flex h-9 items-center gap-2.5 rounded-md px-2 text-[13.5px] transition-colors ${
                           active
                             ? "bg-dash-secondary-container font-medium text-dash-on-surface"
                             : "text-dash-on-surface-variant hover:bg-dash-surface-container-low hover:text-dash-on-surface"
@@ -180,7 +181,7 @@ function SidebarContent({
         <button
           type="button"
           onClick={onOpenHelp}
-          className="flex h-9 items-center gap-2.5 rounded-md px-2 text-[13px] text-dash-on-surface-variant hover:bg-dash-surface-container-low hover:text-dash-on-surface"
+          className="press flex h-9 items-center gap-2.5 rounded-md px-2 text-[13px] text-dash-on-surface-variant hover:bg-dash-surface-container-low hover:text-dash-on-surface"
         >
           <Icon name="help" size={18} variant="outlined" className="text-dash-outline" />
           {t("help.title")}
@@ -188,18 +189,19 @@ function SidebarContent({
         <button
           type="button"
           onClick={onOpenSettings}
-          className="flex h-9 items-center gap-2.5 rounded-md px-2 text-[13px] text-dash-on-surface-variant hover:bg-dash-surface-container-low hover:text-dash-on-surface"
+          className="press flex h-9 items-center gap-2.5 rounded-md px-2 text-[13px] text-dash-on-surface-variant hover:bg-dash-surface-container-low hover:text-dash-on-surface"
         >
           <Icon name="settings" size={18} variant="outlined" className="text-dash-outline" />
           {t("settings.title")}
         </button>
-        <div className="mt-1 px-1">
+        <div className="mt-1 flex items-center gap-1 px-1">
           <LanguageToggle variant="dash" />
+          <ThemeToggle variant="dash" />
         </div>
         <button
           type="button"
           onClick={onOpenSettings}
-          className="mt-2 flex min-w-0 items-center gap-2.5 rounded-md p-2 text-start hover:bg-dash-surface-container-low"
+          className="press-none mt-2 flex min-w-0 items-center gap-2.5 rounded-lg p-2 text-start hover:bg-dash-surface-container-low"
           aria-label={t("settings.account")}
         >
           <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-dash-surface-container text-[11px] font-semibold text-dash-on-surface">

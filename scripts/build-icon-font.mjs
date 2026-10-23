@@ -9,8 +9,9 @@
  *
  * Why a subset: the full Material Symbols variable font is ~5.2 MiB per family.
  * Google's API can return only the glyphs actually referenced, which for this app
- * is 39 icons ≈ 54 KiB (Rounded) + 41 KiB (Outlined) — about a 97x reduction, and
- * small enough for the service worker to precache so icons work offline.
+ * is 49 icons ≈ 67 KiB (Rounded) + 48 KiB (Outlined) — roughly 1% of the full
+ * font, and small enough for the service worker to precache so icons work
+ * offline.
  *
  * Icon names are collected three ways:
  *   1. static JSX:     <Icon name="search_off" />
@@ -43,6 +44,12 @@ const EXTRA_ICONS = [
   "cloud_done",
   "visibility",
   "visibility_off",
+  // ThemeToggle chooses light_mode/dark_mode from the resolved theme.
+  "dark_mode",
+  "light_mode",
+  // Passed to a helper function rather than written as a JSX name.
+  "school",
+  "person_add",
 ];
 
 const FAMILIES = [

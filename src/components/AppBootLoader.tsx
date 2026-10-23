@@ -15,7 +15,7 @@ export function AppBootLoader() {
   if (status !== "loading") return null;
 
   return (
-    <div className="fixed inset-0 z-[200] bg-primary">
+    <div className="fixed inset-0 z-[200] bg-[var(--loader-bg)]">
       <BanterLoader label={t("common.loading")} />
     </div>
   );

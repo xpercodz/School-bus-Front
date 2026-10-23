@@ -25,6 +25,10 @@ function pageWindow(current: number, total: number, span = 2): (number | "…")[
 /**
  * Prev / numbered pages / Next plus a "Showing X–Y of Z" line. Hidden entirely
  * when there are no rows; the numeric controls hide on a single page.
+ *
+ * Phone: the numbered window is hidden (it was the real 360px overflow), and
+ * the nav becomes 44px prev/next around a plain "current / total" readout. From
+ * sm up the numbers return at 36px targets.
  */
 export function PaginationBar({ list }: PaginationBarProps) {
   const { t, locale, dir } = useLocale();
@@ -35,10 +39,12 @@ export function PaginationBar({ list }: PaginationBarProps) {
   // in the reading direction.
   const prevIcon = dir === "rtl" ? "chevron_right" : "chevron_left";
   const nextIcon = dir === "rtl" ? "chevron_left" : "chevron_right";
+  const navButtonClass =
+    "press flex h-11 w-11 flex-none items-center justify-center rounded-md text-dash-on-surface-variant hover:bg-dash-surface-container hover:text-dash-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:w-9";
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="text-[12.5px] text-dash-on-surface-variant">
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+      <p className="min-w-0 text-[12.5px] text-dash-on-surface-variant">
         {t("studentList.showing", {
           start: digits(list.start),
           end: digits(list.end),
@@ -59,41 +65,55 @@ export function PaginationBar({ list }: PaginationBarProps) {
               aria-label={t("studentList.previousAria")}
               disabled={list.page <= 1}
               onClick={() => list.setPage(list.page - 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container hover:text-dash-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary disabled:cursor-not-allowed disabled:opacity-40"
+              className={navButtonClass}
             >
               <Icon name={prevIcon} size={18} variant="outlined" />
             </button>
-            {pageWindow(list.page, list.totalPages).map((p, index) =>
-              p === "…" ? (
-                <span
-                  key={`ellipsis-${index}`}
-                  className="px-1 text-[12.5px] text-dash-on-surface-variant"
-                  aria-hidden="true"
-                >
-                  …
-                </span>
-              ) : (
-                <button
-                  key={p}
-                  type="button"
-                  aria-current={p === list.page ? "page" : undefined}
-                  onClick={() => list.setPage(p)}
-                  className={`flex h-9 min-w-9 items-center justify-center rounded px-2 text-dash-label-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary ${
-                    p === list.page
-                      ? "bg-dash-on-surface font-medium text-white"
-                      : "text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container"
-                  }`}
-                >
-                  {digits(p)}
-                </button>
-              ),
-            )}
+
+            {/* The number window was the widest child on a phone; below sm the
+                compact readout carries the same information in ~40px. The nav's
+                aria-label already names the page, so it is not repeated. */}
+            <span
+              aria-hidden="true"
+              className="px-1.5 text-[12.5px] font-medium tabular-nums text-dash-on-surface sm:hidden"
+            >
+              {digits(list.page)} / {digits(list.totalPages)}
+            </span>
+
+            <div className="hidden items-center gap-0.5 sm:flex">
+              {pageWindow(list.page, list.totalPages).map((p, index) =>
+                p === "…" ? (
+                  <span
+                    key={`ellipsis-${index}`}
+                    className="px-1 text-[12.5px] text-dash-on-surface-variant"
+                    aria-hidden="true"
+                  >
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    aria-current={p === list.page ? "page" : undefined}
+                    onClick={() => list.setPage(p)}
+                    className={`press flex h-9 min-w-9 items-center justify-center rounded px-2 text-dash-label-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary ${
+                      p === list.page
+                        ? "bg-dash-on-surface font-medium text-dash-background"
+                        : "text-dash-on-surface-variant hover:bg-dash-surface-container"
+                    }`}
+                  >
+                    {digits(p)}
+                  </button>
+                ),
+              )}
+            </div>
+
             <button
               type="button"
               aria-label={t("studentList.nextAria")}
               disabled={list.page >= list.totalPages}
               onClick={() => list.setPage(list.page + 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container hover:text-dash-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary disabled:cursor-not-allowed disabled:opacity-40"
+              className={navButtonClass}
             >
               <Icon name={nextIcon} size={18} variant="outlined" />
             </button>

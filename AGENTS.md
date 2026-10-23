@@ -65,12 +65,12 @@ already dropped its route chunks.
   and `/manifest.webmanifest`. Don't remove those or deploys stop reaching
   clients that already have a worker.
 
-**Precache size — read this before "optimising" it.** It is ~1.63 MiB, and the
+**Precache size — read this before "optimising" it.** It is ~1.70 MiB, and the
 composition is not what the filenames suggest: the Firebase SDK chunk (~666 KiB,
 named after whichever module Vite happened to bundle with it — currently
-`use-cursor-page-*`, which is misleading) and the app entry (~284 KiB) are needed
+`motion-*` (because `src/lib/motion.ts` shares the chunk), which is misleading) and the app entry (~284 KiB) are needed
 by every user, and the genuinely director-only route chunks are only ~70 KiB. The
-rest is fonts — including the ~102 KiB icon subset.
+rest is fonts — including the ~115 KiB icon subset.
 
 Legacy `.woff` is excluded via `globIgnores`. `@fontsource` emits both formats for
 every face, and the Arabic package alone makes that 269 KiB; only clients that can
@@ -107,6 +107,7 @@ src/
     firebase.ts             the single Firebase client init (realtime + offline cache)
     school-data.ts          realtime roster/dashboard/trend Firestore hooks
     school-admin.ts         director-admin Firestore hooks + assignments writes
+    motion.ts               stagger maths + first-interaction entrance skip
     persistent-storage.ts   asks for an IndexedDB eviction exemption
     service-worker.ts       reloads the page when a new worker takes over
     i18n/                   typed en/ar dictionaries, LocaleProvider, Intl formatting
@@ -141,7 +142,7 @@ private package instead of mirroring it.
   `public/fonts/` — there is no CDN and no runtime external asset load left. Those
   `.woff2` files are build artifacts: `scripts/build-icon-font.mjs` scans the source
   for `<Icon name="…">` and for **any property ending in `Icon`** (`icon:`,
-  `footerIcon:`, …), then asks the Google Fonts API for only those glyphs (~99 KiB
+  `footerIcon:`, …), then asks the Google Fonts API for only those glyphs (~115 KiB
   for both families, versus **5.2 MiB per family** for the full font). **Re-run it
   whenever an icon is added or removed** — a glyph missing from the subset renders
   as its literal ligature name, which is exactly the bug this replaced.

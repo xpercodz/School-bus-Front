@@ -1,19 +1,36 @@
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Dialog } from "@/components/Dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useAuth } from "@/lib/auth";
 import { useLocale } from "@/lib/i18n/context";
+import { staggerDelay } from "@/lib/motion";
 import { useSignOut } from "@/lib/sign-out";
-import { formatDate, toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
+import { formatDate, formatDayMonth, toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
+import type { StudentStatus } from "@/data/students";
 
 interface TopAppBarProps {
   runMeta: { busId: string; runType: string; date: string };
   runStatus: "IN_PROGRESS" | "COMPLETED";
   /** False when live mode has no run doc yet (shows "No run dispatched"). */
   runExists: boolean;
+  /**
+   * The run's students, in roster order. Their statuses become the manifest
+   * rail under the bar — one tick per child, so a driver sees the whole run at
+   * a glance without reading four counts.
+   */
+  students?: readonly { id: string; status: StudentStatus }[];
 }
+
+/** One hue per attendance state; the same marks as the roster pills. */
+const RAIL_CLASS: Record<StudentStatus, string> = {
+  BOARDED: "bg-success",
+  WAITING: "bg-waiting",
+  DROPPED_OFF: "bg-primary",
+  ABSENT: "bg-error",
+};
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -29,7 +46,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
  * and the overflow menu. No oversized two-line marketing title — the roster is
  * the screen.
  */
-export function TopAppBar({ runMeta, runStatus, runExists }: TopAppBarProps) {
+export function TopAppBar({ runMeta, runStatus, runExists, students }: TopAppBarProps) {
   const { t, locale } = useLocale();
   const { user } = useAuth();
   const signOut = useSignOut();
@@ -44,8 +61,11 @@ export function TopAppBar({ runMeta, runStatus, runExists }: TopAppBarProps) {
   const busLabel = runMeta.busId
     ? translateDataLabel(`Bus ${runMeta.busId.replace(/^bus/, "")}`, locale, t)
     : "—";
+  // The mobile roster is always the morning run (see ROSTER_RUN_TYPE in
+  // school-data), so repeating "Morning run" in the title only stole width
+  // from the bus number on a phone. The run type stays in the details sheet.
   const title = busNumber
-    ? `${t("mobile.appBarTitle", { bus: busNumber })} · ${t("mobile.runTitle")}`
+    ? t("mobile.appBarTitle", { bus: busNumber })
     : t("mobile.appBarTitleNoBus");
 
   const statusLabel = !runExists
@@ -72,35 +92,66 @@ export function TopAppBar({ runMeta, runStatus, runExists }: TopAppBarProps) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-outline-variant bg-surface">
-      <div className="flex h-14 items-center justify-between gap-2 px-3">
+      {/* iOS standalone / notch: the bar's own padding owns the safe area. */}
+      <div className="h-[env(safe-area-inset-top)]" aria-hidden="true" />
+      <div className="flex min-h-14 items-center justify-between gap-2 px-4">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md bg-surface-container text-on-surface">
+          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-surface-container text-on-surface">
             <Icon name="directions_bus" size={20} />
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-[16px] font-semibold leading-5 text-on-surface">
+            <h1
+              className="truncate text-[16px] font-semibold leading-5 text-on-surface"
+              title={title}
+            >
               {title}
             </h1>
-            <p className="flex items-center gap-1.5 truncate text-[11.5px] leading-4 text-on-surface-variant">
+            <p className="flex min-w-0 items-center gap-1.5 text-[11.5px] leading-4 text-on-surface-variant">
               <span className={`h-1.5 w-1.5 flex-none rounded-full ${statusDot}`} aria-hidden="true" />
-              {statusLabel}
-              <span aria-hidden="true">·</span>
-              {formatDate(runMeta.date, locale)}
+              <span className="truncate">{statusLabel}</span>
+              {/* The date is the first thing to give up its width on a 320px
+                  phone; the status must stay readable. It remains available in
+                  the run-details sheet. */}
+              <span aria-hidden="true" className="hidden flex-none min-[380px]:inline">·</span>
+              <span className="hidden flex-none min-[380px]:inline">
+                {formatDayMonth(runMeta.date, locale)}
+              </span>
             </p>
           </div>
         </div>
         <div className="flex flex-none items-center gap-0.5">
+          <ThemeToggle />
           <LanguageToggle />
           <button
             type="button"
             aria-label={t("mobile.moreOptionsAria")}
             onClick={openMenu}
-            className="flex h-11 w-11 items-center justify-center rounded-md text-on-surface-variant hover:bg-surface-container"
+            className="press flex h-11 w-11 items-center justify-center rounded-md text-on-surface-variant hover:bg-surface-container"
           >
             <Icon name="more_vert" size={22} />
           </button>
         </div>
       </div>
+
+      {/* The run manifest: one tick per student, in roster order. It is the
+          signature mobile element and it costs one line — the summary strip
+          below still carries the counts and their labels. Decorative here:
+          every count is announced by the summary section. */}
+      {students && students.length > 0 && (
+        <div
+          className="flex items-center gap-px px-4 pb-2"
+          aria-hidden="true"
+          data-run-rail
+        >
+          {students.map((student, index) => (
+            <span
+              key={student.id}
+              className={`grow-x h-1 min-w-[2px] flex-1 rounded-full ${RAIL_CLASS[student.status]} transition-colors duration-[var(--t-ui)]`}
+              style={{ animationDelay: `${staggerDelay(index, students.length)}ms` }}
+            />
+          ))}
+        </div>
+      )}
 
       <Dialog
         open={menuOpen}
@@ -113,7 +164,7 @@ export function TopAppBar({ runMeta, runStatus, runExists }: TopAppBarProps) {
             <button
               type="button"
               onClick={() => setView("details")}
-              className="flex h-12 items-center gap-3 rounded-md px-3 text-[14px] text-on-surface hover:bg-surface-container"
+              className="press flex h-12 items-center gap-3 rounded-lg px-3 text-[14px] text-on-surface hover:bg-surface-container"
             >
               <Icon name="info" size={20} />
               {t("runDetails.title")}
@@ -122,7 +173,7 @@ export function TopAppBar({ runMeta, runStatus, runExists }: TopAppBarProps) {
               <button
                 type="button"
                 onClick={() => setConfirmSignOut(true)}
-                className="flex h-12 items-center gap-3 rounded-md px-3 text-[14px] text-error hover:bg-error-container/50"
+                className="press flex h-12 items-center gap-3 rounded-lg px-3 text-[14px] text-error hover:bg-error-container/50"
               >
                 <Icon name="logout" size={20} />
                 {t("settings.signOut")}
@@ -137,7 +188,7 @@ export function TopAppBar({ runMeta, runStatus, runExists }: TopAppBarProps) {
                 type="button"
                 onClick={() => setView("menu")}
                 aria-label={t("dialog.close")}
-                className="flex h-9 w-9 items-center justify-center rounded-md text-on-surface-variant hover:bg-surface-container"
+                className="press flex h-11 w-11 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container"
               >
                 <Icon name="arrow_back" size={20} />
               </button>

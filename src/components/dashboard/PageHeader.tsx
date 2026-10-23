@@ -15,29 +15,35 @@ interface PageHeaderProps {
  * Canvas title row shared by every director screen: an h1, one scope line, the
  * finding, and the screen's real actions. It gives every page the same left
  * edge and keeps the largest figure below it, where the data is.
+ *
+ * Phone: the title block is never squeezed sideways — actions always get their
+ * own row, each at least 44px tall and growing to share the width (they wrap,
+ * not shrink). From lg the two blocks return to one baseline row.
  */
 export function PageHeader({ title, subtitle, finding, actions }: PageHeaderProps) {
   return (
-    <header className="flex flex-col gap-4 pt-1 lg:flex-row lg:items-end lg:justify-between">
-      <div className="min-w-0">
+    <header className="flex flex-col gap-4 pt-1 lg:flex-row lg:items-end lg:justify-between lg:gap-6">
+      <div data-page-reveal className="min-w-0">
         <h1 className="text-dash-headline-lg text-dash-on-surface">{title}</h1>
         {subtitle && (
-          <p className="mt-1 text-[13.5px] leading-5 text-dash-on-surface-variant">
+          <p className="mt-1 text-[13px] leading-5 text-dash-on-surface-variant sm:text-[13.5px]">
             {subtitle}
           </p>
         )}
         {finding && (
-          <p className="mt-2 flex items-start gap-2 text-[13.5px] font-medium leading-5 text-dash-on-surface">
+          <p className="mt-2 flex items-start gap-2 text-[13px] font-medium leading-5 text-dash-on-surface sm:text-[13.5px]">
             <span
-              className="mt-2 h-1.5 w-1.5 flex-none rounded-full bg-dash-primary"
+              className="mt-[7px] h-1.5 w-1.5 flex-none rounded-full bg-dash-primary"
               aria-hidden="true"
             />
-            <span>{finding}</span>
+            <span className="min-w-0">{finding}</span>
           </p>
         )}
       </div>
       {actions && (
-        <div className="flex flex-none flex-wrap items-center gap-2">{actions}</div>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-none [&>*]:min-h-11 [&>*]:flex-1 [&>*]:basis-32 [&>*]:whitespace-nowrap sm:[&>*]:min-h-0 sm:[&>*]:flex-none sm:[&>*]:basis-auto">
+          {actions}
+        </div>
       )}
     </header>
   );

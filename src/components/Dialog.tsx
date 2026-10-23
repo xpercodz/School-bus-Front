@@ -1,17 +1,31 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { prefersReducedMotion } from "@/lib/theme";
+import { useIsMobile } from "@/lib/use-media-query";
 
 type Placement = "center" | "bottom" | "end";
+/** `auto` = centered dialog on desktop, bottom sheet on a phone. */
+type RequestedPlacement = Placement | "auto";
 
 interface DialogProps {
   open: boolean;
   onClose: () => void;
   /** Localized title; also the panel's aria-label. */
   title?: string;
-  /** center = modal, bottom = sheet, end = inline-end drawer. */
-  placement?: Placement;
+  /**
+   * center = modal, bottom = sheet, end = inline-end drawer.
+   * `auto` (default) turns the modal into a thumb-reachable bottom sheet below
+   * 640px while keeping the centered dialog on desktop.
+   */
+  placement?: RequestedPlacement;
   /** false makes the overlay non-dismissable (Escape/backdrop ignored). */
   dismissable?: boolean;
+  /**
+   * Set false when the caller unmounts its body as soon as `open` flips (a
+   * form fetched per open). The panel would otherwise slide out empty; those
+   * dialogs close instantly instead.
+   */
+  exitAnimation?: boolean;
   /**
    * Replaces the sizing/background classes for the chosen placement entirely —
    * used to give a placement a custom panel (e.g. the dashboard nav drawer).
@@ -27,26 +41,35 @@ const WRAPPER_CLASS: Record<Placement, string> = {
   // end drawer is full-height with its own inner scroll wrapper, and a
   // non-scrolling wrapper lets the slide run on the compositor (a transform
   // animation inside a scroll container rasterizes per frame and jitters).
-  center: "items-center justify-center overflow-y-auto overflow-x-hidden",
+  center:
+    "items-center justify-center overflow-y-auto overflow-x-hidden p-4 sm:p-6",
   bottom: "flex-col justify-end overflow-y-auto overflow-x-hidden",
   end: "justify-end overflow-hidden",
 };
 
 const PANEL_CLASS: Record<Placement, string> = {
-  center: "w-full max-w-md rounded-lg bg-surface",
-  bottom: "w-full max-w-lg rounded-t-lg bg-surface",
+  center: "w-full max-w-md max-h-full rounded-xl bg-surface",
+  bottom:
+    "w-full max-w-lg max-h-[88dvh] rounded-t-2xl bg-surface pb-[env(safe-area-inset-bottom)] sm:rounded-t-xl",
   end: "h-full w-80 max-w-[90vw] border-s border-outline-variant bg-surface",
 };
 
-// Entry animation per placement: center/bottom fade in via keyframes (a
-// one-shot mount animation is fine for a fade). End drawers do NOT use these
-// classes — they unfold like an accordion through an inline transform
-// transition (scaleX hinged at the screen edge), which proved stable where
-// keyframe/translate entries trembled or jumped on some engines.
-const ANIMATION_CLASS: Record<Placement, string> = {
-  center: "dlg-fade-in",
-  bottom: "dlg-fade-in",
-  end: "",
+/** Exit timing per placement — leaving is shorter than arriving. */
+const EXIT_MS: Record<Placement, number> = {
+  center: 160,
+  bottom: 220,
+  end: 320,
+};
+
+// End drawers do NOT use keyframe entries: they unfold like an accordion
+// through an inline transform transition (scaleX hinged at the screen edge),
+// which proved stable where keyframe/translate entries trembled or jumped on
+// some engines. Center modals and bottom sheets animate with the shared
+// dlg-panel-* / dlg-sheet-* keyframes in globals.css.
+const ANIMATION_CLASS: Record<Placement, { in: string; out: string }> = {
+  center: { in: "dlg-panel-in", out: "dlg-panel-out" },
+  bottom: { in: "dlg-sheet-in", out: "dlg-sheet-out" },
+  end: { in: "", out: "" },
 };
 
 // Track open dialogs in mount order so Escape only closes the topmost one. When
@@ -76,63 +99,95 @@ export function topDialog(): number | undefined {
 
 /**
  * Accessible overlay primitive used by every modal/drawer/sheet in the app.
- * Renders a fixed backdrop + panel that open with a quick fade and close
- * instantly; the body is scroll-locked while open, focus moves into the
- * panel and is trapped (Tab cycles within it), and Escape / backdrop click
- * close the *topmost* open dialog (unless non-dismissable). Uses the mobile
- * (default) palette so it renders identically on both sections; RTL-safe via
- * logical utilities.
+ * Renders a fixed backdrop + panel that opens with a short entrance and stays
+ * mounted for one exit beat when it closes. The body is scroll-locked while
+ * open, focus moves into the panel and is trapped (Tab cycles within it), and
+ * Escape / backdrop click close the *topmost* open dialog (unless
+ * non-dismissable). Uses the mobile (default) palette so it renders identically
+ * on both sections; RTL-safe via logical utilities.
  */
 export function Dialog({
   open,
   onClose,
   title,
-  placement = "center",
+  placement = "auto",
   dismissable = true,
+  exitAnimation = true,
   panelClassName,
   children,
 }: DialogProps) {
+  const isMobile = useIsMobile();
+  const resolvedPlacement: Placement =
+    placement === "auto" ? (isMobile ? "bottom" : "center") : placement;
+  const isEndDrawer = resolvedPlacement === "end";
+  const animation = ANIMATION_CLASS[resolvedPlacement];
+  const exitMs = EXIT_MS[resolvedPlacement];
+  // Read at render: an end drawer under reduced motion is simply there, never
+  // unfolded. The CSS class below also removes the inline transition.
+  const reducedMotion = prefersReducedMotion();
+
   const panelRef = useRef<HTMLDivElement>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
   // Keep the latest onClose without re-running the open-effect on every render.
   const onCloseRef = useRef(onClose);
-  const isEndDrawer = placement === "end";
-  // End drawers open like an accordion — scaleX hinged at the screen edge,
-  // driven by an inline single-shot transition (the same mechanics as the
-  // settings drawer). Keyframe entries and translate-slides proved unstable
-  // on some engines (drawers trembling/jumping), so nothing else is used here.
-  // The hinge side depends on direction and is captured when the drawer opens.
-  const [entered, setEntered] = useState(false);
-  const [hingeOrigin, setHingeOrigin] = useState("right center");
-  const [prevOpen, setPrevOpen] = useState(open);
-  if (prevOpen !== open) {
-    setPrevOpen(open);
-    if (!open) {
-      setEntered(false);
-    } else if (isEndDrawer) {
-      setHingeOrigin(
-        typeof document !== "undefined" && document.documentElement.dir === "rtl"
-          ? "left center"
-          : "right center",
-      );
-    }
-  }
+  const isOpenRef = useRef(open);
   useEffect(() => {
     onCloseRef.current = onClose;
-  }, [onClose]);
+    isOpenRef.current = open;
+  }, [open, onClose]);
 
-  // Unfold the end drawer one frame after mount so the browser has painted
-  // the collapsed (zero-width) state first — a transition needs a previous
-  // computed style, and without it the panel would just appear.
+  // ── Mount/exit state ──────────────────────────────────────────────────────
+  // A closed dialog stays mounted for one short exit beat so the fade/slide
+  // can finish; reduced motion removes it immediately.
+  const [mounted, setMounted] = useState(open);
+  const [exiting, setExiting] = useState(false);
+
   useEffect(() => {
-    if (!open || !isEndDrawer) return;
-    let raf = 0;
-    raf = requestAnimationFrame(() => {
-      raf = requestAnimationFrame(() => setEntered(true));
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [open, isEndDrawer]);
+    if (open) {
+      setMounted(true);
+      setExiting(false);
+      return;
+    }
+    if (!mounted) return;
+    if (prefersReducedMotion() || !exitAnimation) {
+      setMounted(false);
+      setExiting(false);
+      return;
+    }
+    setExiting(true);
+    const timer = window.setTimeout(() => {
+      setMounted(false);
+      setExiting(false);
+    }, exitMs);
+    return () => window.clearTimeout(timer);
+  }, [open, mounted, exitMs, exitAnimation]);
 
+  // End drawers unfold with an inline transition: paint the collapsed state
+  // first, then flip `entered` on the next frame. On exit it collapses back to
+  // the hinge while the panel is still mounted.
+  const [entered, setEntered] = useState(false);
+  useEffect(() => {
+    if (!isEndDrawer) return;
+    if (!mounted || exiting) {
+      setEntered(false);
+      return;
+    }
+    if (prefersReducedMotion()) {
+      setEntered(true);
+      return;
+    }
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setEntered(true));
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [isEndDrawer, mounted, exiting]);
+
+  // ── Open behaviour: stack, focus, scroll lock, Escape/Tab ─────────────────
   useEffect(() => {
     if (!open) return;
     const dialogId = pushDialog();
@@ -178,19 +233,26 @@ export function Dialog({
     };
   }, [open, dismissable]);
 
-  if (!open) return null;
+  if (!mounted && !open) return null;
 
   // Rendered through a portal to <body> so the overlay escapes any parent
   // stacking context (e.g. the sticky z-10 top bar or the z-20 sidebar) and
   // truly sits at z-80 above everything, dimming the whole screen behind the
   // panel. Safe for SSR: `open` is always false on the server.
-  // Entry animation: center/bottom fade via keyframes; end drawers unfold
-  // like an accordion through an inline transform transition (see above).
+  // While leaving, the overlay must not swallow a click meant for the page
+  // underneath: it is visually fading, so it must stop being a target.
   return createPortal(
-    <div className={`fixed inset-0 z-[80] flex ${WRAPPER_CLASS[placement]}`}>
+    <div
+      className={`fixed inset-0 z-[80] flex ${WRAPPER_CLASS[resolvedPlacement]} ${
+        exiting ? "pointer-events-none" : ""
+      }`}
+      data-state={exiting ? "closing" : "open"}
+    >
       <div
         aria-hidden="true"
-        className={`fixed inset-0 bg-black/40 dlg-fade-in print:hidden ${dismissable ? "cursor-pointer" : ""}`}
+        className={`fixed inset-0 bg-[var(--overlay)] print:hidden ${
+          exiting ? "dlg-backdrop-out" : "dlg-fade-in"
+        } ${dismissable ? "cursor-pointer" : ""}`}
         onClick={dismissable ? onClose : undefined}
       />
       <div
@@ -202,17 +264,28 @@ export function Dialog({
         style={
           isEndDrawer
             ? {
-                transform: entered ? "scaleX(1)" : "scaleX(0)",
-                transformOrigin: hingeOrigin,
-                transition: "transform 320ms cubic-bezier(0.22, 1, 0.36, 1)",
+                transform:
+                  (entered || reducedMotion) && !exiting
+                    ? "scaleX(1)"
+                    : "scaleX(0)",
+                transformOrigin:
+                  typeof document !== "undefined" && document.documentElement.dir === "rtl"
+                    ? "left center"
+                    : "right center",
+                transition: "transform var(--t-enter) var(--ease-out-soft)",
               }
             : undefined
         }
-        className={`relative flex max-h-full flex-col overflow-hidden shadow-card outline-none ${
-          isEndDrawer ? "" : ANIMATION_CLASS[placement]
-        } ${panelClassName ?? PANEL_CLASS[placement]}`}
+        className={`relative flex flex-col overflow-hidden outline-none ${
+          isEndDrawer ? "dlg-end-panel" : "shadow-float"
+        } ${isEndDrawer ? "" : exiting ? animation.out : animation.in} ${
+          panelClassName ?? PANEL_CLASS[resolvedPlacement]
+        }`}
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
+        {resolvedPlacement === "bottom" && <div className="sheet-handle" aria-hidden="true" />}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+          {children}
+        </div>
       </div>
     </div>,
     document.body,

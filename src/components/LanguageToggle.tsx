@@ -18,8 +18,8 @@ export function LanguageToggle({ variant = "default" }: LanguageToggleProps) {
 
   const classes =
     variant === "dash"
-      ? "flex h-9 items-center gap-1.5 rounded-md px-2 text-[12.5px] text-dash-on-surface-variant transition-colors hover:bg-dash-surface-container-low hover:text-dash-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary"
-      : "flex h-11 items-center gap-1.5 rounded-md px-2 text-[13.5px] text-on-surface-variant transition-colors hover:bg-surface-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
+      ? "press flex h-11 w-11 items-center justify-center gap-1.5 rounded-lg text-[12.5px] text-dash-on-surface-variant hover:bg-dash-surface-container-low hover:text-dash-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary min-[380px]:w-auto min-[380px]:justify-start min-[380px]:px-2 lg:h-9"
+      : "press flex h-11 w-11 items-center justify-center gap-1.5 rounded-lg text-[13.5px] text-on-surface-variant hover:bg-surface-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary min-[380px]:w-auto min-[380px]:justify-start min-[380px]:px-2";
 
   return (
     <button
@@ -33,7 +33,7 @@ export function LanguageToggle({ variant = "default" }: LanguageToggleProps) {
         size={variant === "dash" ? 16 : 20}
         variant={variant === "dash" ? "outlined" : "rounded"}
       />
-      <span>{label}</span>
+      <span className="hidden min-[380px]:inline">{label}</span>
     </button>
   );
 }

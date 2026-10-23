@@ -24,13 +24,16 @@ const TRACK_CLASS: Record<Variant, string> = {
   pill: "h-11 overflow-hidden rounded-md border border-outline-variant bg-surface-container-high p-0.5",
   box: "h-11 overflow-hidden rounded-md border border-outline-variant bg-surface p-0.5",
   "dash-box":
-    "h-10 overflow-hidden rounded-md border border-dash-outline-variant bg-dash-surface-container-low p-0.5 sm:h-9",
+    "h-11 overflow-hidden rounded-lg border border-dash-outline-variant bg-dash-surface-container-low p-0.5 sm:h-9",
 };
 
 const THUMB_CLASS: Record<Variant, string> = {
-  pill: "rounded border border-outline-variant bg-surface-container-lowest",
-  box: "rounded bg-primary-container",
-  "dash-box": "rounded bg-dash-surface",
+  // The selected surface must be LIGHTER than its track in both themes. A
+  // token named "lowest" is white in light mode but darkest on dark, so the
+  // dedicated selected-surface token carries the step in both directions.
+  pill: "rounded border border-outline-variant bg-selected-surface",
+  box: "rounded border border-outline-variant bg-selected-surface",
+  "dash-box": "rounded border border-dash-outline-variant bg-dash-selected-surface",
 };
 
 const LABEL_CLASS: Record<Variant, string> = {
@@ -41,7 +44,7 @@ const LABEL_CLASS: Record<Variant, string> = {
 
 const ACTIVE_CLASS: Record<Variant, string> = {
   pill: "text-on-surface font-medium",
-  box: "text-on-primary-container font-medium",
+  box: "text-on-surface font-medium",
   "dash-box": "text-dash-on-surface font-medium",
 };
 
@@ -108,11 +111,11 @@ export function SlideSegments<T extends string>({
       {/* Sliding highlight thumb. z-0 under the option buttons. */}
       <div
         aria-hidden="true"
-        className={`absolute start-0.5 top-0.5 bottom-0.5 ${THUMB_CLASS[variant]}`}
+        className={`slide-thumb absolute start-0.5 top-0.5 bottom-0.5 ${THUMB_CLASS[variant]}`}
         style={{
           width: `calc((100% - 4px) / ${Math.max(1, options.length)})`,
           transform: thumbTransform,
-          transition: "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
+          transition: "transform var(--t-ui) var(--ease-out-soft)",
         }}
       />
       {options.map((option) => {
