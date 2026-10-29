@@ -11,23 +11,31 @@ import {
 import { flushSync } from "react-dom";
 import {
   applyThemeToDocument,
+  beginThemeFlip,
   getSystemTheme,
   persistTheme,
   prefersReducedMotion,
   readStoredTheme,
   resolveTheme,
   type ResolvedTheme,
+  type ThemeFlip,
   type ThemeMode,
   type ViewTransitionDocument,
 } from "@/lib/theme";
+
+/** Where a theme change came from: the pressed control, and which wipe it asked for. */
+export interface ThemeOrigin {
+  trigger?: Element | null;
+  flip?: ThemeFlip;
+}
 
 interface ThemeContextValue {
   /** What the user chose: "system", "light" or "dark". */
   mode: ThemeMode;
   /** What is actually on screen after resolving "system". */
   resolved: ResolvedTheme;
-  /** Persist and apply a preference. */
-  setMode: (mode: ThemeMode) => void;
+  /** Persist and apply a preference, optionally wiping from the control that was pressed. */
+  setMode: (mode: ThemeMode, origin?: ThemeOrigin) => void;
   /** Flip to the opposite of the current resolved theme (pins the choice). */
   toggle: () => void;
 }
@@ -60,7 +68,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyThemeToDocument(resolved);
   }, [resolved]);
 
-  const setMode = useCallback((next: ThemeMode) => {
+  /**
+   * Persist and apply a preference. Pass the control that was pressed so the
+   * View Transition wipe opens from it (`report-fe`'s flip); without an origin
+   * the circle opens from the middle of the screen.
+   */
+  const setMode = useCallback((next: ThemeMode, origin?: ThemeOrigin) => {
     const commit = () => {
       persistTheme(next);
       setModeState(next);
@@ -74,15 +87,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const settle = beginThemeFlip(origin?.flip, origin?.trigger);
     try {
-      doc.startViewTransition(() => {
+      const transition = doc.startViewTransition(() => {
         // React state changes must flush before the browser snapshots the new
         // state; the class change above is already synchronous.
         flushSync(commit);
       });
+      // `finished` rejects when a transition is skipped, so clear the flip on both paths.
+      void Promise.resolve(transition.finished).then(settle, settle);
     } catch {
       // A transition already in flight, a hidden document, or an engine quirk:
       // the theme change still has to happen.
+      settle();
       commit();
     }
   }, []);

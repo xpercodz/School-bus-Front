@@ -9,6 +9,8 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { Dialog } from "@/components/Dialog";
+import { Button } from "@/components/arc/button/button";
+import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { Icon } from "@/components/Icon";
 import { SlideSegments } from "@/components/SlideSegments";
 import { useToast } from "@/components/Toast";
@@ -55,6 +57,7 @@ function DispatchForm({ onClose }: { onClose: () => void }) {
 
   const [buses, setBuses] = useState<DispatchBus[]>([]);
   const [busId, setBusId] = useState("");
+  const selectedBus = buses.find((bus) => bus.id === busId);
   const [runType, setRunType] = useState<RunSegmentId>("morning");
   const [date, setDate] = useState(todayDateStr());
   const [busy, setBusy] = useState(false);
@@ -143,14 +146,17 @@ function DispatchForm({ onClose }: { onClose: () => void }) {
         <h2 className="min-w-0 truncate text-[18px] font-semibold text-on-surface sm:text-headline-md">
           {t("dispatch.title")}
         </h2>
-        <button
+        <Button
           type="button"
           onClick={onClose}
           aria-label={t("dialog.close")}
-          className="press flex h-11 w-11 flex-none items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high"
+          variant="ghost"
+          size="md"
+          icon
+          className="flex-none"
         >
           <Icon name="close" size={22} />
-        </button>
+        </Button>
       </header>
 
       <form
@@ -162,22 +168,29 @@ function DispatchForm({ onClose }: { onClose: () => void }) {
         }}
       >
         <div className="flex flex-col gap-4 px-4 py-4 sm:gap-5 sm:px-5 sm:py-5">
-          <label className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5">
             <span className="text-label-lg text-on-surface-variant">{t("dispatch.bus")}</span>
-            <select
-              value={busId}
-              onChange={(event) => setBusId(event.target.value)}
+            <DropdownMenu
+              ariaLabel={t("dispatch.bus")}
+              label={selectedBus ? translateDataLabel(selectedBus.name, locale, t) : t("dispatch.selectBus")}
+              align="start"
+              matchTriggerWidth
               disabled={busy}
-              className="h-12 w-full min-w-0 rounded-lg border border-control-outline bg-surface px-3 text-[16px] text-on-surface outline-none transition-[border-color,box-shadow] duration-[var(--t-hover)] focus:border-primary focus:ring-2 focus:ring-primary/35 disabled:opacity-50 sm:h-11 sm:text-[12.5px]"
-            >
-              <option value="">{t("dispatch.selectBus")}</option>
-              {buses.map((bus) => (
-                <option key={bus.id} value={bus.id}>
-                  {translateDataLabel(bus.name, locale, t)}
-                </option>
-              ))}
-            </select>
-          </label>
+              triggerClassName="arc-field h-11 w-full"
+              items={[
+                {
+                  label: t("dispatch.selectBus"),
+                  checked: !busId,
+                  onSelect: () => setBusId(""),
+                },
+                ...buses.map((bus) => ({
+                  label: translateDataLabel(bus.name, locale, t),
+                  checked: bus.id === busId,
+                  onSelect: () => setBusId(bus.id),
+                })),
+              ]}
+            />
+          </div>
 
           <fieldset className="flex flex-col gap-1.5">
             <legend className="text-label-lg text-on-surface-variant">
@@ -225,28 +238,26 @@ function DispatchForm({ onClose }: { onClose: () => void }) {
             Dialog's safe-area padding lives on the panel, not here, so the
             primary never hides under the home indicator. */}
         <div className="sticky bottom-0 z-10 mt-auto flex flex-col gap-2 border-t border-outline-variant bg-surface px-4 pb-3 pt-3 sm:flex-row sm:justify-end sm:px-5">
-          <button
+          <Button
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="press flex h-11 w-full items-center justify-center rounded-lg border border-outline-variant bg-surface text-[16px] font-medium text-on-surface-variant hover:bg-surface-container disabled:opacity-50 sm:h-10 sm:w-auto sm:border-0 sm:px-5 sm:text-[13.5px]"
+            variant="secondary"
+            size="md"
+            className="arc-field w-full sm:w-auto"
           >
             {t("dialog.cancel")}
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             disabled={!busId || !date || busy}
-            className="press flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-on-surface text-[16px] font-medium text-surface hover:opacity-90 disabled:opacity-50 sm:h-10 sm:w-auto sm:min-w-24 sm:px-5 sm:text-[13.5px]"
+            loading={busy}
+            variant="primary"
+            size="md"
+            className="w-full sm:w-auto"
           >
-            {busy ? (
-              <>
-                <Icon name="progress_activity" size={20} className="animate-spin" />
-                <span className="sr-only">{t("dispatch.submit")}</span>
-              </>
-            ) : (
-              t("dispatch.submit")
-            )}
-          </button>
+            {t("dispatch.submit")}
+          </Button>
         </div>
       </form>
     </div>

@@ -1,4 +1,5 @@
 import { Dialog } from "@/components/Dialog";
+import { Button } from "@/components/arc/button/button";
 import { Icon } from "@/components/Icon";
 import { useLocale } from "@/lib/i18n/context";
 
@@ -22,14 +23,17 @@ export function HelpDialog({ open, onClose }: HelpDialogProps) {
         <h2 className="min-w-0 truncate text-[18px] font-semibold text-on-surface sm:text-headline-md">
           {t("help.title")}
         </h2>
-        <button
+        <Button
           type="button"
           onClick={onClose}
           aria-label={t("dialog.close")}
-          className="press flex h-11 w-11 flex-none items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high"
+          variant="ghost"
+          size="md"
+          icon
+          className="flex-none"
         >
           <Icon name="close" size={22} variant="outlined" />
-        </button>
+        </Button>
       </header>
       <p className="whitespace-pre-line px-4 py-4 text-[16px] leading-7 text-on-surface-variant sm:px-5 sm:py-5 sm:text-body-md sm:leading-5">
         {t("help.content")}

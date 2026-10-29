@@ -1,5 +1,5 @@
 import { Dialog } from "@/components/Dialog";
-import { Icon } from "@/components/Icon";
+import { Button } from "@/components/arc/button/button";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -40,30 +40,27 @@ export function ConfirmDialog({
           {body}
         </p>
         <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="md"
+            className="arc-field w-full sm:w-auto"
             onClick={onClose}
             disabled={busy}
-            className="press flex h-11 w-full items-center justify-center rounded-lg border border-outline-variant bg-surface text-[16px] font-medium text-on-surface-variant hover:bg-surface-container disabled:opacity-50 sm:h-10 sm:w-auto sm:border-0 sm:px-5 sm:text-[13.5px]"
           >
             {cancelLabel}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="primary"
+            size="md"
+            className="w-full sm:w-auto sm:min-w-20"
             onClick={onConfirm}
             disabled={busy}
-            aria-busy={busy}
-            className="press flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-on-surface text-[16px] font-medium text-surface hover:opacity-90 disabled:opacity-50 sm:h-10 sm:w-auto sm:min-w-20 sm:px-5 sm:text-[13.5px]"
+            loading={busy}
           >
-            {busy ? (
-              <>
-                <Icon name="progress_activity" size={20} className="animate-spin" />
-                <span className="sr-only">{confirmLabel}</span>
-              </>
-            ) : (
-              confirmLabel
-            )}
-          </button>
+            {confirmLabel}
+          </Button>
         </div>
       </div>
     </Dialog>

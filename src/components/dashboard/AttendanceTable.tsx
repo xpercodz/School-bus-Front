@@ -2,6 +2,7 @@ import type { AttendanceRow } from "@/data/dashboard";
 import { DASH_STATUS_META, STATUS_DOT } from "@/data/dashboard";
 import type { StudentStatus } from "@/data/students";
 import { Icon } from "@/components/Icon";
+import { Button } from "@/components/arc/button/button";
 import { staggerStyle } from "@/lib/motion";
 import { useLocale } from "@/lib/i18n/context";
 import { statusKey, toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
@@ -75,14 +76,17 @@ export function AttendanceTable({ rows, onViewHistory }: AttendanceTableProps) {
                 </div>
                 <div className="flex flex-none items-center gap-1">
                   <StatusBadge status={row.status} />
-                  <button
+                  <Button
                     type="button"
                     onClick={() => onViewHistory?.(row.name)}
                     aria-label={t("dashboard.historyAria", { name: row.name })}
-                    className="press flex h-11 w-11 flex-none items-center justify-center rounded-md text-dash-on-surface-variant md:hover:bg-dash-surface-container-low"
+                    variant="ghost"
+                    size="md"
+                    icon
+                    className="flex-none"
                   >
                     <Icon name="history" size={18} variant="outlined" />
-                  </button>
+                  </Button>
                 </div>
               </div>
               <p className="mt-1.5 text-[11.5px] text-dash-on-surface-variant">
@@ -153,15 +157,16 @@ export function AttendanceTable({ rows, onViewHistory }: AttendanceTableProps) {
                     <StatusBadge status={row.status} />
                   </td>
                   <td className="px-4 text-end">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => onViewHistory?.(row.name)}
                       aria-label={t("dashboard.historyAria", { name: row.name })}
-                      className="press inline-flex h-8 items-center gap-1.5 rounded px-2 text-[12.5px] text-dash-on-surface-variant hover:bg-dash-surface-container hover:text-dash-on-surface pointer-coarse:h-11 pointer-coarse:px-3"
+                      variant="ghost"
+                      size="sm"
                     >
                       <Icon name="history" size={16} variant="outlined" />
                       {t("dashboard.th.actions")}
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))

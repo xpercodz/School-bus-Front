@@ -4,11 +4,31 @@
       "collectionGroup": "attendance",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "studentName", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "DESCENDING" },
-        { "fieldPath": "runId", "order": "DESCENDING" }
+        {
+          "fieldPath": "studentName",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "runId",
+          "order": "DESCENDING"
+        }
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "driverCodes",
+      "fieldPath": "codeHash",
+      "indexes": [
+        {
+          "queryScope": "COLLECTION_GROUP",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ]
 }

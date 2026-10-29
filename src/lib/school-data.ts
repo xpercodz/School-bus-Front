@@ -20,6 +20,7 @@ import {
 } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth";
+import { LOADING_SETTLE_TIMEOUT_MS, settlesLoading } from "@/lib/firestore-loading";
 import type { Student, StudentStatus } from "@/data/students";
 import { STATUS_CYCLE } from "@/data/students";
 import {
@@ -59,41 +60,6 @@ export function buildRunId(busId: string, dateStr: string, runType: string): str
 function runTypeFromRunId(runId: string): "morning" | "afternoon" {
   return runId.split("-").at(-1) === "afternoon" ? "afternoon" : "morning";
 }
-
-/**
- * Whether a snapshot should end a hook's loading state.
- *
- * Firestore fires every listener immediately with whatever the local cache
- * holds, *before* the server has answered. On a cold start over slow wifi that
- * first snapshot is empty — and settling on it is what flashes an empty screen
- * (KPI zeros, "No students found") that then fills in. It reads as "the data is
- * gone" when nothing has actually been fetched yet.
- *
- * So:
- * - a server read always settles (`fromCache === false`) — it is authoritative,
- *   even when it is legitimately empty;
- * - a cache read settles if it actually holds documents, because those are real
- *   rows and showing them immediately is the whole point of the offline cache;
- * - an *empty* cache read settles only when we are offline, where there is
- *   genuinely nothing left to wait for (otherwise the skeleton would never end).
- */
-function settlesLoading(fromCache: boolean, hasData: boolean): boolean {
-  if (!fromCache) return true;
-  if (hasData) return true;
-  return typeof navigator !== "undefined" && navigator.onLine === false;
-}
-
-/**
- * Ceiling on any hook's loading state.
- *
- * `settlesLoading` waits for a *server* snapshot — but Firestore retries a
- * failing connection indefinitely and never surfaces an error, so a black-holed
- * network (or a service worker eating the connection) leaves the skeletons up
- * forever. That is strictly worse than the empty flash this replaced, and it is
- * exactly what happened in production. After this long, settle anyway and show
- * whatever the cache holds, even if that is nothing.
- */
-const LOADING_SETTLE_TIMEOUT_MS = 10_000;
 
 /** Build dashboard KPI cells from the same counts the summary uses. */
 function countByStatus(rows: AttendanceDoc[], status: StudentStatus): number {
@@ -175,6 +141,13 @@ function useDriverBus(): DriverBus {
             collection(firestore, "schools", schoolId, "buses"),
             where("driverUid", "==", uid),
           ),
+          // Metadata-only updates are suppressed by default, so a warm cache
+          // that already holds this query never reports `fromCache === false`
+          // when the server confirms the same (e.g. empty) result. The gate
+          // below waits for exactly that, and used to burn its full 10s ceiling
+          // on every reload. Ask for metadata changes so the confirmation is
+          // delivered.
+          { includeMetadataChanges: true },
           (snap) => {
             if (cancelled) return;
             setBusId(snap.docs[0]?.id ?? null);
@@ -263,6 +236,10 @@ export function useRunRoster(): RunRoster {
       unsubscribers.push(
         onSnapshot(
           attQuery,
+          // See settlesLoading + useDriverBus: without metadata changes a warm
+          // empty cache never reports the server confirmation, and the skeleton
+          // waits out the whole settle ceiling.
+          { includeMetadataChanges: true },
           (snap) => {
             const list: Student[] = snap.docs
               .map((d) => {
@@ -507,6 +484,10 @@ export function useDashboardData(
 
       const unsubAtt = onSnapshot(
         query(collection(firestore, base, "attendance"), where("date", "==", dateStr)),
+        // See settlesLoading: a warm empty cache emits `fromCache: true` only,
+        // and without metadata changes the later server confirmation is
+        // suppressed — which is what pinned the skeleton to the 10s ceiling.
+        { includeMetadataChanges: true },
         (snap) => {
           setAttendance(
             snap.docs.map((d) => {
@@ -570,6 +551,7 @@ export function useDashboardData(
       name: a.studentName,
       grade: a.grade,
       bus: a.busName,
+      busId: a.busId,
       runType: runTypeFromRunId(a.runId),
       morningBoarded: formatTime(a.boardedAt ? a.boardedAt.toDate() : null, locale),
       dropOffTime: formatTime(a.droppedOffAt ? a.droppedOffAt.toDate() : null, locale),

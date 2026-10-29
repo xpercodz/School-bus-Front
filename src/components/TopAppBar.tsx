@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { Button } from "@/components/arc/button/button";
 import { Icon } from "@/components/Icon";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ThemeSwitchButton } from "@/components/ThemeSwitchButton";
 import { Dialog } from "@/components/Dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useAuth } from "@/lib/auth";
@@ -120,16 +121,18 @@ export function TopAppBar({ runMeta, runStatus, runExists, students }: TopAppBar
           </div>
         </div>
         <div className="flex flex-none items-center gap-0.5">
-          <ThemeToggle />
+          <ThemeSwitchButton iconOnly />
           <LanguageToggle />
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="md"
+            icon
             aria-label={t("mobile.moreOptionsAria")}
             onClick={openMenu}
-            className="press flex h-11 w-11 items-center justify-center rounded-md text-on-surface-variant hover:bg-surface-container"
           >
             <Icon name="more_vert" size={22} />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -161,37 +164,45 @@ export function TopAppBar({ runMeta, runStatus, runExists, students }: TopAppBar
       >
         {view === "menu" ? (
           <div className="flex flex-col gap-0.5 p-2">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="md"
+              align="start"
+              className="w-full"
               onClick={() => setView("details")}
-              className="press flex h-12 items-center gap-3 rounded-lg px-3 text-[14px] text-on-surface hover:bg-surface-container"
             >
               <Icon name="info" size={20} />
               {t("runDetails.title")}
-            </button>
+            </Button>
             {user && (
-              <button
+              <Button
                 type="button"
+                variant="danger"
+                size="md"
+                align="start"
+                className="arc-field w-full"
                 onClick={() => setConfirmSignOut(true)}
-                className="press flex h-12 items-center gap-3 rounded-lg px-3 text-[14px] text-error hover:bg-error-container/50"
               >
                 <Icon name="logout" size={20} />
                 {t("settings.signOut")}
-              </button>
+              </Button>
             )}
           </div>
         ) : (
           <div className="flex flex-col gap-3 p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-[17px] font-semibold text-on-surface">{t("runDetails.title")}</h2>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="md"
+                icon
                 onClick={() => setView("menu")}
                 aria-label={t("dialog.close")}
-                className="press flex h-11 w-11 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container"
               >
                 <Icon name="arrow_back" size={20} />
-              </button>
+              </Button>
             </div>
             <dl className="divide-y divide-outline-variant">
               <DetailRow label={t("runDetails.bus")} value={busLabel} />

@@ -99,6 +99,8 @@ export interface AttendanceRow {
   grade: string;
   status: StudentStatus;
   bus: string;
+  /** The bus doc id, so views can group rows by bus (names can be renamed). */
+  busId: string;
   /** Which run segment the row belongs to — drives the dashboard filter. */
   runType: "morning" | "afternoon";
   morningBoarded: string;

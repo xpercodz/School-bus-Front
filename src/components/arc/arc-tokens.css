@@ -1,0 +1,121 @@
+/*
+  ── Arc UI token adapter ────────────────────────────────────────────────────
+  The components in `src/components/arc/` come from the Arc registry
+  (https://uiarc.dev, added with the shadcn CLI). They ship as CSS modules that
+  read a generic design surface — `--foreground`, `--surface`, `--accent`,
+  `--radius-control`, `--duration-*` — which this app does not have: ours is
+  Material-3-shaped and namespaced `--color-*`.
+
+  This block is the single translation layer between the two. It maps Arc's
+  vocabulary onto ours by REFERENCE, never by value, so:
+
+  - light/dark flips stay owned by `.dark` in globals.css — nothing here needs a
+    second dark block, because every mapping follows a token that already flips;
+  - a palette change lands in one place, not in 24 vendored CSS modules;
+  - the vendored files stay untouched, so re-running `shadcn add --overwrite`
+    cannot silently detach them from the brand.
+
+  Rule: do not edit the `.module.css` files under `components/arc/`. If an Arc
+  component needs different values, change the mapping below or pass a `color`
+  prop (the charts accept one).
+*/
+:root {
+  /* Surfaces. `--surface` is a panel/card; the page ground is `--background`. */
+  --background: var(--color-background);
+  --surface: var(--color-surface-container-lowest);
+  --surface-raised: var(--color-surface-container-lowest);
+  --surface-muted: var(--color-surface-container);
+  --presence-surface: var(--color-surface-container-lowest);
+  --user-menu-surface: var(--color-surface-container-lowest);
+
+  /* Ink. Running text uses full `--foreground`; `--text-muted` is for notes. */
+  --foreground: var(--color-on-surface);
+  --ink: var(--color-on-surface);
+  --text-secondary: var(--color-on-surface-variant);
+  --text-muted: var(--color-on-surface-variant);
+
+  /* Edges. `--border` is the quiet divider, `--border-strong` the control edge. */
+  --border: var(--color-outline-variant);
+  --border-subtle: var(--color-outline-variant);
+  --border-strong: var(--color-control-outline);
+
+  /* Accent — the one action colour. */
+  --accent: var(--color-primary);
+  --accent-foreground: var(--color-on-primary);
+  --accent-strong: var(--color-primary);
+  --accent-subtle: var(--color-primary-container);
+  --focus-ring: var(--color-primary);
+
+  /* Feedback. */
+  --danger: var(--color-error);
+  --warning: var(--color-waiting);
+  --success: var(--color-success);
+
+  /* Elevation — only what genuinely floats (menus, popovers, sheets). */
+  --shadow-resting: var(--shadow-card);
+  --shadow-floating: var(--shadow-float);
+
+  /* Type. One family, as the app has. */
+  --font-body: var(--font-sans);
+  --font-display: var(--font-sans);
+  --text-xs: 11px;
+  --text-sm: 12.5px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-2xl: 21px;
+  --text-3xl: 26px;
+  --leading-body: 1.5;
+  --leading-display: 1.08;
+  --tracking-body: 0;
+  --tracking-display: -0.01em;
+
+  /* Space scale (4px base). */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Shape. Control 10px, panel 14px — matches the app's rounded-lg/2xl steps. */
+  --radius-control: 10px;
+  --radius-panel: 14px;
+  --radius-pill: 999px;
+  --menu-radius: 14px;
+
+  /* Control heights. These are the app's own scale, not Arc's: `sm` is the
+     desktop control row (h-9 = 36px) and `md` is the 44px thumb floor the
+     mobile shell already enforces, so swapping a hand-rolled control for an Arc
+     one never changes the size of a touch target. */
+  --control-height-sm: 36px;
+  --control-height-md: 44px;
+  --control-height-lg: 48px;
+
+  /* Motion — reuses the app's closed duration/easing vocabulary. */
+  --duration-instant: 120ms;
+  --duration-fast: var(--t-hover);
+  --duration-standard: var(--t-ui);
+  --duration-considered: 480ms;
+  --duration-spring: 260ms;
+  --ease-enter: var(--ease-expo);
+  --ease-standard: var(--ease-out-soft);
+  --ease-spring: cubic-bezier(0.34, 1.2, 0.64, 1);
+
+  /* Chart series — the app's own four status tones, so a chart and the table
+     beside it never disagree about what "absent" looks like. */
+  --series-1: var(--color-primary);
+  --series-2: var(--color-success);
+  --series-3: var(--color-waiting);
+  --series-4: var(--color-error);
+}
+
+/*
+  Fields raise the edge. Arc uses one `--border` for panels, dividers and input
+  outlines; here a control's only affordance is its edge, so it needs the 3:1
+  WCAG 1.4.11 step (`--color-control-outline`) rather than the quiet divider.
+  Put `arc-field` on the element that wraps an Arc input or picker trigger.
+*/
+.arc-field {
+  --border: var(--color-control-outline);
+}

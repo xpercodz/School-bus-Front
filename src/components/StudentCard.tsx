@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { Student } from "@/data/students";
 import { STATUS_META } from "@/data/students";
 import { Icon } from "@/components/Icon";
+import { Button } from "@/components/arc/button/button";
 import { StudentActionSheet } from "@/components/StudentActionSheet";
 import { useLocale } from "@/lib/i18n/context";
 import { statusKey, translateDataLabel } from "@/lib/i18n/format";
@@ -52,6 +53,8 @@ export function StudentCard({
         </p>
       </div>
       <div className="flex flex-none items-center gap-2">
+        {/* A status chip, not an Arc Button: its tint is the roster's status
+            language (see the note above), and the Button module owns colour. */}
         <button
           type="button"
           disabled={disabled}
@@ -70,14 +73,16 @@ export function StudentCard({
           </span>
           {pillLabel}
         </button>
-        <button
+        <Button
           type="button"
           aria-label={t("mobile.moreOptionsForAria", { name: student.name })}
           onClick={() => setActionsOpen(true)}
-          className="press flex h-11 w-11 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container"
+          variant="ghost"
+          size="md"
+          icon
         >
           <Icon name="more_vert" size={20} />
-        </button>
+        </Button>
       </div>
 
       <StudentActionSheet

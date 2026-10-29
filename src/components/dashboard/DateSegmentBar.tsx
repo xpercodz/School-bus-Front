@@ -1,11 +1,9 @@
-import { useRef, useState } from "react";
-import { Icon } from "@/components/Icon";
+import { DatePicker } from "@/components/arc/date-picker/date-picker";
 import { SlideSegments } from "@/components/SlideSegments";
 import { RUN_SEGMENTS, type RunSegmentId } from "@/data/dashboard";
+import { fromDateValue, toDateValue } from "@/lib/date-value";
 import { useLocale } from "@/lib/i18n/context";
-import { formatDate } from "@/lib/i18n/format";
 import type { MessageKey } from "@/lib/i18n/types";
-import { DatePickerPopover } from "./DatePickerPopover";
 
 /** Run-segment label key per id. */
 const SEGMENT_LABEL_KEY: Record<RunSegmentId, MessageKey> = {
@@ -22,15 +20,20 @@ interface DateSegmentBarProps {
 }
 
 /**
- * Shared dashboard filter: the date picker chip + the Morning/Afternoon
+ * Shared dashboard filter: the date picker + the Morning/Afternoon
  * run-segment control. Used by the Live Map FilterBar and Reports (whose
  * toolbar launches the Analytics modal).
- * The segment control is a sliding-thumb segmented control (SlideSegments).
  *
- * The two labels are long ("Afternoon drop-off"), so the segment control gets
- * its own full-width line whenever the chip leaves it less than a comfortable
- * width — 320–390px phones — and sits beside the chip only when the labels
- * genuinely fit. Nothing clips and nothing pushes the page sideways.
+ * The date control is the Arc date picker in its compact `inline` form: it
+ * shrink-wraps in the filter row instead of taking a labelled form field's
+ * full width. Today is represented as "no date" (null), so a report keeps
+ * following the live day until the director picks one; the picker's Clear
+ * action therefore returns to today rather than to an empty field.
+ *
+ * The two segment labels are long ("Afternoon drop-off"), so the segment
+ * control gets its own full-width line whenever the date control leaves it
+ * less than a comfortable width — 320–390px phones — and sits beside it only
+ * when the labels genuinely fit.
  */
 export function DateSegmentBar({
   date,
@@ -39,33 +42,29 @@ export function DateSegmentBar({
   onSegmentChange,
 }: DateSegmentBarProps) {
   const { t, locale } = useLocale();
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const dateRootRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="flex w-full flex-wrap items-center gap-2 sm:gap-3">
-      {/* Date chip — opens the date picker popover. */}
-      <div ref={dateRootRef} className="relative flex-none">
-        <button
-          type="button"
-          onClick={() => setPickerOpen((open) => !open)}
-          aria-haspopup="dialog"
-          aria-expanded={pickerOpen}
-          aria-label={t("dashboard.selectDate")}
-          className="press flex h-11 items-center gap-2 rounded-md border border-dash-control-outline bg-dash-surface px-2.5 text-[12.5px] text-dash-on-surface hover:border-dash-outline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary sm:h-9"
-        >
-          <Icon name="calendar_today" size={16} variant="outlined" />
-          <span className="whitespace-nowrap">{date ? formatDate(date, locale) : t("dashboard.today")}</span>
-          <Icon name="arrow_drop_down" size={16} variant="outlined" />
-        </button>
-        <DatePickerPopover
-          open={pickerOpen}
-          value={date}
-          onSelect={onDateChange}
-          onClose={() => setPickerOpen(false)}
-          containRef={dateRootRef}
-        />
-      </div>
+      <DatePicker
+        className="flex-none"
+        inline
+        hideLabel
+        label={t("dashboard.selectDate")}
+        placeholder={t("dashboard.today")}
+        value={date ? toDateValue(date) : undefined}
+        onChange={(next) => onDateChange(next ? fromDateValue(next) : null)}
+        locale={locale === "ar" ? "ar-EG" : "en-US"}
+        labels={{
+          clear: t("dashboard.today"),
+          chooseDay: t("datePicker.chooseDay"),
+          selected: (formatted) => t("datePicker.selected", { date: formatted }),
+          calendar: (label) => t("datePicker.calendar", { label }),
+          today: t("dashboard.today"),
+          previousMonth: t("dashboard.prevMonth"),
+          nextMonth: t("dashboard.nextMonth"),
+          todayWithDate: (formatted) => t("datePicker.todayWithDate", { date: formatted }),
+        }}
+      />
 
       {/* Run type segmented control — sliding thumb. Full-width on phones. */}
       <div className="min-w-0 flex-1 basis-64 sm:basis-auto sm:flex-none">

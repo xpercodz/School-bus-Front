@@ -44,7 +44,7 @@ export function StudentList({ list, onViewHistory }: StudentListProps) {
       </div>
       <StudentListToolbar list={list} />
       <AttendanceTable rows={list.paged} onViewHistory={onViewHistory} />
-      <PaginationBar list={list} />
+      <PaginationBar pagination={list} />
     </section>
   );
 }

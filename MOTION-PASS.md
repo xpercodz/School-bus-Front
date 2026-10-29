@@ -254,6 +254,33 @@ Transition (160/320 ms) and glyph spin, but no longer spins on cold load.
   hooks, and the no-op `scroll-behavior: auto` under reduced motion.
 - Unrelated screens and the visual design were not touched.
 
+## Later additions (2026-10-29)
+
+Three motions landed after this pass. All follow the rules above — reduced motion
+keeps the final state, nothing is gated on an animation.
+
+- **The theme flip became a wipe.** `beginThemeFlip()` (`src/lib/theme.ts`) is
+  called from the theme provider with the element that was pressed; it puts that
+  control's centre and its distance to the far corner on `<html>` as
+  `--theme-x/--theme-y/--theme-r` and sets `data-theme-flip`. The
+  `::view-transition` keyframes in `globals.css` then clip the new theme in as a
+  circle out of the switch (480 ms, the house ease), with the old snapshot pinned
+  so the clip is the only thing that moves. Ported from `report-fe` on request, so
+  both products flip identically. Without the View Transitions API it is a plain
+  swap.
+- **The route line gained a travelling highlight** (`.route-flow`). One band of
+  light sweeps the *travelled* part of each live route line every 3.8 s, then the
+  line rests; each row is delayed by −0.42 s so the four lines read as a wave.
+  It is the app's only looping decoration, and the only motion here that is
+  purely decorative — it is therefore paint-only (`background-position` +
+  `drop-shadow` + `hue-rotate`, never layout), it runs only on `IN_PROGRESS`
+  rows, and it is removed entirely under `prefers-reduced-motion`.
+- **An issued access code arrives once** (`.code-issued` / `.code-scan` in
+  `globals.css`). The digits rise 5 px over 320 ms and one paint-only light band
+  crosses them over 620 ms, then everything rests; the node is keyed by the code,
+  so rotating a code replays it. Event-driven, never looping, and under reduced
+  motion the code is simply there with the band removed.
+
 ## Limits
 
 - There are no test credentials for the signed-in director screens. The

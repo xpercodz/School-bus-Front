@@ -1,4 +1,5 @@
 import { Dialog } from "@/components/Dialog";
+import { Button } from "@/components/arc/button/button";
 import { Icon } from "@/components/Icon";
 import { useToast } from "@/components/Toast";
 import type { Student } from "@/data/students";
@@ -53,33 +54,42 @@ export function StudentActionSheet({
         <h2 className="min-w-0 truncate text-[18px] font-semibold text-on-surface">
           {student.name}
         </h2>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="md"
+          icon
+          className="flex-none"
           onClick={onClose}
           aria-label={t("dialog.close")}
-          className="press flex h-11 w-11 flex-none items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high"
         >
           <Icon name="close" size={22} />
-        </button>
+        </Button>
       </header>
       <div className="flex flex-col gap-0.5 p-2 pb-3">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="md"
+          align="start"
+          className="w-full"
           onClick={handleViewHistory}
-          className="press flex h-12 items-center gap-3 rounded-lg px-3 text-[16px] text-on-surface hover:bg-surface-container"
         >
           <Icon name="history" size={22} />
           {t("kebab.viewHistory")}
-        </button>
+        </Button>
         {!disabled && (
-          <button
+          <Button
             type="button"
+            variant="danger"
+            size="md"
+            align="start"
+            className="arc-field w-full"
             onClick={handleMarkAbsent}
-            className="press flex h-12 items-center gap-3 rounded-lg px-3 text-[16px] text-error hover:bg-error-container/40"
           >
             <Icon name="cancel" size={22} />
             {t("kebab.markAbsent")}
-          </button>
+          </Button>
         )}
       </div>
     </Dialog>

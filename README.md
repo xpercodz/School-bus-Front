@@ -2,10 +2,13 @@
 
 A **Vite + React 19 + React Router** single-page app with two sections:
 
-- **`/` (mobile)** — the **Bus #04 • Morning Run** attendance roster: live status
-  (Boarded / Waiting / Dropped Off / Absent), search, and status filter tabs.
-- **`/dashboard` (desktop)** — the director's **School Transit Live Monitor**:
-  KPI cards, active fleet grid, and a live student attendance table.
+- **`/` (mobile)** — the driver's attendance roster for their own bus: run
+  summary, one row per student with a status control, an expanding search and
+  status filter tabs. The roster is live from Firestore and works offline.
+- **`/dashboard` (desktop)** — the director's screens: **Live monitor**
+  (manifest summary, routes, the live attendance table), **Reports** (printable
+  summary + CSV, with an Analytics modal), **Assignments** (driver ↔ bus,
+  student ↔ bus) and **Drivers** (accounts + access codes).
 
 Both sections are **live-only**: they read from **Firebase** (Auth + Firestore)
 and show a sign-in prompt when there's no session — there is no mock data.
@@ -28,6 +31,27 @@ The client SDK is the realtime and offline layer, and that is deliberate:
 Everything privileged (signing in, verifying a driver code, creating a driver,
 rotating a code) goes to the API instead, because those need the Firebase Admin
 SDK. The split is: **Firestore for realtime data, the API for privilege.**
+
+## UI system
+
+The controls come from the [Arc registry](https://uiarc.dev), copied into
+`src/components/arc/` and owned by this repo:
+
+- every action is the Arc **Button** (one variant grammar: primary / secondary /
+  ghost / danger, 36/44/48px, `icon` for squares);
+- every value selector is the Arc **dropdown menu**, every date field the Arc
+  **date picker**, every search an **expanding search** (an icon that unfolds
+  into the field), every paged list the Arc **pagination** strip;
+- the theme flip is the Arc **theme switch** over a view-transition circle that
+  opens from the switch, and the analytics chart is the Arc **bar** or **donut**
+  design over one measure;
+- light/dark come from `@theme` tokens in `src/globals.css`, mapped onto the
+  registry's own token names by `src/components/arc/arc-tokens.css`.
+
+The rules that keep this coherent — which control each role uses, what
+deliberately stays hand-rolled, and the two CSS-module traps — are in
+[`AGENTS.md`](./AGENTS.md), and every local edit to a vendored file is logged in
+[`src/components/arc/PATCHES.md`](./src/components/arc/PATCHES.md).
 
 ## Getting started
 

@@ -1,7 +1,10 @@
 import { Dialog } from "@/components/Dialog";
+import { Button } from "@/components/arc/button/button";
 import { Icon } from "@/components/Icon";
 import { staggerStyle } from "@/lib/motion";
 import { HistoryListSkeleton } from "@/components/RosterSkeleton";
+import { PaginationBar } from "@/components/dashboard/PaginationBar";
+import { useAutoLoadMore, usePageSlice } from "@/lib/use-page-slice";
 import { STATUS_META } from "@/data/students";
 import { useStudentHistory } from "@/lib/school-data";
 import { useLocale } from "@/lib/i18n/context";
@@ -32,6 +35,10 @@ export function StudentHistorySheet({
     studentName,
     open,
   );
+  // Ten rows a page over the loaded history, and the next cursor page is fetched
+  // as soon as the last loaded page is reached.
+  const historyPage = usePageSlice(entries, 10, studentName);
+  useAutoLoadMore(historyPage, { hasMore, loading, loadMore });
 
   return (
     <Dialog
@@ -47,14 +54,17 @@ export function StudentHistorySheet({
         <h2 className="min-w-0 truncate text-[18px] font-semibold text-on-surface">
           {t("history.title")}
         </h2>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="md"
+          icon
+          className="flex-none"
           onClick={onClose}
           aria-label={t("dialog.close")}
-          className="press flex h-11 w-11 flex-none items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high"
         >
           <Icon name="close" size={22} />
-        </button>
+        </Button>
       </header>
 
       <div className="px-4 pb-4 pt-1">
@@ -71,7 +81,7 @@ export function StudentHistorySheet({
           </div>
         ) : (
           <ul className="divide-y divide-outline-variant">
-            {entries.map((entry, index) => (
+            {historyPage.paged.map((entry, index) => (
               <li
                 key={entry.id}
                 className="stagger-in flex items-start justify-between gap-3 py-3.5"
@@ -102,19 +112,8 @@ export function StudentHistorySheet({
           </ul>
         )}
 
-        {hasMore && (
-          <button
-            type="button"
-            onClick={loadMore}
-            disabled={loading}
-            aria-busy={loading}
-            className="press mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-control-outline text-[15px] text-on-surface-variant hover:bg-surface-container disabled:opacity-50"
-          >
-            {loading && (
-              <Icon name="progress_activity" size={18} className="animate-spin" />
-            )}
-            {t("history.loadMore")}
-          </button>
+        {historyPage.totalPages > 1 && (
+          <PaginationBar pagination={historyPage} />
         )}
       </div>
     </Dialog>

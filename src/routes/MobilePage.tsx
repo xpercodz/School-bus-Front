@@ -5,6 +5,7 @@ import { countByStatus, STATUS_CYCLE } from "@/data/students";
 import { useRunRoster } from "@/lib/school-data";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import { BottomBar } from "@/components/BottomBar";
+import { Button } from "@/components/arc/button/button";
 import { Icon } from "@/components/Icon";
 import { RosterList } from "@/components/RosterList";
 import { RosterSkeleton } from "@/components/RosterSkeleton";
@@ -72,14 +73,16 @@ export default function Home() {
             title={t("mobile.signInPromptTitle")}
             body={t("mobile.signInPromptBody")}
             action={
-              <button
+              <Button
                 type="button"
                 onClick={() => navigate("/login")}
-                className="press mt-1 flex h-12 items-center gap-2 rounded-lg bg-on-surface px-5 text-[14px] font-medium text-surface hover:opacity-90"
+                variant="primary"
+                size="md"
+                className="mt-1"
               >
                 <Icon name="login" size={18} />
                 {t("mobile.signInAction")}
-              </button>
+              </Button>
             }
           />
         </main>

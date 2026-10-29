@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { Dialog } from "@/components/Dialog";
+import { Button } from "@/components/arc/button/button";
 import { Icon } from "@/components/Icon";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ThemeSwitchButton } from "@/components/ThemeSwitchButton";
 import { ProductMark } from "@/components/ProductMark";
 import { NAV_ITEMS, type NavItem } from "@/data/dashboard";
 import { useAuth } from "@/lib/auth";
@@ -125,14 +126,17 @@ function SidebarContent({
           </div>
         </div>
         {onClose && (
-          <button
+          <Button
             type="button"
             onClick={onClose}
             aria-label={t("dashboard.closeNavAria")}
-            className="flex h-9 w-9 flex-none items-center justify-center rounded text-dash-on-surface-variant hover:bg-dash-surface-container"
+            variant="ghost"
+            size="sm"
+            icon
+            className="flex-none"
           >
             <Icon name="close" size={20} variant="outlined" />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -177,31 +181,44 @@ function SidebarContent({
         })}
       </nav>
 
-      <div className="mt-6 flex flex-col gap-1 border-t border-dash-outline-variant pt-3">
-        <button
+      {/* Rail footer. Every row is start-aligned so its icon column lands under
+          the nav items' icons; centred labels here read as chips floating in the
+          rail. The language and theme controls share one row because they are
+          the same kind of control. */}
+      <div className="mt-6 flex flex-col gap-0.5 border-t border-dash-outline-variant pt-3">
+        <Button
           type="button"
           onClick={onOpenHelp}
-          className="press flex h-9 items-center gap-2.5 rounded-md px-2 text-[13px] text-dash-on-surface-variant hover:bg-dash-surface-container-low hover:text-dash-on-surface"
+          variant="ghost"
+          size="sm"
+          align="start"
+          className="w-full"
         >
           <Icon name="help" size={18} variant="outlined" className="text-dash-outline" />
           {t("help.title")}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={onOpenSettings}
-          className="press flex h-9 items-center gap-2.5 rounded-md px-2 text-[13px] text-dash-on-surface-variant hover:bg-dash-surface-container-low hover:text-dash-on-surface"
+          variant="ghost"
+          size="sm"
+          align="start"
+          className="w-full"
         >
           <Icon name="settings" size={18} variant="outlined" className="text-dash-outline" />
           {t("settings.title")}
-        </button>
-        <div className="mt-1 flex items-center gap-1 px-1">
+        </Button>
+        <div className="mt-1 flex items-center gap-1">
           <LanguageToggle variant="dash" />
-          <ThemeToggle variant="dash" />
+          <ThemeSwitchButton iconOnly />
         </div>
-        <button
+        <Button
           type="button"
           onClick={onOpenSettings}
-          className="press-none mt-2 flex min-w-0 items-center gap-2.5 rounded-lg p-2 text-start hover:bg-dash-surface-container-low"
+          variant="ghost"
+          size="md"
+          align="start"
+          className="mt-2 w-full"
           aria-label={t("settings.account")}
         >
           <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-dash-surface-container text-[11px] font-semibold text-dash-on-surface">
@@ -215,7 +232,7 @@ function SidebarContent({
               {profile.role ? t(profile.role === "director" ? "role.director" : "role.staff") : ""}
             </span>
           </span>
-        </button>
+        </Button>
       </div>
     </div>
   );

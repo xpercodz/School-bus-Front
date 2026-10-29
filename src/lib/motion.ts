@@ -52,6 +52,8 @@ const ENTRANCE_ANIMATIONS = new Set([
   "icon-pop",
   "theme-spin",
   "grow-x",
+  "code-issue",
+  "code-scan",
   "panel-in",
   "sheet-in",
   "toast-in",

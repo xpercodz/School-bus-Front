@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Button } from "@/components/arc/button/button";
 import { prefersReducedMotion } from "@/lib/theme";
 import { Icon } from "@/components/Icon";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -199,14 +200,17 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
           <h2 className="min-w-0 truncate text-[17px] font-semibold text-dash-on-surface">
             {t("settings.title")}
           </h2>
-          <button
+          <Button
             type="button"
             onClick={onClose}
             aria-label={t("dialog.close")}
-            className="press flex h-11 w-11 flex-none items-center justify-center rounded-full text-dash-on-surface-variant hover:bg-dash-surface-container-high"
+            variant="ghost"
+            size="md"
+            icon
+            className="flex-none"
           >
             <Icon name="close" size={22} variant="outlined" />
-          </button>
+          </Button>
         </div>
 
         {/* Body */}
@@ -252,14 +256,16 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
               <LanguageToggle variant="dash" />
             </section>
 
-            <button
+            <Button
               type="button"
               onClick={() => setConfirmSignOut(true)}
-              className="press flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-dash-error/40 text-[14px] font-medium text-dash-error hover:bg-dash-error-container/50"
+              variant="danger"
+              size="md"
+              className="arc-field w-full"
             >
               <Icon name="logout" size={18} variant="outlined" />
               {t("settings.signOut")}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

@@ -11,6 +11,10 @@ import {
   type AdminStudent,
 } from "@/lib/school-admin";
 import { AssignmentsSkeleton } from "@/components/dashboard/DashboardSkeletons";
+import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
+import { PaginationBar } from "@/components/dashboard/PaginationBar";
+import { useAutoLoadMore, usePageSlice } from "@/lib/use-page-slice";
+import { ExpandingSearch } from "@/components/arc/expanding-search/expanding-search";
 import { Icon } from "@/components/Icon";
 import { staggerStyle } from "@/lib/motion";
 import { useLocale } from "@/lib/i18n/context";
@@ -33,7 +37,7 @@ export default function AssignmentsPage() {
   const { showToast } = useToast();
 
   const { buses, loading: busesLoading } = useBuses();
-  const staff = useStaffUsers();
+  const { staff } = useStaffUsers();
   const students = useStudentsPaginated();
   // Bump after a student write so the per-bus counts refresh.
   const [studentsVersion, setStudentsVersion] = useState(0);
@@ -81,6 +85,10 @@ export default function AssignmentsPage() {
     if (!q) return students.students;
     return students.students.filter((s) => s.name.toLowerCase().includes(q));
   }, [students.students, students.search]);
+  // The rows are a cursor page, not the whole collection: page what is loaded
+  // and fetch the next page when the reader reaches the end of it.
+  const studentPage = usePageSlice(filteredStudents, 10, students.search);
+  useAutoLoadMore(studentPage, students);
 
   return (
     <>
@@ -139,19 +147,25 @@ export default function AssignmentsPage() {
                             <p className="mt-0.5 break-words text-[12px] leading-4 text-dash-on-surface-variant">
                               {driver ? driver.displayName : t("dashboard.noDriver")}
                             </p>
-                            <select
-                              aria-label={`${t("assignments.th.driver")} — ${busName}`}
-                              value={bus.driverUid ?? ""}
-                              onChange={(e) => handleDriverChange(bus.id, e.target.value)}
-                              className="mt-2 h-11 w-full rounded-lg border border-dash-control-outline bg-dash-surface px-2.5 text-[16px] text-dash-on-surface focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary"
-                            >
-                              <option value="">{t("assignments.unassigned")}</option>
-                              {staff.map((s) => (
-                                <option key={s.uid} value={s.uid}>
-                                  {s.displayName}
-                                </option>
-                              ))}
-                            </select>
+                            <DropdownMenu
+                              ariaLabel={`${t("assignments.th.driver")} — ${busName}`}
+                              label={driver ? driver.displayName : t("assignments.unassigned")}
+                              align="start"
+                              matchTriggerWidth
+                              triggerClassName="arc-field mt-2 w-full"
+                              items={[
+                                {
+                                  label: t("assignments.unassigned"),
+                                  checked: !bus.driverUid,
+                                  onSelect: () => handleDriverChange(bus.id, ""),
+                                },
+                                ...staff.map((s) => ({
+                                  label: s.displayName,
+                                  checked: s.uid === bus.driverUid,
+                                  onSelect: () => handleDriverChange(bus.id, s.uid),
+                                })),
+                              ]}
+                            />
                           </li>
                         );
                       })}
@@ -167,31 +181,39 @@ export default function AssignmentsPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-dash-outline-variant text-dash-body-sm text-dash-on-surface">
-                          {buses.map((bus) => (
+                          {buses.map((bus) => {
+                            const driver = staff.find((s) => s.uid === bus.driverUid);
+                            return (
                             <tr key={bus.id} className="hover:bg-dash-surface-container-low">
                               <td className="px-4 py-3 font-medium">
                                 {translateDataLabel(bus.name, locale, t)}
                               </td>
                               <td className="px-4 py-3">
-                                <select
-                                  aria-label={`${t("assignments.th.driver")} — ${translateDataLabel(bus.name, locale, t)}`}
-                                  value={bus.driverUid ?? ""}
-                                  onChange={(e) => handleDriverChange(bus.id, e.target.value)}
-                                  className="h-9 rounded-lg border border-dash-control-outline bg-dash-surface px-2 text-dash-body-sm text-dash-on-surface focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary"
-                                >
-                                  <option value="">{t("assignments.unassigned")}</option>
-                                  {staff.map((s) => (
-                                    <option key={s.uid} value={s.uid}>
-                                      {s.displayName}
-                                    </option>
-                                  ))}
-                                </select>
+                                <DropdownMenu
+                                  ariaLabel={`${t("assignments.th.driver")} — ${translateDataLabel(bus.name, locale, t)}`}
+                                  label={driver ? driver.displayName : t("assignments.unassigned")}
+                                  align="start"
+                                  triggerClassName="arc-field"
+                                  items={[
+                                    {
+                                      label: t("assignments.unassigned"),
+                                      checked: !bus.driverUid,
+                                      onSelect: () => handleDriverChange(bus.id, ""),
+                                    },
+                                    ...staff.map((s) => ({
+                                      label: s.displayName,
+                                      checked: s.uid === bus.driverUid,
+                                      onSelect: () => handleDriverChange(bus.id, s.uid),
+                                    })),
+                                  ]}
+                                />
                               </td>
                               <td className="px-4 py-3 tabular-nums">
                                 {digits(counts[bus.id] ?? 0)}
                               </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -206,20 +228,14 @@ export default function AssignmentsPage() {
                 <Icon name="school" size={18} variant="outlined" className="flex-none" />,
                 t("assignments.students"),
               )}
-              <div className="relative w-full sm:w-64">
-                <Icon
-                  name="search"
-                  size={18}
-                  variant="outlined"
-                  className="absolute start-3 top-1/2 -translate-y-1/2 text-dash-outline"
-                />
-                <input
-                  aria-label={t("studentList.searchAria")}
-                  type="text"
-                  value={students.search}
-                  onChange={(e) => students.setSearch(e.target.value)}
+              <div className="w-full sm:w-64">
+                <ExpandingSearch
+                  anchor="start"
+                  label={t("studentList.searchAria")}
                   placeholder={t("studentList.searchPlaceholder")}
-                  className="h-11 w-full rounded-lg border border-dash-control-outline bg-dash-surface ps-9 pe-3 text-[16px] text-dash-on-surface placeholder:text-dash-outline focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary sm:h-10 sm:text-dash-body-sm"
+                  clearLabel={t("mobile.clearSearchAria")}
+                  value={students.search}
+                  onValueChange={students.setSearch}
                 />
               </div>
 
@@ -241,11 +257,13 @@ export default function AssignmentsPage() {
                   <div className="overflow-hidden rounded-lg border border-dash-outline-variant bg-dash-surface">
                     {/* Phone: one card per student. */}
                     <ul className="divide-y divide-dash-outline-variant md:hidden">
-                      {filteredStudents.map((student, index) => (
+                      {studentPage.paged.map((student, index) => {
+                        const assignedBus = buses.find((b) => b.id === student.busId);
+                        return (
                         <li
                           key={student.id}
                           className="stagger-in px-4 py-3.5"
-                          style={staggerStyle(index, filteredStudents.length)}
+                          style={staggerStyle(index, studentPage.paged.length)}
                         >
                           <div className="flex items-baseline justify-between gap-3">
                             <p className="min-w-0 break-words text-[13.5px] font-medium leading-5 text-dash-on-surface">
@@ -255,21 +273,28 @@ export default function AssignmentsPage() {
                               {translateDataLabel(student.grade, locale, t)}
                             </p>
                           </div>
-                          <select
-                            aria-label={`${t("assignments.th.currentBus")} — ${student.name}`}
-                            value={student.busId ?? ""}
-                            onChange={(e) => handleStudentBusChange(student, e.target.value)}
-                            className="mt-2 h-11 w-full rounded-lg border border-dash-control-outline bg-dash-surface px-2.5 text-[16px] text-dash-on-surface focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary"
-                          >
-                            <option value="">{t("assignments.noBus")}</option>
-                            {buses.map((bus) => (
-                              <option key={bus.id} value={bus.id}>
-                                {translateDataLabel(bus.name, locale, t)}
-                              </option>
-                            ))}
-                          </select>
+                          <DropdownMenu
+                            ariaLabel={`${t("assignments.th.currentBus")} — ${student.name}`}
+                            label={assignedBus ? translateDataLabel(assignedBus.name, locale, t) : t("assignments.noBus")}
+                            align="start"
+                            matchTriggerWidth
+                            triggerClassName="arc-field mt-2 w-full"
+                            items={[
+                              {
+                                label: t("assignments.noBus"),
+                                checked: !student.busId,
+                                onSelect: () => handleStudentBusChange(student, ""),
+                              },
+                              ...buses.map((bus) => ({
+                                label: translateDataLabel(bus.name, locale, t),
+                                checked: bus.id === student.busId,
+                                onSelect: () => handleStudentBusChange(student, bus.id),
+                              })),
+                            ]}
+                          />
                         </li>
-                      ))}
+                        );
+                      })}
                     </ul>
 
                     {/* Tablet / desktop: the table. */}
@@ -283,43 +308,41 @@ export default function AssignmentsPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-dash-outline-variant text-dash-body-sm text-dash-on-surface">
-                          {filteredStudents.map((student) => (
+                          {studentPage.paged.map((student) => {
+                            const assignedBus = buses.find((b) => b.id === student.busId);
+                            return (
                             <tr key={student.id} className="hover:bg-dash-surface-container-low">
                               <td className="px-4 py-3 font-medium">{student.name}</td>
                               <td className="px-4 py-3">{translateDataLabel(student.grade, locale, t)}</td>
                               <td className="px-4 py-3">
-                                <select
-                                  aria-label={`${t("assignments.th.currentBus")} — ${student.name}`}
-                                  value={student.busId ?? ""}
-                                  onChange={(e) => handleStudentBusChange(student, e.target.value)}
-                                  className="h-9 rounded-lg border border-dash-control-outline bg-dash-surface px-2 text-dash-body-sm text-dash-on-surface focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary"
-                                >
-                                  <option value="">{t("assignments.noBus")}</option>
-                                  {buses.map((bus) => (
-                                    <option key={bus.id} value={bus.id}>
-                                      {translateDataLabel(bus.name, locale, t)}
-                                    </option>
-                                  ))}
-                                </select>
+                                <DropdownMenu
+                                  ariaLabel={`${t("assignments.th.currentBus")} — ${student.name}`}
+                                  label={assignedBus ? translateDataLabel(assignedBus.name, locale, t) : t("assignments.noBus")}
+                                  align="start"
+                                  triggerClassName="arc-field"
+                                  items={[
+                                    {
+                                      label: t("assignments.noBus"),
+                                      checked: !student.busId,
+                                      onSelect: () => handleStudentBusChange(student, ""),
+                                    },
+                                    ...buses.map((bus) => ({
+                                      label: translateDataLabel(bus.name, locale, t),
+                                      checked: bus.id === student.busId,
+                                      onSelect: () => handleStudentBusChange(student, bus.id),
+                                    })),
+                                  ]}
+                                />
                               </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
                   </div>
-                  {students.hasMore && (
-                    <button
-                      type="button"
-                      onClick={students.loadMore}
-                      disabled={students.loading}
-                      className="press flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-dash-control-outline bg-dash-surface px-4 text-dash-label-md text-dash-primary hover:bg-dash-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary disabled:opacity-50 sm:w-auto sm:self-start sm:rounded-full"
-                    >
-                      {students.loading && (
-                        <Icon name="progress_activity" size={16} variant="outlined" className="animate-spin" />
-                      )}
-                      {t("assignments.loadMore")}
-                    </button>
+                  {studentPage.totalPages > 1 && (
+                    <PaginationBar pagination={studentPage} />
                   )}
                 </>
               )}

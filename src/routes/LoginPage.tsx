@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signInWithCustomToken } from "firebase/auth";
 import { auth, isFirebaseConfigured } from "@/lib/firebase";
@@ -7,9 +7,11 @@ import { useAuth } from "@/lib/auth";
 import { useUserProfile } from "@/lib/user-profile";
 import { useLocale } from "@/lib/i18n/context";
 import { Icon } from "@/components/Icon";
+import { Button } from "@/components/arc/button/button";
 import { ProductMark } from "@/components/ProductMark";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { OtpInput } from "@/components/arc/otp-input/otp-input";
+import { ThemeSwitchButton } from "@/components/ThemeSwitchButton";
 import { SlideSegments } from "@/components/SlideSegments";
 
 /** Driver access-code lockout: 5 wrong codes → 15-minute block (localStorage). */
@@ -41,6 +43,23 @@ function normalizeDigits(value: string): string {
     .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0));
 }
 
+/**
+ * The verified seal, drawn with our own glyph rather than a `verified` icon: the
+ * self-hosted Material Symbols subset has no such glyph and a missing one
+ * renders its literal name. It arrives with `pop-in`, and the `aria-live` row it
+ * sits in is what tells a screen-reader user the code was accepted.
+ */
+function VerifiedSeal({ label }: { label: string }) {
+  return (
+    <span className="pop-in inline-flex items-center gap-2 rounded-full bg-success/10 py-1 pe-3 ps-1">
+      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-success text-surface-container-lowest">
+        <Icon name="check" size={16} />
+      </span>
+      <span className="text-[12.5px] font-medium text-success">{label}</span>
+    </span>
+  );
+}
+
 type Mode = "driver" | "director";
 
 export default function LoginPage() {
@@ -52,6 +71,9 @@ export default function LoginPage() {
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState<string | null>(null);
   const [codeSubmitting, setCodeSubmitting] = useState(false);
+  // The API has accepted the code and Firebase is signing in. The page redirects
+  // from the auth effect below, so this state exists only to show the seal.
+  const [codeVerified, setCodeVerified] = useState(false);
   const [lockout, setLockout] = useState<Lockout>(readLockout);
   // Rendered "now" for lockout expiry — ticking so the locked message clears and
   // the button re-enables without a render-time Date.now() (purity rule).
@@ -63,11 +85,28 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   // Already signed in → land on the right area for the role.
+  //
+  // A driver who just entered their code is held here for ~0.6s so the verified
+  // seal is actually seen: the custom token resolves in the same tick as the
+  // success state, so without the hold the badge flashes for one frame. The
+  // timer is armed ONCE (ref-guarded) rather than re-armed on every dependency
+  // change — `profileLoading` can flip while the profile snapshot lands, and a
+  // timer that restarts on each flip can be cleared forever, leaving the driver
+  // stuck on "Signing you in…". That is exactly the bug this guards against.
+  const redirectTimer = useRef<number | null>(null);
   useEffect(() => {
-    if (status === "ready" && user && !profileLoading) {
-      navigate(profile.role === "director" ? "/dashboard" : "/", { replace: true });
+    if (status !== "ready" || !user || profileLoading) return;
+    const target = profile.role === "director" ? "/dashboard" : "/";
+    if (!codeVerified) {
+      navigate(target, { replace: true });
+      return;
     }
-  }, [status, user, profileLoading, profile.role, navigate]);
+    if (redirectTimer.current !== null) return;
+    redirectTimer.current = window.setTimeout(() => {
+      redirectTimer.current = null;
+      navigate(target, { replace: true });
+    }, 600);
+  }, [status, user, profileLoading, profile.role, navigate, codeVerified]);
 
   // Tick the lockout clock so an active block is reflected without Date.now()
   // in render (30s granularity is plenty for a 15-minute block).
@@ -78,32 +117,61 @@ export default function LoginPage() {
     return () => window.clearInterval(id);
   }, []);
 
-  async function handleCodeSubmit(event: FormEvent) {
-    event.preventDefault();
-    if (!auth || codeSubmitting || lockout.until > Date.now()) return;
-    if (!/^\d{6}$/.test(code)) {
-      setCodeError(t("login.codeError"));
-      return;
-    }
-    setCodeSubmitting(true);
-    setCodeError(null);
-    try {
-      const token = await verifyDriverCode(code);
-      await signInWithCustomToken(auth, token);
-      window.localStorage.removeItem(LOCKOUT_KEY);
-      setLockout({ fails: 0, until: 0 });
-      // The role-based redirect above lands the user on / or /dashboard.
-    } catch {
-      const next: Lockout = lockout.fails + 1 >= MAX_FAILS
-        ? { fails: 0, until: Date.now() + LOCKOUT_MS }
-        : { fails: lockout.fails + 1, until: lockout.until };
-      window.localStorage.setItem(LOCKOUT_KEY, JSON.stringify(next));
-      setLockout(next);
-      setCodeError(t("login.codeError"));
-    } finally {
-      setCodeSubmitting(false);
-    }
-  }
+  /**
+   * Verify one code. Called automatically the moment the sixth digit lands —
+   * there is no submit button — and again for a retry, so it takes the value
+   * rather than reading state.
+   *
+   * A failure clears the field: the auto-submit effect fires on "six digits are
+   * present", and leaving a rejected code in place would re-submit it forever.
+   */
+  const submitCode = useCallback(
+    async (value: string) => {
+      if (!auth || codeSubmitting || codeVerified) return;
+      if (lockout.until > Date.now()) return;
+      if (!/^\d{6}$/.test(value)) {
+        setCodeError(t("login.codeError"));
+        return;
+      }
+      setCodeSubmitting(true);
+      setCodeError(null);
+      try {
+        const token = await verifyDriverCode(value);
+        await signInWithCustomToken(auth, token);
+        window.localStorage.removeItem(LOCKOUT_KEY);
+        setLockout({ fails: 0, until: 0 });
+        setCodeVerified(true);
+        // The role-based redirect above lands the user on / or /dashboard.
+      } catch (err) {
+        const next: Lockout =
+          lockout.fails + 1 >= MAX_FAILS
+            ? { fails: 0, until: Date.now() + LOCKOUT_MS }
+            : { fails: lockout.fails + 1, until: lockout.until };
+        window.localStorage.setItem(LOCKOUT_KEY, JSON.stringify(next));
+        setLockout(next);
+        setCodeError(
+          err instanceof ApiError && (err.code === "too_many_attempts" || err.code === "rate_limited")
+            ? t("login.tooManyAttempts")
+            : err instanceof ApiError && err.code === "network_error"
+              ? t("login.networkError")
+              : err instanceof ApiError && err.status >= 500
+                ? t("login.serverError")
+                : t("login.codeError"),
+        );
+        setCode("");
+      } finally {
+        setCodeSubmitting(false);
+      }
+    },
+    [codeSubmitting, codeVerified, lockout.fails, lockout.until, t],
+  );
+
+  // Auto-submit. Six digits is the whole interaction: no button to press.
+  useEffect(() => {
+    if (mode !== "driver" || code.length !== 6) return;
+    if (codeSubmitting || codeVerified) return;
+    void submitCode(code);
+  }, [code, mode, codeSubmitting, codeVerified, submitCode]);
 
   /**
    * Director sign-in goes through the API: the server checks the email/password
@@ -112,6 +180,9 @@ export default function LoginPage() {
    * Director tab is rejected with a clear error instead of silently landing on
    * the driver app.
    */
+  /** The 15-minute block is active right now. */
+  const codeLocked = now > 0 && lockout.until > now;
+
   async function handleDirectorSubmit(event: FormEvent) {
     event.preventDefault();
     if (!auth || submitting) return;
@@ -139,7 +210,7 @@ export default function LoginPage() {
     return (
       <div className="flex min-h-dvh flex-col bg-surface px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
         <div className="flex justify-end gap-1">
-          <ThemeToggle />
+          <ThemeSwitchButton iconOnly />
           <LanguageToggle />
         </div>
         <div className="page-enter m-auto w-full max-w-[400px] rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 text-center sm:p-8">
@@ -162,7 +233,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-surface px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
       <div className="flex justify-end gap-1">
-        <ThemeToggle />
+        <ThemeSwitchButton iconOnly />
         <LanguageToggle />
       </div>
       <div className="page-enter m-auto w-full max-w-[400px] rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 sm:p-8">
@@ -188,60 +259,58 @@ export default function LoginPage() {
         </div>
 
         {mode === "driver" ? (
-          <form onSubmit={handleCodeSubmit} className="mt-6 flex flex-col gap-4">
-            <div>
-              <label htmlFor="code" className="text-[13px] font-medium text-on-surface">
-                {t("login.code")}
-              </label>
-              <input
-                id="code"
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                autoCorrect="off"
-                spellCheck={false}
-                enterKeyHint="done"
-                maxLength={6}
-                required
+          <div className="mt-6 flex flex-col gap-4">
+            {/* Six boxes, one ring gliding between them, and no submit button:
+                the sixth digit is the submission. The library renders the field
+                label, the hint and the error, so they are passed as props and
+                translated here. */}
+            <div className={codeLocked ? "pointer-events-none opacity-60" : undefined}>
+              <OtpInput
+                label={t("login.code")}
+                description={t("login.driverHint")}
+                error={codeLocked ? undefined : (codeError ?? undefined)}
                 value={code}
-                onChange={(e) => setCode(normalizeDigits(e.target.value).replace(/\D/g, ""))}
-                className="mt-1.5 h-12 w-full rounded-lg border border-control-outline bg-surface-container-lowest px-3 text-center text-[20px] tracking-[0.35em] tabular-nums text-on-surface outline-none transition-[border-color,box-shadow] duration-[var(--t-hover)] placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/35"
-                placeholder={t("login.codePlaceholder")}
-                aria-describedby="code-hint"
+                onChange={setCode}
+                sanitize={normalizeDigits}
+                digitLabel={(index, total) =>
+                  t("login.codeDigitAria", { label: t("login.code"), index: index + 1, total })
+                }
+                disabled={codeSubmitting || codeVerified}
+                inputMode="numeric"
+                autoFocus
               />
             </div>
 
-            <p id="code-hint" className="text-body-md text-on-surface-variant">
-              {t("login.driverHint")}
-            </p>
-
-            {now > 0 && lockout.until > now ? (
+            {codeLocked ? (
               <p role="alert" className="text-body-md text-error">
                 {t("login.codeLocked", {
                   minutes: String(Math.max(1, Math.ceil((lockout.until - now) / 60000))),
                 })}
               </p>
             ) : (
-              codeError && (
-                <p role="alert" className="text-body-md text-error">
-                  {codeError}
-                </p>
-              )
+              <div className="flex min-h-8 items-center gap-2 text-[12.5px] text-on-surface-variant" aria-live="polite">
+                {codeVerified ? (
+                  <>
+                    <VerifiedSeal label={t("login.codeVerified")} />
+                    <span>{t("login.codeVerifiedHint")}</span>
+                  </>
+                ) : codeSubmitting ? (
+                  <>
+                    <Icon name="progress_activity" size={16} className="animate-spin" />
+                    {t("login.codeChecking")}
+                  </>
+                ) : (
+                  <span>
+                    {t("login.codeDigitAria", {
+                      label: t("login.code"),
+                      index: Math.min(code.length + 1, 6),
+                      total: 6,
+                    })}
+                  </span>
+                )}
+              </div>
             )}
-
-            <button
-              type="submit"
-              disabled={codeSubmitting || (now > 0 && lockout.until > now)}
-              className="press flex h-12 items-center justify-center gap-2 rounded-lg bg-on-surface text-[14.5px] font-medium text-surface hover:opacity-90 disabled:opacity-50"
-            >
-              {codeSubmitting ? (
-                <Icon name="progress_activity" className="animate-spin" />
-              ) : (
-                <Icon name="login" />
-              )}
-              {t("login.signIn")}
-            </button>
-          </form>
+          </div>
         ) : (
           <form onSubmit={handleDirectorSubmit} className="mt-6 flex flex-col gap-4">
             <div>
@@ -281,17 +350,22 @@ export default function LoginPage() {
                   className="mt-1.5 h-12 w-full rounded-lg border border-control-outline bg-surface-container-lowest ps-3 pe-12 text-[16px] text-on-surface outline-none transition-[border-color,box-shadow] duration-[var(--t-hover)] placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/35 sm:text-[15px]"
                   placeholder={t("login.passwordPlaceholder")}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((shown) => !shown)}
-                  aria-label={t(showPassword ? "login.hidePassword" : "login.showPassword")}
-                  aria-pressed={showPassword}
-                  className="press absolute end-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container"
-                >
-                  <span key={showPassword ? "hide" : "show"} className="icon-pop flex items-center">
-                    <Icon name={showPassword ? "visibility_off" : "visibility"} size={20} />
-                  </span>
-                </button>
+                {/* The wrapper owns the overlay placement: the Button module sets position: relative. */}
+                <div className="absolute end-1 top-1/2 -translate-y-1/2">
+                  <Button
+                    type="button"
+                    onClick={() => setShowPassword((shown) => !shown)}
+                    aria-label={t(showPassword ? "login.hidePassword" : "login.showPassword")}
+                    aria-pressed={showPassword}
+                    variant="ghost"
+                    size="md"
+                    icon
+                  >
+                    <span key={showPassword ? "hide" : "show"} className="icon-pop flex items-center">
+                      <Icon name={showPassword ? "visibility_off" : "visibility"} size={20} />
+                    </span>
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -301,18 +375,16 @@ export default function LoginPage() {
               </p>
             )}
 
-            <button
+            <Button
               type="submit"
               disabled={submitting}
-              className="press flex h-12 items-center justify-center gap-2 rounded-lg bg-on-surface text-[14.5px] font-medium text-surface hover:opacity-90 disabled:opacity-50"
+              loading={submitting}
+              variant="primary"
+              size="md"
             >
-              {submitting ? (
-                <Icon name="progress_activity" className="animate-spin" />
-              ) : (
-                <Icon name="login" />
-              )}
+              <Icon name="login" />
               {t("login.signIn")}
-            </button>
+            </Button>
           </form>
         )}
       </div>

@@ -162,6 +162,11 @@ export const messages = {
   "dashboard.selectDate": "Select a date",
   "dashboard.prevMonth": "Previous month",
   "dashboard.nextMonth": "Next month",
+  "datePicker.clear": "Clear",
+  "datePicker.chooseDay": "Choose a day",
+  "datePicker.selected": "Selected {date}",
+  "datePicker.calendar": "{label} calendar",
+  "datePicker.todayWithDate": "Today, {date}",
   "dashboard.liveUnavailable": "Live data unavailable — sign in to continue.",
   "dashboard.notificationsAria": "Notifications",
   "dashboard.helpAria": "Help",
@@ -184,6 +189,24 @@ export const messages = {
   "dashboard.scope": "{school} · {date} · {segment}",
   "dashboard.addRun": "Dispatch vehicle",
 
+  // Bus overview (a fleet row opened)
+  "fleet.title": "{bus} overview",
+  "fleet.titleNoBus": "Bus overview",
+  "fleet.openAria": "Open overview for {bus}",
+  "fleet.sectionOnboard": "On board",
+  "fleet.sectionDropped": "Dropped off",
+  "fleet.sectionWaiting": "Still waiting",
+  "fleet.sectionAbsent": "Absent",
+  "fleet.waitingHint": "Not boarded yet",
+  "fleet.absentHint": "Absent for this run",
+  "fleet.emptyTitle": "No students on this run",
+  "fleet.emptyBody": "No attendance has been recorded on this bus for this run yet.",
+  "fleet.searchAria": "Search students on this bus",
+  "fleet.searchPlaceholder": "Search students",
+  "fleet.searchMatches": "{shown} of {total} students",
+  "fleet.searchEmptyTitle": "No students match this search",
+  "fleet.searchEmptyBody": "Try another name, or clear the search.",
+
   // Student list (dashboard) — search, filters, and pagination
   "studentList.searchAria": "Search students",
   "studentList.searchPlaceholder": "Search student name…",
@@ -191,10 +214,13 @@ export const messages = {
   "studentList.gradeAria": "Filter by grade",
   "studentList.allGrades": "All grades",
   "studentList.clear": "Clear filters",
-  "studentList.showing": "Showing {start}–{end} of {total}",
+  "pagination.showing": "Showing {start}–{end} of {total}",
   "studentList.previousAria": "Previous page",
   "studentList.nextAria": "Next page",
-  "studentList.pageAria": "Page {page} of {pages}",
+  "pagination.navAria": "Pagination",
+  "pagination.previous": "Previous page",
+  "pagination.next": "Next page",
+  "pagination.pageNumber": "Page {page}",
 
   // KPI cells — labels are nouns, footers are computed captions
   "kpi.total.label": "Assigned",
@@ -227,7 +253,6 @@ export const messages = {
   "history.title": "Attendance History",
   "history.loading": "Loading history…",
   "history.empty": "No attendance history for this student",
-  "history.loadMore": "Load more",
   "history.col.date": "Date",
   "history.col.run": "Run",
   "history.col.status": "Status",
@@ -279,14 +304,14 @@ export const messages = {
   // Analytics (modal opened from Reports)
   "analytics.title": "Attendance Analytics",
   "analytics.perBus": "Per-Bus Comparison",
-  "analytics.trendTitle": "Multi-day Trend",
-  "analytics.trendHint": "Daily totals across a date range",
-  "analytics.startDate": "Start date",
-  "analytics.endDate": "End date",
-  "analytics.trendLoading": "Loading trend…",
-  "analytics.trendEmpty": "No attendance data in this range",
-  "analytics.rangeTooLong": "The date range is too long — maximum 31 days",
-  "analytics.rangeInvalid": "Start date must be before end date",
+  "analytics.chartDesign": "Chart design",
+  "analytics.chartBar": "Bars",
+  "analytics.chartDonut": "Donut",
+  "analytics.chartCompleted": "Completed trips",
+  "analytics.studentsUnit": "students",
+  "analytics.fleetAverage": "Fleet average",
+  "analytics.averageShort": "Avg",
+  "analytics.noData": "No data",
   "analytics.emptyTitle": "No attendance data",
   "analytics.emptySubtitle": "No records exist for this date and run segment yet.",
 
@@ -320,7 +345,6 @@ export const messages = {
   "assignments.studentsEmpty": "No students found",
   "assignments.studentsEmptyHint": "Adjust your search or load more students.",
   "assignments.loadingStudents": "Loading students…",
-  "assignments.loadMore": "Load more",
   "assignments.driverAssigned": "Driver assigned",
   "assignments.driverCleared": "Driver unassigned",
   "assignments.studentMoved": "Student bus updated",
@@ -347,12 +371,20 @@ export const messages = {
     "This gives {name} a new code. The old code will stop working.",
   "drivers.empty": "No drivers yet",
   "drivers.emptyHint": "Add a driver to generate their access code.",
+  "drivers.searchAria": "Search drivers",
+  "drivers.searchPlaceholder": "Search by driver name…",
+  "drivers.searchEmptyTitle": "No drivers match this search",
+  "drivers.searchEmptyBody": "Try another name, or clear the search.",
   "drivers.newCodeTitle": "Driver created",
   "drivers.newCodeBody": "Access code for {name}:",
+  "drivers.codeOnceHint": "Copy it now — this code won't be shown again.",
   "drivers.copied": "Code copied",
   "drivers.copyError": "Couldn't copy the code",
   "drivers.createdToast": "Driver account created",
-  "drivers.regeneratedToast": "Access code updated",
+  "drivers.codeIssuedToast": "New code for {name} — copy it now",
+  "drivers.generateError": "Couldn't generate a code. Try again.",
+  "drivers.generateOffline":
+    "Can't reach the school server. Check the connection and try again.",
   "drivers.createError": "Couldn't create the driver. Please try again.",
 
   // Common
@@ -366,6 +398,15 @@ export const messages = {
   "theme.toggleToDark": "Switch to dark theme",
   "theme.toggleToLight": "Switch to light theme",
   "common.loading": "Loading",
+
+  // Driver access code — six-box input, verified state
+  "login.codeDigitAria": "{label} — digit {index} of {total}",
+  "login.codeChecking": "Checking the code…",
+  "login.codeVerified": "Code verified",
+  "login.codeVerifiedHint": "Signing you in…",
+  "login.networkError":
+    "Can't reach the school server. Check the connection and try again.",
+  "login.serverError": "The school server had a problem. Try again in a moment."
 };
 
 /** Key set is the object's keys; every value is a plain string. */

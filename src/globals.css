@@ -1,4 +1,9 @@
 @import "tailwindcss";
+/*
+  Maps the Arc component surface (--foreground, --surface, --accent, …) onto this
+  app's tokens. Read that file's header before editing either side.
+*/
+@import "./components/arc/arc-tokens.css";
 
 /*
   Class-based dark mode. The theme provider (src/lib/theme.tsx) puts `.dark` on
@@ -569,6 +574,60 @@ html[dir="rtl"] .grow-x {
   transform-origin: 100% 50%;
 }
 
+/* ── A freshly issued access code ────────────────────────────────────────────
+   The API returns a code in plaintext exactly once — it is hashed at rest — so
+   the moment it lands is the only chance to read it. It rises into place and a
+   single light band crosses it, then it rests. Event-driven, never looping; the
+   node is keyed by the code, so a rotation replays it. */
+@keyframes code-issue {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+}
+
+@keyframes code-scan {
+  0% {
+    opacity: 0;
+    background-position: 100% 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    background-position: 0% 0;
+  }
+}
+
+.code-issued {
+  animation: code-issue var(--t-enter) var(--ease-out-soft) backwards;
+}
+
+/* Paint-only sweep behind the digits (the code itself sits above it), so the
+   animation cannot move the column or reflow the row mid-read. */
+.code-scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0 34%,
+    color-mix(in oklab, var(--color-primary) 22%, transparent) 48%,
+    color-mix(in oklab, var(--color-primary) 30%, transparent) 52%,
+    transparent 66% 100%
+  );
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  /* `both`: invisible before the delay and, crucially, invisible again once
+     the sweep has passed — an element left on its base gradient looked like a
+     pale band parked beside the digits. */
+  animation: code-scan var(--t-travel) var(--ease-out-soft) 120ms both;
+}
+
 /* Press feedback: give under the finger, spring-free. This owns the whole
    transition list; do NOT add a transition-* utility beside `press` — the
    utility would replace this list and snap the transform to its end state. */
@@ -688,6 +747,65 @@ html[dir="rtl"] .grow-x {
   }
 }
 
+/* ── The route sweep ─────────────────────────────────────────────────────────
+   A band of light runs the travelled part of a live route line every few
+   seconds, the way an RGB keyboard's wave crosses its keys: the line itself is
+   fixed, one highlight travels along it, then the line rests. Paint-only
+   (`background-position` + `hue-rotate`), so a dashboard with a live snapshot
+   streaming in never drops frames for decoration. The slow hue turn is the
+   "RGB" part and starts from the app's own blue, so it never borrows a status
+   colour. Removed entirely under reduced motion. */
+.route-flow {
+  /* The band is a white-hot core with the brand blue either side; the drop-shadow
+     follows its alpha, so the halo hugs the light instead of the whole line. */
+  --glow: color-mix(in oklab, var(--color-primary) 55%, white);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0 38%,
+    color-mix(in oklab, var(--color-primary) 55%, white) 45%,
+    color-mix(in oklab, var(--color-primary) 12%, white) 50%,
+    color-mix(in oklab, var(--color-primary) 55%, white) 55%,
+    transparent 62% 100%
+  );
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  /* Each row starts a little later than the one above it, so the four lines read
+     as one wave crossing the card rather than four lights in lock-step. */
+  animation:
+    route-flow 3.8s cubic-bezier(0.4, 0, 0.2, 1) infinite,
+    route-hue 9.5s linear infinite;
+  animation-delay: calc(var(--sweep-row, 0) * -0.42s), calc(var(--sweep-row, 0) * -0.42s);
+}
+
+/* Percentage background positions move the image inside the box: 100% -> 0%
+   carries the band from the start of the line to its bead. */
+@keyframes route-flow {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+
+/* A short, slow hue drift is the "RGB" part: it starts from the app's own blue
+   and stays in the cool half of the wheel, so a red or yellow flash can never be
+   mistaken for a status. */
+@keyframes route-hue {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 4px var(--glow)) hue-rotate(0deg) saturate(1.5);
+  }
+  50% {
+    filter: drop-shadow(0 0 7px var(--glow)) hue-rotate(90deg) saturate(1.6);
+  }
+}
+
+/* Arabic: the same journey reads right to left. The hue drift is symmetric. */
+[dir="rtl"] .route-flow {
+  animation-direction: reverse, normal;
+}
+
 /* Native SPA theme flips use the browser's View Transition; the default
    crossfade is tightened here. Reduced motion turns it off entirely. */
 ::view-transition-old(root) {
@@ -696,6 +814,76 @@ html[dir="rtl"] .grow-x {
 
 ::view-transition-new(root) {
   animation: vt-arrive var(--t-enter) var(--ease-out-soft) both;
+}
+
+/* The theme flip as a wipe out of the pressed switch, ported from `report-fe`
+   so both products animate identically. `beginThemeFlip` (lib/theme.ts) puts
+   the switch's centre and reach on <html> as --theme-x/y/r and names the shape
+   with data-theme-flip; the old snapshot is pinned so the clip is the only
+   thing that moves — a wipe, not a dissolve. */
+:root[data-theme-flip]::view-transition-group(root),
+:root[data-theme-flip]::view-transition-old(root) {
+  animation: none;
+}
+
+:root[data-theme-flip]::view-transition-new(root) {
+  animation-duration: 480ms;
+  animation-timing-function: var(--ease-out-soft);
+  animation-fill-mode: both;
+}
+
+:root[data-theme-flip="reveal"]::view-transition-new(root) {
+  animation-name: theme-reveal;
+}
+
+:root[data-theme-flip="eclipse"]::view-transition-new(root) {
+  animation-name: theme-eclipse;
+}
+
+:root[data-theme-flip="split"]::view-transition-new(root) {
+  animation-name: theme-split;
+}
+
+:root[data-theme-flip="rise"]::view-transition-new(root) {
+  animation-name: theme-rise;
+}
+
+/* A circle out of the switch, a circle out of the middle, a column that opens
+   sideways, a band that lifts. */
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0 at var(--theme-x, 50%) var(--theme-y, 50%));
+  }
+  to {
+    clip-path: circle(var(--theme-r, 150vmax) at var(--theme-x, 50%) var(--theme-y, 50%));
+  }
+}
+
+@keyframes theme-eclipse {
+  from {
+    clip-path: circle(0 at 50% 50%);
+  }
+  to {
+    clip-path: circle(var(--theme-r, 150vmax) at 50% 50%);
+  }
+}
+
+@keyframes theme-split {
+  from {
+    clip-path: inset(0 calc(100% - var(--theme-x, 50%)) 0 var(--theme-x, 50%));
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes theme-rise {
+  from {
+    clip-path: inset(var(--theme-y, 100%) 0 calc(100% - var(--theme-y, 100%)) 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
 }
 
 /* ── Reduced motion ─────────────────────────────────────────────────────────
@@ -710,6 +898,8 @@ html[dir="rtl"] .grow-x {
   .icon-pop,
   .theme-spin,
   .grow-x,
+  .code-issued,
+  .code-scan,
   .dlg-panel-in,
   .dlg-panel-out,
   .dlg-sheet-in,
@@ -718,6 +908,11 @@ html[dir="rtl"] .grow-x {
   .toast-out,
   .dlg-fade-in {
     animation: none !important;
+  }
+
+  /* The issued-code sweep is decoration; the code itself is always visible. */
+  .code-scan {
+    display: none !important;
   }
 
   .reveal {
@@ -735,6 +930,12 @@ html[dir="rtl"] .grow-x {
 
   .press:active:not(:disabled) {
     transform: none;
+  }
+
+  /* The route line keeps its travelled length; only the travelling light goes. */
+  .route-flow {
+    animation: none !important;
+    background-image: none !important;
   }
 
   .lift,

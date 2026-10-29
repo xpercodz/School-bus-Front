@@ -1,4 +1,7 @@
 import { Icon } from "@/components/Icon";
+import { Button } from "@/components/arc/button/button";
+import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
+import { ExpandingSearch } from "@/components/arc/expanding-search/expanding-search";
 import { STUDENT_STATUS_FILTERS, type StudentStatusFilter } from "@/data/dashboard";
 import type { StudentListState } from "@/lib/use-student-list";
 import { useLocale } from "@/lib/i18n/context";
@@ -27,36 +30,36 @@ export function StudentListToolbar({ list }: { list: StudentListState }) {
     <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
       {/* Phone row 1: search + grade. */}
       <div className="flex items-center gap-2 md:contents">
-        <div className="relative min-w-0 flex-1 md:order-1 md:w-56 md:flex-none">
-          <Icon
-            name="search"
-            size={16}
-            variant="outlined"
-            className="absolute start-3 top-1/2 -translate-y-1/2 text-dash-outline"
-          />
-          <input
-            aria-label={t("studentList.searchAria")}
-            type="text"
-            value={list.query}
-            onChange={(e) => list.setQuery(e.target.value)}
+        <div className="group/search min-w-0 flex-1 md:order-1 md:w-56 md:flex-none">
+          <ExpandingSearch
+            anchor="start"
+            label={t("studentList.searchAria")}
             placeholder={t("studentList.searchPlaceholder")}
-            className="press-none h-11 w-full rounded-md border border-dash-control-outline bg-dash-surface ps-9 pe-3 text-[16px] text-dash-on-surface placeholder:text-dash-on-surface-variant focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary md:h-9 md:text-[12.5px]"
+            clearLabel={t("mobile.clearSearchAria")}
+            value={list.query}
+            onValueChange={list.setQuery}
           />
         </div>
 
-        <select
-          aria-label={t("studentList.gradeAria")}
-          value={list.grade ?? ""}
-          onChange={(e) => list.setGrade(e.target.value || null)}
-          className="press h-11 max-w-[45%] flex-none rounded-md border border-dash-control-outline bg-dash-surface px-2.5 text-[16px] text-dash-on-surface focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary md:order-3 md:h-9 md:max-w-none md:text-[12.5px]"
-        >
-          <option value="">{t("studentList.allGrades")}</option>
-          {list.grades.map((g) => (
-            <option key={g} value={g}>
-              {translateDataLabel(g, locale, t)}
-            </option>
-          ))}
-        </select>
+        <DropdownMenu
+          ariaLabel={t("studentList.gradeAria")}
+          label={list.grade ? translateDataLabel(list.grade, locale, t) : t("studentList.allGrades")}
+          align="start"
+          matchTriggerWidth
+          triggerClassName="arc-field flex-none md:order-3"
+          items={[
+            {
+              label: t("studentList.allGrades"),
+              checked: !list.grade,
+              onSelect: () => list.setGrade(null),
+            },
+            ...list.grades.map((g) => ({
+              label: translateDataLabel(g, locale, t),
+              checked: g === list.grade,
+              onSelect: () => list.setGrade(g),
+            })),
+          ]}
+        />
       </div>
 
       {/* Phone row 2: a scrolling chip rail, with clear pinned beside it. */}
@@ -83,15 +86,17 @@ export function StudentListToolbar({ list }: { list: StudentListState }) {
         </div>
 
         {list.hasFilters && (
-          <button
+          <Button
             type="button"
             onClick={list.clearFilters}
             aria-label={t("studentList.clear")}
-            className="press flex h-11 w-11 flex-none items-center justify-center gap-1.5 rounded-md border border-dash-control-outline bg-dash-surface text-[12.5px] text-dash-on-surface-variant md:order-4 md:h-9 md:w-auto md:border-0 md:bg-transparent md:px-2 md:hover:bg-dash-surface-container md:hover:text-dash-on-surface"
+            variant="secondary"
+            size="md"
+            className="arc-field flex-none md:order-4"
           >
             <Icon name="filter_alt_off" size={16} variant="outlined" />
             <span className="hidden md:inline">{t("studentList.clear")}</span>
-          </button>
+          </Button>
         )}
       </div>
     </div>

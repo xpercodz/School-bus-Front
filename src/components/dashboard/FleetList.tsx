@@ -1,12 +1,10 @@
 import type { Bus } from "@/data/dashboard";
 import { Icon } from "@/components/Icon";
+import { RouteLine } from "@/components/dashboard/RouteLine";
 import { useLocale } from "@/lib/i18n/context";
 import { toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
 
-/** One width/offset transition for the route line and the bead that rides it. */
-const ROUTE_MOTION = "duration-[var(--t-data)] ease-[var(--ease-out-soft)] motion-reduce:transition-none";
-
-function StatusPill({ bus }: { bus: Bus }) {
+export function StatusPill({ bus }: { bus: Bus }) {
   const { t, locale } = useLocale();
   const signedOffWithWaiting = bus.status === "COMPLETED" && bus.waiting > 0;
 
@@ -33,21 +31,32 @@ function StatusPill({ bus }: { bus: Bus }) {
   );
 }
 
+interface FleetListProps {
+  buses: readonly Bus[];
+  /** Open the bus overview (students on board, dropped off, still waiting). */
+  onOpenBus: (bus: Bus) => void;
+}
+
 /**
  * Routes as rows, not four identical cards: each row is one run with its own
  * route line, the bus's position on it, and the three counts that matter. The
  * line is the product's own object — a route — not decoration.
  *
- * Rows are not interactive, so they carry no hover fill; only the route line
- * and its bead move (one 500ms transition per change, never a loop).
+ * A row opens that bus's overview. The whole row is the hit area, so the target
+ * is one overlay button (native Enter/Space, one accessible name) rather than a
+ * click handler on an article; the trailing chevron is its visible affordance.
+ * The route line and its bead transition once per change; on top of that a
+ * highlight runs the travelled part of each live line every few seconds
+ * (`.route-flow` in globals.css) — the one looping thing on the screen, and it
+ * is switched off under reduced motion.
  */
-export function FleetList({ buses }: { buses: readonly Bus[] }) {
+export function FleetList({ buses, onOpenBus }: FleetListProps) {
   const { t, locale, dir } = useLocale();
   const digits = (n: number) => toLocaleDigits(String(n), locale);
   const active = buses.filter((bus) => bus.status === "IN_PROGRESS").length;
-  // The bead is centred on its point. `translate(-50%)` is physical, so in RTL
-  // it skated half a bead to the wrong side of the route mark; mirror it.
-  const beadShift = dir === "rtl" ? "translate(50%, -50%)" : "translate(-50%, -50%)";
+  const chevron = dir === "rtl" ? "chevron_left" : "chevron_right";
+  const chevronClass =
+    "flex-none text-dash-outline transition-colors duration-[var(--t-hover)] group-hover:text-dash-primary";
 
   return (
     <section data-page-reveal aria-labelledby="routes-title" className="flex flex-col gap-3">
@@ -69,62 +78,58 @@ export function FleetList({ buses }: { buses: readonly Bus[] }) {
             {t("dashboard.noRoutes")}
           </p>
         ) : (
-          buses.map((bus) => {
-            const progress = Math.min(100, Math.max(0, bus.progress));
+          buses.map((bus, row) => {
+            const busName = translateDataLabel(bus.name, locale, t);
             return (
               <article
                 key={bus.id}
                 data-page-reveal
-                className="press-none grid grid-cols-1 gap-3 border-b border-dash-outline-variant px-4 py-4 last:border-b-0 md:grid-cols-[minmax(0,1.05fr)_minmax(0,1.5fr)_auto_auto] md:items-center md:gap-6"
+                className="group relative grid grid-cols-1 gap-3 border-b border-dash-outline-variant px-4 py-4 transition-colors duration-[var(--t-hover)] last:border-b-0 hover:bg-dash-surface-container-low md:grid-cols-[minmax(0,1.05fr)_minmax(0,1.5fr)_auto_auto] md:items-center md:gap-5"
               >
+                {/* The row's whole area is the control. One native button keeps
+                    the accessible name, Enter/Space, and focus on the row; the
+                    ring is inset so it traces the row, not the card. */}
+                <button
+                  type="button"
+                  onClick={() => onOpenBus(bus)}
+                  aria-label={t("fleet.openAria", { bus: busName })}
+                  className="absolute inset-0 z-10 cursor-pointer rounded-none focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-dash-primary"
+                />
                 <div className="flex min-w-0 items-start justify-between gap-3 md:block">
                   <div className="min-w-0">
                     <h3 className="truncate text-[14px] font-semibold text-dash-on-surface">
-                      {translateDataLabel(bus.name, locale, t)}
+                      {busName}
                     </h3>
                     <p className="mt-0.5 truncate text-[12px] text-dash-on-surface-variant">
                       {bus.driver ? t("dashboard.driver", { name: bus.driver }) : t("dashboard.noDriver")}
                     </p>
                   </div>
-                  <div className="md:hidden">
+                  <div className="flex items-center gap-1.5 md:hidden">
                     <StatusPill bus={bus} />
+                    <Icon name={chevron} size={18} variant="outlined" className={chevronClass} />
                   </div>
                 </div>
 
                 <div className="min-w-0 md:pe-2">
                   <div className="flex items-center justify-between gap-2 text-[11.5px] text-dash-on-surface-variant">
-                    <span>{t("dashboard.routeProgress")}</span>
-                    <span className="tabular-nums">
-                      {t("dashboard.routeComplete", { percent: digits(progress) })}
+                    {/* The name is redundant beside a line and a percentage, and
+                        below lg it would wrap the row onto a second line. It
+                        stays available to assistive tech. */}
+                    <span className="hidden lg:inline">{t("dashboard.routeProgress")}</span>
+                    <span className="sr-only lg:hidden">{t("dashboard.routeProgress")}</span>
+                    <span className="ms-auto tabular-nums">
+                      {t("dashboard.routeComplete", { percent: digits(bus.progress) })}
                     </span>
                   </div>
-                  <div className="relative mt-2 h-5" aria-hidden="true">
-                    <span className="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 rounded-full bg-dash-surface-container-high" />
-                    <span
-                      className={`absolute top-1/2 h-0.5 -translate-y-1/2 rounded-full ${
-                        bus.status === "COMPLETED" ? "bg-dash-outline" : "bg-dash-primary"
-                      } transition-[width] ${ROUTE_MOTION}`}
-                      style={{ width: `${progress}%` }}
-                    />
-                    <span
-                      className={`absolute top-1/2 flex h-5 w-5 items-center justify-center rounded-full ${
-                        bus.status === "COMPLETED"
-                          ? "border border-dash-outline bg-dash-surface text-dash-outline"
-                          : "bg-dash-primary text-dash-on-primary"
-                      } transition-[inset-inline-start] ${ROUTE_MOTION}`}
-                      style={{
-                        // Clamped so a 0% or 100% bead still sits fully inside
-                        // the line instead of hanging over the card edge.
-                        insetInlineStart: `clamp(10px, ${progress}%, calc(100% - 10px))`,
-                        transform: beadShift,
-                      }}
-                    >
-                      <Icon name="directions_bus" size={12} variant="outlined" />
-                    </span>
-                  </div>
+                  <RouteLine
+                    progress={bus.progress}
+                    completed={bus.status === "COMPLETED"}
+                    live={bus.status === "IN_PROGRESS"}
+                    sweepRow={row}
+                  />
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 md:w-52">
+                <div className="grid grid-cols-3 gap-3 md:w-48">
                   <div>
                     <p className="text-[14px] font-semibold tabular-nums text-dash-on-surface">
                       {digits(bus.onboard)}
@@ -155,8 +160,9 @@ export function FleetList({ buses }: { buses: readonly Bus[] }) {
                   </div>
                 </div>
 
-                <div className="hidden md:block">
+                <div className="hidden items-center gap-2 md:flex">
                   <StatusPill bus={bus} />
+                  <Icon name={chevron} size={18} variant="outlined" className={chevronClass} />
                 </div>
               </article>
             );

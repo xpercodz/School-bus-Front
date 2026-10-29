@@ -171,8 +171,8 @@ server boots and answers `/health` before credentials are mounted.
 /login                 LoginPage        — driver access code, or director email/password
 /dashboard             DashboardPage    — director "School Transit Live Monitor"
 /dashboard/reports     ReportsPage      — printable attendance summary (CSV + print),
-                                          with an Analytics modal (per-bus rates +
-                                          multi-day trend)
+                                          with an Analytics modal (one per-bus chart,
+                                          two designs)
 /dashboard/assignments AssignmentsPage  — director-only driver↔bus and student↔bus links
 /dashboard/drivers     DriversPage      — director-only driver accounts + access codes
 ```
@@ -227,30 +227,41 @@ exchanged for a custom token by the **API** before any session exists.
   **Drivers** (`/dashboard/drivers`) are the real routes; the active row is a
   neutral grey pill. Fleet status lives on the Live monitor and Routes has no
   screen yet, so neither is a dead nav item.
-- **Analytics** is not a route — it's a modal (`AnalyticsModal`, launched by the
-  **Analytics** button in the Reports toolbar). It shows the two analysis views
-  the printable report doesn't: per-bus boarded/absent **rate bars** and the
-  multi-day attendance trend (`useAttendanceTrend`: paginated date-range query
-  on `attendance.date`, CSS stacked-bar chart, default last 7 days, capped at
-  31). It reuses the report's already-loaded bus summaries and follows its run
-  segment; only the trend queries Firestore, and only while the modal is open.
+- **Analytics** is not a route — it's a modal (`AnalyticsModal`, launched from
+  the Reports header). It draws **one chart with two designs** over the *same*
+  measure — completed trips per bus for the report's day and run segment — as
+  `@uiarc/bar-chart` or `@uiarc/donut-chart`, switched by a segmented control.
+  Every number comes from the report page the modal was opened from, so the
+  modal issues no query at all and opens instantly. A multi-day trend lived here
+  until 2026-10-29 and was removed on request (two stacked sections, each with
+  its own date range, read as confusing); the `useAttendanceTrend` query hook
+  remains in `src/lib/school-data.ts`, currently unused, for a range view that
+  may return.
 - **Reports** — overview KPIs, by-bus and by-grade summary tables, the full
-  roster (paginated/searchable/filterable like the Live Map table), **Export
-  CSV** (reuses `src/lib/csv.ts`; exports the currently filtered rows), and
-  **Print** (the sidebar + top bar are hidden on print via `print:` variants).
+  roster (paged/searchable/filterable exactly like the Live monitor table, since
+  both render `StudentList` over `useStudentList`; the pager is the Arc page
+  strip inside `PaginationBar`), **Export CSV** (reuses `src/lib/csv.ts`; exports
+  the currently filtered rows), and **Print** (the sidebar + top bar are hidden
+  on print via `print:` variants).
 - **Assignments** — director-only driver↔bus and student↔bus assignment. The
   Drivers table links a staff user to each bus (one driver per bus; the write
   keeps the denormalized `driver` name in sync and clears the driver's previous
-  bus atomically). The Students table is cursor-paginated (via
-  `src/lib/school-admin.ts`) with a client-side name search and a per-row bus
-  `<select>`.
+  bus atomically). The Students table is cursor-paginated in Firestore —
+  `useStudentsPaginated`, 50 rows a fetch via `src/lib/school-admin.ts` — and
+  shown ten at a time with the shared pager; reaching the last loaded page
+  fetches the next one (`useAutoLoadMore`), so there is no "Load more" button.
+  Search is the expanding Arc search, and each row's bus is an Arc dropdown menu
+  whose trigger carries the current value and whose selected row is checked.
 
 ## Mobile screen (per-driver morning run)
 
-The driver's manifest: a four-cell run summary with a proportion bar, student
-search, segmented filter tabs (All / Waiting / Boarded / Done), one bordered row
-per student with a pale status control, and a bottom bar with an honest online /
-offline label. A run that has not been dispatched gets its own "No run today"
+The driver's manifest: a four-cell run summary with a proportion bar, an
+expanding student search (an icon that unfolds into the field and folds back
+when emptied), segmented filter tabs (All / Waiting / Boarded / Done), one
+bordered row per student with a pale status control, and a bottom bar with an
+honest online / offline label. That status control is the roster's only tap to
+change a student's state, and it is deliberately **not** an Arc button: its tint
+*is* the status language, and the Arc Button module owns colour. A run that has not been dispatched gets its own "No run today"
 state rather than an empty roster. The roster is **per-driver** — the app bar
 title and roster come from the signed-in user's bus (`buses where driverUid ==
 uid`, resolved by `useDriverBus`), so every staff account sees only its own
@@ -262,6 +273,10 @@ Run** marks the run `COMPLETED` and any `WAITING` students `ABSENT` in one
 atomic batch. Each card's "⋯" menu offers **View history** and **Mark absent**;
 the top-bar "⋯" menu shows run details (bus / type / date / status) and **Sign
 out**. See the git history for the original one-screen build.
+
+The roster is **not paginated** (unlike every director list): the whole run is
+one scrollable list, because a driver at the bus door has to see every child
+without an extra tap.
 
 Because the Firestore client uses the persistent local cache, this screen keeps
 working through a dead zone: the last-known roster renders from disk and a status
@@ -280,7 +295,20 @@ answers it before it shows anything else:
 - **Routes** — one row per run, not four identical cards: bus, driver, a route
   line with the bus's position, and On board / Dropped / Waiting counts. A
   completed run whose students are still waiting gets an amber status and the
-  finding names it.
+  finding names it. A row is a control: pressing it (the whole row, or the
+  trailing chevron it shows) opens the **bus overview**.
+- **Bus overview** — the pressed row expanded, in a dialog on desktop / bottom
+  sheet on a phone: the bus and driver, its run status and the same route line,
+  a foldable student search, the one finding ("Still to account for: 1 of 8
+  students"), then the students grouped by what happened to them — On board,
+  Dropped off, Still waiting, Absent — with each student's grade and
+  boarded/dropped-at time. Counts come from the same `Bus` and attendance rows as
+  the row and the table, so no two surfaces can disagree; empty groups are
+  omitted and a bus with no roster gets an empty state. Searching narrows those
+  groups client-side and swaps the finding for a "4 of 8 students" count; zero
+  matches get their own empty state. The modal reads the dashboard's
+  already-loaded rows, so opening it is instant and it keeps updating live while
+  open (`src/components/dashboard/BusOverviewModal.tsx`).
 - **Student roster** — student, grade, bus, boarded-at, dropped-at, status, and
   a History action. Missing times print as a dash; statuses are pale tint + dark
   ink. A real table at `md+`, two-line rows on a phone. It is **paginated
@@ -302,8 +330,27 @@ Bus drivers are typically in their 40s–50s with no valid email, so they sign i
 with a **6-digit numeric code** instead of email/password. Directors keep
 email/password and manage driver accounts from the **Drivers** page
 (`/dashboard/drivers`): create a driver by name → an auto-generated code is
-shown **once** (copyable), with per-row reveal / copy / regenerate, and
-"Generate code" for any staff account that has none.
+shown **once** (copyable), with per-row reveal / copy / regenerate in pages of
+ten, and "Generate code" for any staff account that has none. Copying
+acknowledges itself: the copy glyph is an `@uiarc/icon-morph` that folds into a
+check for a moment, alongside the toast.
+
+- **The issued code stays on screen.** `regenerateDriverCode()` returns the new
+  plaintext once; the page keeps it in `issuedCodes` and renders it in that
+  row with the "copy it now" hint, so "Generate code" visibly produces a code
+  instead of only a toast (the row's request also shows a spinner while it is
+  in flight). The first view of the code runs the one-shot
+  `code-issued` / `code-scan` animation — a rise plus a light band crossing the
+  digits — and a rotation replays it because the node is keyed by the code. The
+  code lives in component state only: leaving the page loses it (the API cannot
+  return it again), which is exactly what the hint says.
+- **Search and section entrance.** The access-codes list has the app's standard
+  foldable search (filter by driver name before pagination, with its own
+  no-match state), and the page runs the same `usePageReveal` entrance as the
+  live monitor: Add driver → access-codes header/search → the list rise in
+  reading order. The skeleton now waits for **both** the buses and staff
+  snapshots (`useStaffUsers` gained a `loading` gate), so the list cannot flash
+  "No drivers yet" while the staff query is still in flight.
 
 - **Mechanism:** the code is exchanged by the API for a **Firebase custom
   token** (`POST /v1/auth/verify-code` → Admin SDK collectionGroup lookup on
@@ -445,19 +492,30 @@ schools/{schoolId}/audit/{id}        { event, actorUid, at, detail? }
   `completeRun` / `markAbsent`; resolves the signed-in user's bus via an internal
   `useDriverBus`), `useDashboardData(date, segment)` (KPIs / fleet / attendance,
   filtered by run segment and re-queried by date), `useStudentHistory()`
-  (paginated per-student history), and `useAttendanceTrend(start, end, segment)`
-  (paginated date-range daily totals) with `summarizeByBus` / `summarizeByGrade`
-  helpers. All `onSnapshot` / paginated Firestore — nothing renders without a
-  live session.
+  (cursor-paginated per-student history), and `useAttendanceTrend(start, end,
+  segment)` (paginated date-range daily totals; **currently unused** — the
+  Analytics trend that consumed it was removed on 2026-10-29) with
+  `summarizeByBus` / `summarizeByGrade` helpers. All `onSnapshot` / paginated
+  Firestore — nothing renders without a live session.
 - `src/lib/school-admin.ts` — director-only Assignments data: `useBuses()`
   (realtime, exposes `driverUid`), `useStaffUsers()` (the school's staff),
-  `useStudentsPaginated()` (cursor-paginated + client-side search),
+  `useStudentsPaginated()` (cursor-paginated; the page filters and pages what
+  is loaded),
   `useBusStudentCounts()` (server-side per-bus counts), and the
   `assignDriverToBus` / `assignStudentToBus` write helpers.
 - `src/lib/use-student-list.ts` — `useStudentList(rows)` — client-side search
   (name) + grade + status filters and table-view pagination (10/page) over an
   already-loaded row set. Powers the shared `StudentList` component used by the
-  Live Map and Reports rosters.
+  Live monitor and Reports rosters.
+- `src/lib/use-page-slice.ts` — the pagination primitive every other director
+  list uses: `Pagination` (the shape `PaginationBar` takes), `usePageSlice(items,
+  10, resetKey)` (clamps when rows change, resets to page 1 when the search or
+  the open student changes) and `useAutoLoadMore` (fetch the next cursor page
+  when the reader reaches the last loaded page). `useStudentList` satisfies the
+  same `Pagination` shape, so one bar serves every list.
+- `src/lib/date-value.ts` — the bridge between the app's `YYYY-MM-DD` date keys
+  and the `Date` objects the Arc pickers use (built from parts, never
+  `new Date(string)`, so a day never shifts across a timezone).
 - `src/lib/csv.ts` — attendance CSV export (`buildAttendanceCsv` / `downloadCsv`).
 - `src/lib/api.ts` — the only backend call site (typed client + `ApiError`).
 - **Data scripts no longer live here.** `scripts/seed.mjs` and
@@ -544,6 +602,52 @@ changes, no third-party i18n library**, and no server pass at all in a SPA.
   in while live data loads (`role="status"`), and the lazy dashboard routes use
   them as their `Suspense` fallback via `RouteFallback`.
 
+### Arc registry components — the control set
+
+`src/components/arc/` holds components copied from the Arc registry
+(https://uiarc.dev). They are our own code now, and they are the control
+vocabulary of the app:
+
+| role | component |
+| --- | --- |
+| every action / icon control | `arc/button` (`primary` / `secondary` / `ghost` / `danger`; `sm` 36, `md` 44, `lg` 48; `icon` squares; `align="start"` rows) |
+| every value selector | `arc/dropdown-menu` (trigger carries the current value, `checked` rows, scrollable, `align`, icon-only form) |
+| every date field | `arc/date-picker` (+ `arc/calendar` beneath it) |
+| every search field | `arc/expanding-search` in its *filter* form (controlled value, no results panel) |
+| every paged list | `arc/pagination` inside `dashboard/PaginationBar` |
+| the theme flip | `arc/theme-switch`, wired through `ThemeSwitchButton` |
+| state-changing glyphs | `arc/icon-morph` (access-code copy → check) |
+| the analytics chart | `arc/bar-chart` / `arc/donut-chart` |
+
+`src/components/arc/arc-tokens.css` maps the registry's generic token names
+(`--surface`, `--border`, `--text-sm`, `--duration-*`) onto this app's
+`--color-*` tokens **by reference**, so a palette change or a `.dark` flip needs
+no second mapping. Local edits to vendored files — added props, translated
+strings, RTL anchors — are listed with their reasons in
+`src/components/arc/PATCHES.md`; re-running `shadcn add --overwrite` reverts them
+silently, so re-read that file after any re-install. `AGENTS.md` carries the
+conversion rules (variant grammar, the CSS-module specificity traps, and which
+controls deliberately stay hand-rolled: nav links, segmented controls, filter
+chips, the roster status pill, calendar cells).
+
+### Motion
+
+One spring/easing vocabulary (`src/lib/motion.ts`, `arc/lib/motion-tokens.ts`),
+and `prefers-reduced-motion` removes travel everywhere while keeping final
+states. Two recent additions:
+
+- **The theme flip** is a view-transition circle that opens out of the pressed
+  switch: `beginThemeFlip()` in `src/lib/theme.ts` puts the switch's centre and
+  reach on `<html>` and the `::view-transition` keyframes in `globals.css` clip
+  the new theme in — ported from the report app so both products flip the same
+  way. Falls back to a plain swap without the API.
+- **Each live route line carries a travelling highlight** (`.route-flow` in
+  `globals.css`): one band of light runs the travelled part of the line every
+  3.8 s, staggered per row so the four lines read as one wave, with a slow
+  hue drift. It is paint-only (`background-position` + `drop-shadow`), the only
+  looping decoration in the app, and it is switched off entirely under reduced
+  motion.
+
 ## Layout
 
 - **Mobile:** centered phone column (`max-w-[480px]`, `sm:border-x`) with
@@ -620,6 +724,13 @@ Firebase lifecycle (one-time + per-change):
   removing an icon, run `node scripts/build-icon-font.mjs`; a name chosen by a
   runtime expression must be added to its `EXTRA_ICONS`. A missing glyph renders
   as its literal ligature name.
+- **The vendored Arc components carry local patches** (`PATCHES.md`): added
+  props, translated defaults, RTL anchors, a z-index that keeps a menu above a
+  dialog, and an optional-no-results mode for search. Re-running `shadcn add`
+  without re-applying them silently reverts behaviour the app now relies on.
+- **The bar chart draws left-to-right in Arabic**, and the charts' screen-reader
+  summaries are still English strings inside the component (listed under
+  "still unpatched" in `PATCHES.md`).
 - **Per-tenant onboarding** (creating a school + its **director** from a
   meeting) is done via the seed script rather than a UI. Driver accounts now have
   a full UI (create + codes on `/dashboard/drivers`); only brand-new

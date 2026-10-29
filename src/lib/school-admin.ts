@@ -15,6 +15,7 @@ import {
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth";
 import { fetchSchoolId } from "@/lib/school-id";
+import { LOADING_SETTLE_TIMEOUT_MS, settlesLoading } from "@/lib/firestore-loading";
 import { useCursorPage } from "@/lib/use-cursor-page";
 
 
@@ -102,22 +103,52 @@ export interface StaffUser {
  * always-paginate rule). The page is director-only, and rules already let any
  * signed-in user read profiles.
  */
-export function useStaffUsers(): StaffUser[] {
+export interface StaffUsers {
+  staff: StaffUser[];
+  /** True until the first staff snapshot lands for this user. */
+  loading: boolean;
+}
+
+/**
+ * Realtime staff (bus monitor/driver) users of the school — `users where
+ * schoolId == X`, role-filtered client-side to avoid a composite index. Small
+ * reference data, so no pagination (the <100 docs exception to the
+ * always-paginate rule). The page is director-only, and rules already let any
+ * signed-in user read profiles.
+ *
+ * `loading` exists so a page can hold its skeleton until the list is real: a
+ * page gated only on buses used to flash "No drivers yet" for the gap between
+ * the two snapshots.
+ */
+export function useStaffUsers(): StaffUsers {
   const { user } = useAuth();
   const uid = user?.uid;
   const [staff, setStaff] = useState<StaffUser[]>([]);
+  const [loadedUid, setLoadedUid] = useState<string | null>(null);
+  const loading = !!uid && loadedUid !== uid;
 
   useEffect(() => {
     if (!uid || !db) return;
     const firestore = db;
     let cancelled = false;
     const unsubscribers: (() => void)[] = [];
+    // Ceiling: a dead listener must not hold the skeleton forever.
+    const settleTimer = setTimeout(() => setLoadedUid(uid), LOADING_SETTLE_TIMEOUT_MS);
 
     void fetchSchoolId(uid).then((schoolId) => {
-      if (cancelled || !schoolId) return;
+      if (cancelled) return;
+      if (!schoolId) {
+        setLoadedUid(uid);
+        return;
+      }
       unsubscribers.push(
         onSnapshot(
           query(collection(firestore, "users"), where("schoolId", "==", schoolId)),
+          // See `settlesLoading`: a cold cache emits an empty snapshot first,
+          // and settling on it flashed "No drivers yet" before the server
+          // answered. Metadata changes are required for the server confirmation
+          // on a warm cache, which holds the same documents.
+          { includeMetadataChanges: true },
           (snap) => {
             if (cancelled) return;
             setStaff(
@@ -129,20 +160,28 @@ export function useStaffUsers(): StaffUser[] {
                   email: (d.data().email as string) ?? "",
                 })),
             );
+            // Not on an empty cache read — see settlesLoading.
+            if (settlesLoading(snap.metadata.fromCache, snap.size > 0)) {
+              setLoadedUid(uid);
+            }
           },
-          // Ignore: sign-out denies every open listener before React unmounts them.
-          () => {},
+          () => {
+            // Ignore: sign-out denies every open listener before React unmounts
+            // them — nothing to settle on this path.
+            if (!cancelled) setLoadedUid(uid);
+          },
         ),
       );
     });
 
     return () => {
       cancelled = true;
+      clearTimeout(settleTimer);
       unsubscribers.forEach((u) => u());
     };
   }, [uid]);
 
-  return staff;
+  return { staff, loading };
 }
 
 /**

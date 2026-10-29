@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type { RunSegmentId } from "@/data/dashboard";
 import {
   summarizeByBus,
@@ -15,6 +15,8 @@ import { DateSegmentBar } from "@/components/dashboard/DateSegmentBar";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { KpiStrip } from "@/components/dashboard/Summary";
 import { Icon } from "@/components/Icon";
+import { Button } from "@/components/arc/button/button";
+import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { Reveal } from "@/components/Reveal";
 import { StudentHistorySheet } from "@/components/StudentHistorySheet";
 import { StudentList } from "@/components/dashboard/StudentList";
@@ -173,11 +175,7 @@ export default function ReportsPage() {
 
 /**
  * Title-row actions. Phones keep the primary Export visible and tuck Print /
- * Analytics behind a 44px disclosure; from `sm` up all three sit inline. The
- * disclosure is deliberately a plain `aria-expanded` toggle rather than a
- * `role="menu"`: two buttons are reached by Tab, so it needs no roving
- * tabindex or arrow-key contract. Outside pointerdown and Escape close it, and
- * Escape returns focus to the trigger.
+ * Analytics behind an icon-only Arc menu; from `sm` up all three sit inline.
  */
 function ReportsActions({
   analyticsDisabled,
@@ -191,112 +189,54 @@ function ReportsActions({
   onExport: () => void;
 }) {
   const { t } = useLocale();
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelId = useId();
-
-  useEffect(() => {
-    if (!open) return;
-    function handlePointerDown(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      setOpen(false);
-      triggerRef.current?.focus();
-    }
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
-
-  function run(action: () => void) {
-    setOpen(false);
-    triggerRef.current?.focus();
-    action();
-  }
 
   return (
     <>
-      <button
-        type="button"
-        onClick={onAnalytics}
-        disabled={analyticsDisabled}
-        className="press hidden h-9 items-center gap-2 rounded-lg border border-dash-control-outline bg-dash-surface px-3 text-[12.5px] text-dash-on-surface hover:bg-dash-surface-container-low disabled:cursor-not-allowed disabled:opacity-50 sm:flex"
-      >
-        <Icon name="monitoring" size={16} variant="outlined" className="text-dash-outline" />
-        {t("reports.analytics")}
-      </button>
-      <button
-        type="button"
-        onClick={onPrint}
-        className="press hidden h-9 items-center gap-2 rounded-lg border border-dash-control-outline bg-dash-surface px-3 text-[12.5px] text-dash-on-surface hover:bg-dash-surface-container-low sm:flex"
-      >
-        <Icon name="print" size={16} variant="outlined" className="text-dash-outline" />
-        {t("reports.print")}
-      </button>
-      <button
-        type="button"
-        onClick={onExport}
-        className="press flex h-11 items-center gap-2 rounded-lg bg-dash-on-surface px-3.5 text-[12.5px] font-medium text-dash-background hover:opacity-90 sm:h-9"
-      >
+      <div className="hidden items-center gap-2 sm:flex">
+        <Button
+          type="button"
+          variant="secondary"
+          size="md"
+          className="arc-field"
+          onClick={onAnalytics}
+          disabled={analyticsDisabled}
+        >
+          <Icon name="monitoring" size={16} variant="outlined" />
+          {t("reports.analytics")}
+        </Button>
+        <Button type="button" variant="secondary" size="md" className="arc-field" onClick={onPrint}>
+          <Icon name="print" size={16} variant="outlined" />
+          {t("reports.print")}
+        </Button>
+      </div>
+
+      <Button type="button" variant="primary" size="md" onClick={onExport}>
         <Icon name="download" size={16} variant="outlined" />
         {t("reports.export")}
-      </button>
+      </Button>
 
-      {/* PageHeader stretches every action child from lg down (`[&>*]:flex-1`);
-          the disclosure is a fixed 44px square, so it opts out. */}
-      <div
-        ref={rootRef}
-        className="relative w-11 flex-none! sm:hidden"
-        onBlur={(event) => {
-          // Tab past the last item closes the disclosure rather than leaving an
-          // open panel behind the keyboard focus.
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-            setOpen(false);
-          }
-        }}
-      >
-        <button
-          ref={triggerRef}
-          type="button"
-          onClick={() => setOpen((value) => !value)}
-          aria-expanded={open}
-          aria-controls={panelId}
-          aria-label={`${t("reports.print")} / ${t("reports.analytics")}`}
-          className="press flex h-11 w-11 items-center justify-center rounded-lg border border-dash-control-outline bg-dash-surface text-dash-on-surface hover:bg-dash-surface-container-low"
-        >
-          <Icon name="more_vert" size={20} variant="outlined" className="text-dash-outline" />
-        </button>
-        {/* Kept mounted and hidden so aria-controls always resolves; `hidden`
-            also takes both items out of the tab order while closed. */}
-        <div
-          id={panelId}
-          hidden={!open}
-          className="pop-in absolute end-0 top-[calc(100%+0.25rem)] z-30 w-44 origin-top overflow-hidden rounded-lg border border-dash-outline-variant bg-dash-surface p-1 shadow-float"
-        >
-          <button
-            type="button"
-            onClick={() => run(onAnalytics)}
-            disabled={analyticsDisabled}
-            className="press flex h-11 w-full items-center gap-2 rounded-md px-2.5 text-start text-[13px] text-dash-on-surface hover:bg-dash-surface-container-low disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Icon name="monitoring" size={16} variant="outlined" className="text-dash-outline" />
-            {t("reports.analytics")}
-          </button>
-          <button
-            type="button"
-            onClick={() => run(onPrint)}
-            className="press flex h-11 w-full items-center gap-2 rounded-md px-2.5 text-start text-[13px] text-dash-on-surface hover:bg-dash-surface-container-low"
-          >
-            <Icon name="print" size={16} variant="outlined" className="text-dash-outline" />
-            {t("reports.print")}
-          </button>
-        </div>
+      {/* PageHeader stretches every action child on phones; the disclosure is a
+          fixed 44px square, so it opts out of that stretch. */}
+      <div className="flex-none sm:hidden">
+        <DropdownMenu
+          ariaLabel={`${t("reports.print")} / ${t("reports.analytics")}`}
+          icon={<Icon name="more_vert" size={20} variant="outlined" />}
+          triggerClassName="arc-field h-11"
+          align="end"
+          items={[
+            {
+              label: t("reports.analytics"),
+              icon: <Icon name="monitoring" size={18} variant="outlined" />,
+              onSelect: onAnalytics,
+              disabled: analyticsDisabled,
+            },
+            {
+              label: t("reports.print"),
+              icon: <Icon name="print" size={18} variant="outlined" />,
+              onSelect: onPrint,
+            },
+          ]}
+        />
       </div>
     </>
   );

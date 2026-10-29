@@ -89,3 +89,33 @@ export interface ViewTransition {
 export type ViewTransitionDocument = Document & {
   startViewTransition?: (callback: () => void) => ViewTransition;
 };
+
+/** The four shapes the Arc theme switch ships; `reveal` is the one the app uses. */
+export type ThemeFlip = "reveal" | "eclipse" | "split" | "rise";
+
+/**
+ * Arm the wipe that reveals the new theme — ported from `report-fe`'s
+ * `applyThemeAnimated` so both products flip the same way.
+ *
+ * `--theme-x`/`--theme-y` are the pressed switch's centre, `--theme-r` the
+ * distance to the farthest corner (so the circle never stops short), and
+ * `data-theme-flip` names the shape the keyframes in globals.css use. The
+ * returned cleanup must run when the transition settles; otherwise the
+ * attribute would keep the next theme flip on stale geometry.
+ */
+export function beginThemeFlip(flip: ThemeFlip = "reveal", trigger?: Element | null): () => void {
+  const root = document.documentElement;
+  const box = trigger?.getBoundingClientRect();
+  const x = box ? box.left + box.width / 2 : window.innerWidth / 2;
+  const y = box ? box.top + box.height / 2 : window.innerHeight / 2;
+  const reach = Math.ceil(
+    Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)),
+  );
+  root.style.setProperty("--theme-x", `${Math.round(x)}px`);
+  root.style.setProperty("--theme-y", `${Math.round(y)}px`);
+  root.style.setProperty("--theme-r", `${reach}px`);
+  root.dataset.themeFlip = flip;
+  return () => {
+    delete root.dataset.themeFlip;
+  };
+}
