@@ -142,6 +142,9 @@ export default function ActivityPage() {
         vars.from = busLabel(changes.busId?.from as string | null);
         vars.to = busLabel(changes.busId?.to as string | null);
         break;
+      case "student.updated":
+        vars.target = studentLabel(row.targetId);
+        break;
       case "bus.driver_changed":
         vars.bus = busLabel(row.targetId);
         vars.driver = (changes.driver?.to as string | null) || t("activity.noDriver");

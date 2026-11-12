@@ -3,6 +3,7 @@ import {
   collection,
   doc,
   getCountFromServer,
+  getDoc,
   getDocs,
   limit,
   onSnapshot,
@@ -12,6 +13,7 @@ import {
   startAfter,
   where,
   writeBatch,
+  type DocumentReference,
   type DocumentSnapshot,
   type QuerySnapshot,
 } from "firebase/firestore";
@@ -21,7 +23,8 @@ import { fetchSchoolId } from "@/lib/school-id";
 import { LOADING_SETTLE_TIMEOUT_MS, settlesLoading } from "@/lib/firestore-loading";
 import { useCursorPage } from "@/lib/use-cursor-page";
 import type { OperatorScreen } from "@/lib/api-contract";
-import { queueAudit } from "@/lib/audit";
+import { queueAudit, sanitizeText } from "@/lib/audit";
+import { buildRunId, todayDateStr } from "@/lib/school-data";
 
 
 /**
@@ -554,3 +557,81 @@ export async function assignStudentToBus(
  * director-admin actions.
  */
 export { createDriver, regenerateDriverCode } from "@/lib/api";
+
+/** What an edit actually changed, so the caller can report it. */
+export interface StudentEditResult {
+  /** Today's attendance copies that were corrected to the new name/grade. */
+  sheetRows: number;
+}
+
+/**
+ * Change a student's name and grade.
+ *
+ * ⚠️ THE ROSTER IS NOT THE ONLY COPY. `attendance` documents snapshot
+ * `studentName` and `grade` at dispatch time, and the driver's sheet and the
+ * day view read those copies — the roll reads `students` live. So a rename
+ * without the second half leaves today's sheet naming a child by a name the
+ * roll no longer shows, until tomorrow's dispatch. The copies for today are
+ * corrected in the same batch, EXCEPT for a run that is already COMPLETED:
+ * that one is signed off, and its record of the day stands.
+ *
+ * Past days are never touched. A run that happened last week named the child as
+ * she was when it ran, and rewriting it would be editing history to match the
+ * present.
+ */
+export async function updateStudent(
+  uid: string,
+  next: { id: string; name: string; grade: string },
+  previous: { name: string; grade: string; busId: string | null },
+): Promise<StudentEditResult> {
+  const name = sanitizeText(next.name, 80);
+  const grade = sanitizeText(next.grade, 40);
+  if (!name) throw new Error("A student needs a name.");
+
+  const firestore = db;
+  if (!firestore || !uid) return { sheetRows: 0 };
+  const schoolId = await fetchSchoolId(uid);
+  if (!schoolId) return { sheetRows: 0 };
+
+  const stamp = { updatedBy: uid, updatedAt: serverTimestamp() };
+  const changes: Record<string, { from: string | null; to: string | null }> = {};
+  if (name !== previous.name) changes.name = { from: previous.name, to: name };
+  if (grade !== previous.grade) changes.grade = { from: previous.grade, to: grade };
+
+  // Today's copies, per run segment, on the bus the child was on.
+  const today = todayDateStr();
+  const refs: DocumentReference[] = [];
+  if (previous.busId) {
+    for (const runType of ["morning", "afternoon"] as const) {
+      const runId = buildRunId(previous.busId, today, runType);
+      const runSnap = await getDoc(doc(firestore, "schools", schoolId, "runs", runId));
+      if (runSnap.data()?.status === "COMPLETED") continue;
+      const attRef = doc(firestore, "schools", schoolId, "attendance", `${runId}__${next.id}`);
+      const attSnap = await getDoc(attRef);
+      if (attSnap.exists()) refs.push(attRef);
+    }
+  }
+
+  const batch = writeBatch(firestore);
+  batch.set(
+    doc(firestore, "schools", schoolId, "students", next.id),
+    { name, grade, ...stamp },
+    { merge: true },
+  );
+  for (const ref of refs) {
+    batch.set(ref, { studentName: name, grade, ...stamp }, { merge: true });
+  }
+  queueAudit(batch, firestore, schoolId, {
+    event: "student.updated",
+    targetType: "student",
+    targetId: next.id,
+    // Only the fields that moved: an entry claiming a change that did not
+    // happen is worse than no entry.
+    changes,
+    meta: { count: refs.length },
+    occurredAt: new Date(),
+  });
+  await batch.commit();
+
+  return { sheetRows: refs.length };
+}

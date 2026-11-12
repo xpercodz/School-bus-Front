@@ -145,8 +145,11 @@ code-only sign-in).
    gates each route and redirects to the first screen the reader CAN use.
 2. `firebase/firestore.rules` — reads the same `screens` names off the caller's
    profile and grants a collection to the union of screens that need it.
-   Writes are narrower: an operator granted Assignments may change a student's
-   `busId` and nothing else (`diff().affectedKeys().hasOnly([...])`).
+   Writes are narrower and split by grant, each with its own field list: an
+   operator granted **Students** may correct a student's `name` and `grade`; one
+   granted **Assignments** may change the `busId` and nothing else
+   (`diff().affectedKeys().hasOnly([...])`). Neither list is a subset of the
+   other, so handing out one grant can never quietly hand out the other.
 3. `School-bus-API` — `requireManager(screen)` for the privileged driver
    endpoints, `requireOwner` for `/v1/operators*`. Accounts can only be created
    there: Firebase Auth users and profiles are Admin-SDK-only.
@@ -375,6 +378,15 @@ so the row's hit area is a single absolute `<button>` (inset 0, `aria-label`,
 `focus-visible` inset ring) above the non-interactive content — never a click
 handler on the `<article>`, and never other controls inside it. The trailing
 chevron is that button's visible affordance.
+
+**A student's name lives in two places, and an edit must fix both.** `students`
+is the record; `attendance` documents snapshot `studentName`/`grade` at dispatch
+time, and the driver's sheet and the day view read the copies while the roll
+reads the record. `updateStudent` (`school-admin.ts`) therefore corrects today's
+attendance copies in the same batch — except for a run that is already
+`COMPLETED`, whose record of the day stands — and never touches past days. When
+you add another screen that edits a student, do the same or the two screens will
+disagree until the next dispatch.
 
 **Every director list is paged, and pages are one component.** `PaginationBar`
 takes any `Pagination` (from `usePageSlice`, or the roster's `useStudentList`)

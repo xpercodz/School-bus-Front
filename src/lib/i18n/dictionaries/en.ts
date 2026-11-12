@@ -738,6 +738,15 @@ export const messages = {
   "students.title": "Students",
   "students.subtitle": "{school} · {count} on the roll · {classes} classes",
   "students.roll": "School roll",
+  "students.edit.title": "Edit student",
+  "students.edit.aria": "Edit {name}",
+  "students.edit.name": "Name",
+  "students.edit.grade": "Grade",
+  "students.edit.sheetNote":
+    "If today's run is not signed off, its sheet is corrected too. Past days keep the name they recorded.",
+  "students.edit.save": "Save changes",
+  "students.edit.cancel": "Cancel",
+  "students.edit.saved": "Student updated",
   "students.meta": "{count} students · {sort}",
   "students.meta.one": "{count} student · {sort}",
   "students.retention": "Records are kept for 90 days",
@@ -945,6 +954,7 @@ export const messages = {
   "activity.mode.bus": "bus",
   "activity.mode.driver": "driver",
 
+  "activity.event.studentUpdated": "{actor} changed the details of {target}",
   "activity.event.signIn": "{actor} signed in",
   "activity.event.signInFailed": "A sign-in attempt failed for {actor}",
   "activity.event.codeSignIn": "{actor} signed in with an access code",

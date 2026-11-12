@@ -26,6 +26,7 @@ import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { Icon } from "@/components/Icon";
 import { Skeleton, SkeletonText } from "@/components/Skeleton";
 import { StudentHistorySheet } from "@/components/StudentHistorySheet";
+import { EditStudentDialog, type EditableStudent } from "@/components/dashboard/EditStudentDialog";
 import { useToast } from "@/components/Toast";
 import { Button } from "@/components/arc/button/button";
 import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
@@ -71,6 +72,9 @@ export default function StudentsPage() {
   const [date, setDate] = useSelectedDate("students");
   const [segment, setSegment] = useState<RunSegmentId>("morning");
   const [historyStudent, setHistoryStudent] = useState<string | null>(null);
+  // Correcting a name or grade: the only student fields this screen writes. The
+  // bus belongs to Assignments, where the grant and the audit entry live.
+  const [editing, setEditing] = useState<EditableStudent | null>(null);
 
   // No date = the whole roll; a date = that day's run. Everything below keys
   // off this one choice, so the two states can never half-apply.
@@ -264,6 +268,14 @@ export default function StudentsPage() {
                 <AttendanceTable
                   rows={list.paged}
                   onViewHistory={setHistoryStudent}
+                  onEdit={(row) =>
+                    setEditing({
+                      id: row.id,
+                      name: row.name,
+                      grade: row.grade,
+                      busId: row.busId || null,
+                    })
+                  }
                   view={rollMode ? "roll" : "day"}
                   summaries={summary.byStudentId}
                   hasFilters={list.hasFilters}
@@ -280,6 +292,8 @@ export default function StudentsPage() {
         studentName={historyStudent}
         onClose={() => setHistoryStudent(null)}
       />
+
+      <EditStudentDialog student={editing} onClose={() => setEditing(null)} />
     </>
   );
 }

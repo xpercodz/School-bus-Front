@@ -19,6 +19,12 @@ interface AttendanceTableProps {
   /** Open a student's attendance history (row History action). */
   onViewHistory?: (name: string) => void;
   /**
+   * Correct the student's name or grade (row Edit action). Absent on screens
+   * that only read the roster — the live monitor and the bus sheet show the
+   * day, they do not maintain the school's records.
+   */
+  onEdit?: (row: AttendanceRow) => void;
+  /**
    * Lead the tablet/desktop table with the run-wide drop-off place (`Off`).
    * Off by default so the Live monitor and the bus overview keep their
    * columns. The phone cards never show it — they are one student, not a run.
@@ -84,6 +90,7 @@ function rollLastStatus(
 export function AttendanceTable({
   rows,
   onViewHistory,
+  onEdit,
   showOrder = false,
   view = "day",
   summaries,
@@ -164,6 +171,19 @@ export function AttendanceTable({
                   </div>
                   <div className="flex flex-none items-center gap-1">
                     {status && <StatusBadge status={status} />}
+                    {onEdit && (
+                      <Button
+                        type="button"
+                        onClick={() => onEdit(row)}
+                        aria-label={t("students.edit.aria", { name: row.name })}
+                        variant="ghost"
+                        size="md"
+                        icon
+                        className="flex-none"
+                      >
+                        <Icon name="edit" size={18} variant="outlined" />
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       onClick={() => onViewHistory?.(row.name)}
@@ -383,16 +403,30 @@ export function AttendanceTable({
                       )}
                     </td>
                     <td className="px-4 text-end">
-                      <Button
-                        type="button"
-                        onClick={() => onViewHistory?.(row.name)}
-                        aria-label={t("dashboard.historyAria", { name: row.name })}
-                        variant="ghost"
-                        size="sm"
-                      >
-                        <Icon name="history" size={16} variant="outlined" />
-                        {t("dashboard.th.actions")}
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        {onEdit && (
+                          <Button
+                            type="button"
+                            onClick={() => onEdit(row)}
+                            aria-label={t("students.edit.aria", { name: row.name })}
+                            variant="ghost"
+                            size="sm"
+                            icon
+                          >
+                            <Icon name="edit" size={16} variant="outlined" />
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          onClick={() => onViewHistory?.(row.name)}
+                          aria-label={t("dashboard.historyAria", { name: row.name })}
+                          variant="ghost"
+                          size="sm"
+                        >
+                          <Icon name="history" size={16} variant="outlined" />
+                          {t("dashboard.th.actions")}
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -428,16 +462,30 @@ export function AttendanceTable({
                     <StatusBadge status={row.status} />
                   </td>
                   <td className="px-4 text-end">
-                    <Button
-                      type="button"
-                      onClick={() => onViewHistory?.(row.name)}
-                      aria-label={t("dashboard.historyAria", { name: row.name })}
-                      variant="ghost"
-                      size="sm"
-                    >
-                      <Icon name="history" size={16} variant="outlined" />
-                      {t("dashboard.th.actions")}
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      {onEdit && (
+                        <Button
+                          type="button"
+                          onClick={() => onEdit(row)}
+                          aria-label={t("students.edit.aria", { name: row.name })}
+                          variant="ghost"
+                          size="sm"
+                          icon
+                        >
+                          <Icon name="edit" size={16} variant="outlined" />
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        onClick={() => onViewHistory?.(row.name)}
+                        aria-label={t("dashboard.historyAria", { name: row.name })}
+                        variant="ghost"
+                        size="sm"
+                      >
+                        <Icon name="history" size={16} variant="outlined" />
+                        {t("dashboard.th.actions")}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))

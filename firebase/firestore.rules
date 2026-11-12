@@ -186,8 +186,9 @@ service cloud.firestore {
           && (isStaff() || isOperator() || isDirector())
         ) || (
           (request.resource.data.event in [
-            'student.bus_changed', 'bus.driver_changed', 'students.imported',
-            'run.dispatched', 'school.assignment_mode_changed', 'activity.exported'
+            'student.bus_changed', 'student.updated', 'bus.driver_changed',
+            'students.imported', 'run.dispatched',
+            'school.assignment_mode_changed', 'activity.exported'
           ])
           && (isOperator() || isDirector())
         );
@@ -232,11 +233,20 @@ service cloud.firestore {
       // fields (name/grade) — shallow integrity. An operator granted Assignments
       // may move a child between buses and link a driver to one, and may touch
       // NOTHING else on those documents.
+      // Two separate grants, each with its own field list:
+      //   - `students` may correct a child's NAME and GRADE (the roster is
+      //     theirs to maintain);
+      //   - `assignments` may change the BUS and nothing else.
+      // A caller holding both gets the union. Neither list is a subset of the
+      // other, so a grant can never quietly grow into the other one.
       match /students/{studentId} {
         allow read: if isMySchool(schoolId) && canSeeStudents();
         allow create, delete: if isMySchool(schoolId) && isDirector();
         allow update: if isMySchool(schoolId) && (
           isDirector()
+          || (isOperator() && can('students')
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['name', 'grade', 'updatedBy', 'updatedAt']))
           || (canAssign()
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['busId', 'updatedBy', 'updatedAt']))

@@ -730,6 +730,15 @@ export const messages: Messages = {
   "students.title": "الطلاب",
   "students.subtitle": "{school} · {count} في السجل · {classes} صفوف",
   "students.roll": "سجل الطلاب",
+  "students.edit.title": "تعديل الطالب",
+  "students.edit.aria": "تعديل {name}",
+  "students.edit.name": "الاسم",
+  "students.edit.grade": "الصف",
+  "students.edit.sheetNote":
+    "إذا لم تُعتمد رحلة اليوم، تُصحَّح كشوفها أيضًا. أما الأيام السابقة فتحتفظ بالاسم الذي سُجّل فيها.",
+  "students.edit.save": "حفظ التغييرات",
+  "students.edit.cancel": "إلغاء",
+  "students.edit.saved": "تم تحديث بيانات الطالب",
   "students.meta": "{count} طالبًا · {sort}",
   "students.meta.one": "{count} طالب · {sort}",
   "students.retention": "يُحفظ السجل ٩٠ يومًا",
@@ -936,6 +945,7 @@ export const messages: Messages = {
   "activity.mode.bus": "الحافلة",
   "activity.mode.driver": "السائق",
 
+  "activity.event.studentUpdated": "غيّر {actor} بيانات {target}",
   "activity.event.signIn": "سجّل {actor} الدخول",
   "activity.event.signInFailed": "فشلت محاولة دخول باسم {actor}",
   "activity.event.codeSignIn": "سجّل {actor} الدخول برمز وصول",
