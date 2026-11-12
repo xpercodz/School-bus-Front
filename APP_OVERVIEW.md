@@ -764,6 +764,17 @@ while keeping final states. Two set pieces:
   (public client keys by design — the security model lives in the rules and the API)
   plus `VITE_API_URL`.
 
+### Hosting is live; the API is not yet
+
+The web app is deployed to Firebase Hosting. The **backend is not**: the project
+is on the Spark plan, so Cloud Run (and the Artifact Registry build a source
+deploy needs) refuses with `BILLING_DISABLED`. Until billing is enabled the API
+runs locally (`npm run dev` in `School-bus-API`, reached through `VITE_API_URL`),
+and the hosted app answers its `/v1/**` calls with 503 — sign-in cannot work
+against a backend that is not running. The rewrites below are already in place so
+that the day a revision is running, the hosted app is same-origin with no client
+change and no CORS to configure.
+
 ### Production — same-origin, and that matters
 
 - `firebase.json` rewrites `/v1/**` and `/health` to the **Cloud Run** service
@@ -785,10 +796,16 @@ while keeping final states. Two set pieces:
   Firebase CLI is not a dependency: use `npx firebase-tools@latest …`.
 
 ```bash
-npm run deploy          # build + deploy hosting
+npm run deploy          # build + npx firebase-tools deploy --only hosting
 npm run deploy:rules    # firestore rules  — required after ANY rules edit
 npm run deploy:indexes  # firestore indexes
 ```
+
+The three scripts call `npx --yes firebase-tools@latest`, because the CLI is not
+a dependency of this repo. They used to call a bare `firebase` binary, which does
+not exist here — `npm run deploy` built the bundle and then failed with
+`sh: firebase: not found` while still exiting 0, which is how hosting fell
+several releases behind the repo without anyone noticing.
 
 ### Firebase lifecycle
 
@@ -828,7 +845,7 @@ Accepted trade-offs, each with the condition that should make someone revisit it
   The design point is tens of schools and a few thousand accounts, which one
   instance serves easily; the durable guard is the per-code `attempts` counter and
   15-minute lockout in Firestore (shared, survives a restart), and the deploy caps
-  `--max-instances=2`, so evading the limiter buys at most a 2× per-IP budget.
+  `--max-instances=1`, so there is exactly one counter.
   Revisit only if the API runs many instances — regional fan-out, off Cloud Run, or
   a burst that needs more than a couple.
 - **The throttle's client IP depends on `TRUSTED_PROXY_HOPS` matching the real

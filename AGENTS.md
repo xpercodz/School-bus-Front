@@ -672,6 +672,20 @@ npm run deploy:indexes  # firestore indexes
 Project is pinned by the committed `.firebaserc` (`school-bus-a4f23`). The Firebase
 CLI is not a dependency — run it with `npx firebase-tools@latest …`.
 
+### Hosting is live; the API is not
+
+The web app is on Hosting. The **backend is not**: the project is on Spark, so
+Cloud Run refuses a deploy (`BILLING_DISABLED`) and the API runs locally. The
+hosted app's `/v1/**` calls therefore answer **503**, and sign-in on the deployed
+site cannot work until the API is hosted. Everything below is still the correct
+target — the rewrites are already in place so that a running revision makes the
+app same-origin with no client change.
+
+Also: the three deploy scripts call `npx --yes firebase-tools@latest`. They used
+to call a bare `firebase` binary that does not exist here, so `npm run deploy`
+rebuilt the bundle and then failed with `sh: firebase: not found` — and still
+exited 0 through a `| tail`, which is how hosting silently fell releases behind.
+
 ### Production is same-origin — read this before touching API URLs
 
 `firebase.json` rewrites `/v1/**` and `/health` to the **Cloud Run** service
