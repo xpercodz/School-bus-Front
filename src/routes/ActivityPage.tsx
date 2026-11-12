@@ -114,7 +114,7 @@ export default function ActivityPage() {
   };
 
   const sentence = (row: ActivityRow): string => {
-    const actor = row.actorName || t("activity.unknownActor");
+    const actor = nameOf(row.actorUid, row.actorName);
     if (!row.event) {
       // An event this build does not know. Name the record, never the enum.
       return `${actor} — ${t("activity.unknownEvent")}`;
@@ -125,6 +125,7 @@ export default function ActivityPage() {
 
     switch (row.event) {
       case "auth.sign_in_failed":
+        // A failed attempt has nobody to resolve, so the snapshot is all there is.
         vars.actor = row.actorName || row.targetName || t("activity.unknownActor");
         break;
       case "driver.created":
@@ -134,7 +135,7 @@ export default function ActivityPage() {
       case "operator.password_changed":
       case "operator.removed":
       case "owner.changed":
-        vars.target = row.targetName || t("activity.unknownActor");
+        vars.target = nameOf(row.targetId, row.targetName);
         break;
       case "student.bus_changed":
         vars.target = studentLabel(row.targetId);
@@ -209,14 +210,31 @@ export default function ActivityPage() {
     return typeof raw === "string" ? translateDataLabel(raw, locale, t) : String(raw);
   };
 
-  const actorOptions = useMemo(() => {
+  /**
+   * Accounts the director can already see, by uid. Two jobs: the actor filter,
+   * and a fallback for an entry whose name snapshot is missing — older entries
+   * written before the API started filling it, and anything written by a build
+   * that did not. The snapshot always wins when it is there, because a removed
+   * account is exactly the case this map cannot cover.
+   */
+  const namesById = useMemo(() => {
     const seen = new Map<string, string>();
     for (const member of team) seen.set(member.uid, member.displayName);
     for (const member of staff) seen.set(member.uid, member.displayName);
-    return [...seen.entries()]
-      .map(([uid, name]) => ({ uid, name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return seen;
   }, [team, staff]);
+
+  const actorOptions = useMemo(
+    () =>
+      [...namesById.entries()]
+        .map(([uid, name]) => ({ uid, name }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [namesById],
+  );
+
+  /** A name for an account: the entry's snapshot, then the live profile. */
+  const nameOf = (uid: string | null, snapshot: string | null | undefined): string =>
+    snapshot || (uid ? namesById.get(uid) : undefined) || t("activity.unknownActor");
 
   const total = counts ? counts.access + counts.student + counts.roll + counts.settings : null;
   const last = feed.rows[0]?.at ?? null;
