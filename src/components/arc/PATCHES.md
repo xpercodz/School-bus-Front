@@ -70,6 +70,7 @@ Two hard requirements in `AGENTS.md` conflict with the files as shipped:
 | `date-picker.tsx` | Added `labels?: { clear, chooseDay, selected, calendar, today, previousMonth, nextMonth, todayWithDate }`. `Clear` / `Choose a day` / `Selected …` / `"$label calendar"` were literals. |
 | `date-picker.tsx` | Added `inline` and `hideLabel`. The report's date control is a chip in a filter row, not a labelled form field: `inline` shrink-wraps the trigger and `hideLabel` keeps the label for screen readers only. In the Analytics modal the same component is a normal labelled field. |
 | `date-picker.module.css` | `.popover` anchors with `inset-inline-start` (was physical `left: 0`; the same for `right: 0` in the ≤360px rule). In Arabic the calendar opened away from its trigger and could clip the viewport edge. |
+| `date-picker.module.css` | The ≤360px rule set `inset-inline-end: 0` **and** `width: auto`. With both insets set, `width: auto` resolves to the containing block, which for the dashboard's compact `inline` chip is ~110px — so the phone calendar laid itself out in a third of the screen: overlapping day numbers and a clipped month title. The rule now sets a real width (`min(320px, 100vw - 24px)`) and keeps only the tighter padding. |
 
 ## bar-chart
 

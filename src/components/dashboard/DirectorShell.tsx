@@ -73,7 +73,7 @@ export function DirectorShell({ children }: { children: ReactNode }) {
               page-enter animation; the bottom bar owns its own space. */}
           <main
             key={pathname}
-            className="page-enter flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0"
+            className="page-enter flex-1 pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-0"
           >
             {children}
           </main>

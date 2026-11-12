@@ -6,24 +6,13 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeSwitchButton } from "@/components/ThemeSwitchButton";
 import { useTour } from "@/components/dashboard/Tour";
 import { ProductMark } from "@/components/ProductMark";
-import type { NavItem } from "@/data/dashboard";
+import { NAV_LABEL_KEY, type NavItem } from "@/data/dashboard";
+import type { MessageKey } from "@/lib/i18n/types";
 import { visibleNavItems } from "@/lib/permissions";
 import { useMainDirector } from "@/lib/main-director";
 import { useAuth } from "@/lib/auth";
 import { useLocale } from "@/lib/i18n/context";
 import { useUserProfile } from "@/lib/user-profile";
-import type { MessageKey } from "@/lib/i18n/types";
-
-/** Nav label key per item id (labels are translated, ids are stable). */
-const NAV_LABEL_KEY: Record<string, MessageKey> = {
-  "live-map": "nav.liveMap",
-  students: "nav.students",
-  reports: "nav.reports",
-  assignments: "nav.assignments",
-  drivers: "nav.drivers",
-  activity: "nav.activity",
-  operators: "nav.operators",
-};
 
 interface SidebarProps {
   /** id of the nav item currently shown (e.g. "live-map"); rendered as the active page. */

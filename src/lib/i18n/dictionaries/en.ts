@@ -110,7 +110,6 @@ export const messages = {
   "nav.fleet": "Fleet status",
   "nav.routes": "Routes",
   "nav.students": "Students",
-  "nav.shortStudents": "Students",
   "mobile.markBoarded": "Board",
   "nav.reports": "Reports",
   "nav.assignments": "Assignments",
@@ -120,11 +119,6 @@ export const messages = {
   "nav.primaryAria": "Primary navigation",
   "nav.operate": "Operate",
   // Short labels for the phone bottom bar (4 destinations).
-  "nav.shortLive": "Live",
-  "nav.shortReports": "Reports",
-  "nav.shortAssignments": "Assign",
-  "nav.shortDrivers": "Drivers",
-  "nav.shortOperators": "Team",
   "nav.manage": "Manage",
 
   // Dashboard screen
@@ -856,7 +850,6 @@ export const messages = {
 
   // ── activity log ────────────────────────────────────────────────────────
   "nav.activity": "Activity",
-  "nav.shortActivity": "Log",
   "guide.activity.tldr":
     "Every change made in the school, in order, with who made it — and no way to edit it afterwards.",
   "guide.activity.caption": "The five counters are also the filter; a row opens its before-and-after.",

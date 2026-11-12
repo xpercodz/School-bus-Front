@@ -111,7 +111,6 @@ export const messages: Messages = {
   "nav.fleet": "حالة الأسطول",
   "nav.routes": "المسارات",
   "nav.students": "الطلاب",
-  "nav.shortStudents": "طلاب",
   "mobile.markBoarded": "تسجيل الركوب",
   "nav.reports": "التقارير",
   "nav.assignments": "التعيينات",
@@ -121,11 +120,6 @@ export const messages: Messages = {
   "nav.primaryAria": "التنقل الرئيسي",
   "nav.operate": "التشغيل",
   // تسميات قصيرة لشريط التنقل السفلي في الهاتف.
-  "nav.shortLive": "مباشر",
-  "nav.shortReports": "تقارير",
-  "nav.shortAssignments": "تعيين",
-  "nav.shortDrivers": "سائقون",
-  "nav.shortOperators": "الفريق",
   "nav.manage": "الإدارة",
 
   // Dashboard screen
@@ -847,7 +841,6 @@ export const messages: Messages = {
 
   // ── سجل النشاط ──────────────────────────────────────────────────────────
   "nav.activity": "النشاط",
-  "nav.shortActivity": "سجل",
   "guide.activity.tldr":
     "كل تغيير في المدرسة، بالترتيب، مع من قام به — ولا سبيل لتعديله بعد ذلك.",
   "guide.activity.caption": "العدّادات الخمسة هي أيضًا عامل التصفية؛ وكل صف يُفتح ليعرض ما قبل وما بعد.",

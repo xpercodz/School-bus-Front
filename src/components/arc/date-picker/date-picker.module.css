@@ -22,8 +22,14 @@
 .trigger[aria-expanded="true"] .chevron { transform: rotate(180deg); }
 /* Grows out of the trigger's calendar icon and returns there on close. */
 .popover { position: absolute; z-index: 20; top: calc(100% + 8px); inset-inline-start: 0; width: min(320px, calc(100vw - 32px)); overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-panel); padding: 16px; background: var(--surface-raised); box-shadow: var(--shadow-floating); transform-origin: 22px -8px; will-change: transform, opacity; }
-/* On phone widths the calendar matches the field instead of running past the screen edge, and a tighter inset keeps the month and its controls on one row. */
-@media (max-width: 360px) { .popover { inset-inline-end: 0; width: auto; padding: 12px; } }
+/* On phone widths the panel keeps a width of its own instead of running past the
+   screen edge, and a tighter inset keeps the month and its controls on one row.
+   It must NOT inherit the trigger's width: with both inline insets set, `width:
+   auto` resolves to the anchor, so a compact chip (`inline`, the dashboard's
+   date control) opened a ~110px calendar whose day grid overlapped itself and
+   whose month title clipped. Anchoring stays on the start edge, which is
+   logical, so RTL still opens toward the middle of the screen. */
+@media (max-width: 360px) { .popover { width: min(320px, calc(100vw - 24px)); padding: 12px; } }
 .footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; border-top: 1px solid var(--border-subtle); padding-top: 11px; color: var(--text-muted); font-size: var(--text-xs); }
 /* Old and new status lines share one cell, pinned to the trailing edge so a shorter line never shifts. */
 .status { display: grid; min-width: 0; justify-items: end; }

@@ -10,6 +10,7 @@
 
 import type { OperatorScreen } from "@/lib/api-contract";
 import type { StudentStatus } from "@/data/students";
+import type { MessageKey } from "@/lib/i18n/types";
 
 /**
  * Attendance badge classes per status. Pale tint + dark ink of the same hue;
@@ -156,6 +157,21 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: "activity", icon: "history", href: "/dashboard/activity", group: "manage", screen: "activity" },
   { id: "operators", icon: "manage_accounts", href: "/dashboard/operators", group: "manage", screen: "operators" },
 ];
+
+/**
+ * The FULL name of a destination, per nav id. One map, used by the rail and by
+ * the phone bar: the phone bar is icons only, so this is its accessible name,
+ * and a truncated label there would be a worse name than none.
+ */
+export const NAV_LABEL_KEY: Record<string, MessageKey> = {
+  "live-map": "nav.liveMap",
+  students: "nav.students",
+  reports: "nav.reports",
+  assignments: "nav.assignments",
+  drivers: "nav.drivers",
+  activity: "nav.activity",
+  operators: "nav.operators",
+};
 
 /** Map the current pathname to the active sidebar item id (shell pages → live-map). */
 export function activeIdFromPathname(pathname: string): string {
