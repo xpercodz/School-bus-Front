@@ -237,7 +237,10 @@ service cloud.firestore {
       // because the sheet already decided the class and the bus. That bound
       // applies to every role, a director included: a create is the import's
       // shape, and a director who needs another field can set it in an update,
-      // where their branch is unbounded. Deleting a
+      // where their branch is unbounded. One consequence is deliberate: a
+      // Students-only caller may set the bus on a *new* child (it is the sheet's
+      // column), while moving an existing child still needs Assignments.
+      // Deleting a
       // child stays director-only: nothing in the product offers it, and
       // "remove this person" is not an office task.
       //
@@ -297,7 +300,9 @@ service cloud.firestore {
       // their own bus's, and only with valid status/run-type/date fields. On a
       // run that already exists a driver may change the status and the two
       // stamps and nothing else — the bus, the type and the date are what the
-      // day was, and the completed run is the record the director reads.
+      // day was, and the completed run is the record the director reads. A run
+      // they create carries the same shape `completeRun` writes and nothing
+      // more, so a bus cannot invent a document with extra fields.
       match /runs/{runId} {
         allow read: if isMySchool(schoolId) && canSeeRuns();
         allow create, update: if isMySchool(schoolId) && (
@@ -308,9 +313,12 @@ service cloud.firestore {
             request.resource.data.status in ['IN_PROGRESS', 'COMPLETED'] &&
             request.resource.data.runType in ['morning', 'afternoon'] &&
             request.resource.data.date is string &&
-            (resource == null
-              || request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['status', 'updatedBy', 'updatedAt'])))
+            (resource != null
+              ? request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['status', 'updatedBy', 'updatedAt'])
+              : request.resource.data.keys().hasOnly([
+                  'busId', 'runType', 'date', 'status', 'updatedBy', 'updatedAt'
+                ])))
         ) && stamped();
         allow delete: if isMySchool(schoolId) && isDirector();
       }
@@ -320,7 +328,9 @@ service cloud.firestore {
       // on a doc that already exists a driver records the status and its two
       // timestamps and nothing else, so `studentName`, `grade`, `busName` and
       // `date` stay the copies the sheet took at dispatch — the record a family
-      // is shown later is not rewritable from a bus.
+      // is shown later is not rewritable from a bus. The create branch is bounded
+      // the same way: without `date` and `studentName` a fabricated row cannot
+      // appear in any day's query, and dispatch never runs as staff.
       match /attendance/{attId} {
         allow read: if isMySchool(schoolId) && canSeeRuns();
         allow create, update: if isMySchool(schoolId) && (
@@ -329,9 +339,12 @@ service cloud.firestore {
           || (isStaff() &&
             staffsOwnBus(request.resource.data.busId) &&
             request.resource.data.status in ['BOARDED', 'WAITING', 'DROPPED_OFF', 'ABSENT'] &&
-            (resource == null
-              || request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['status', 'boardedAt', 'droppedOffAt', 'updatedBy', 'updatedAt'])))
+            (resource != null
+              ? request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['status', 'boardedAt', 'droppedOffAt', 'updatedBy', 'updatedAt'])
+              : request.resource.data.keys().hasOnly([
+                  'busId', 'status', 'boardedAt', 'droppedOffAt', 'updatedBy', 'updatedAt'
+                ])))
         ) && stamped();
         allow delete: if isMySchool(schoolId) && isDirector();
       }
