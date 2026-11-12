@@ -28,6 +28,12 @@ export interface OtpInputProps {
   autoFocus?: boolean;
   disabled?: boolean;
   inputMode?: "numeric" | "text";
+  /**
+   * LOCAL PATCH: widen the gap after every Nth slot so a long code reads in
+   * groups — eight digits as 4 + 4 — without changing the slot geometry.
+   * Omitted, the row keeps its uniform gap.
+   */
+  groupSize?: number;
   className?: string;
 }
 
@@ -63,7 +69,7 @@ function MessageRow({ id, text, className, alert }: { id?: string; text: string;
   </motion.span>;
 }
 
-export function OtpInput({ length = 6, value = "", onChange, label, description, error, sanitize: sanitizeProp, digitLabel, autoFocus = false, disabled = false, inputMode = "numeric", className }: OtpInputProps) {
+export function OtpInput({ length = 6, value = "", onChange, label, description, error, sanitize: sanitizeProp, digitLabel, autoFocus = false, disabled = false, inputMode = "numeric", groupSize, className }: OtpInputProps) {
   const generatedId = useId();
   const reduced = useReducedMotion();
   const [scope, animate] = useAnimate<HTMLDivElement>();
@@ -76,7 +82,7 @@ export function OtpInput({ length = 6, value = "", onChange, label, description,
   const sanitize = (next: string) =>
     sanitizeProp ? sanitizeProp(next) : inputMode === "numeric" ? next.replace(/\D/g, "") : next;
   // One ring for the whole row. It glides between slots while focus stays inside, and fades in where focus lands when it arrives from outside.
-  const [ring, setRing] = useState({ x: 0, width: 0, shown: false, glide: false });
+  const [ring, setRing] = useState({ x: 0, y: 0, width: 0, height: 0, shown: false, glide: false });
   // A paste fills several slots in one update; those digits land as a short left to right wave.
   const [fill, setFill] = useState({ value, wave: false });
   if (fill.value !== value) setFill({ value, wave: Array.from({ length }, (_, index) => (fill.value[index] ?? "") !== (value[index] ?? "")).filter(Boolean).length > 1 });
@@ -92,7 +98,7 @@ export function OtpInput({ length = 6, value = "", onChange, label, description,
     if (!row || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
       const slot = (row.contains(document.activeElement) ? document.activeElement?.parentElement : null) as HTMLElement | null;
-      if (slot) setRing(current => (current.x === slot.offsetLeft && current.width === slot.offsetWidth ? current : { ...current, x: slot.offsetLeft, width: slot.offsetWidth, glide: false }));
+      if (slot) setRing(current => (current.x === slot.offsetLeft && current.y === slot.offsetTop && current.width === slot.offsetWidth && current.height === slot.offsetHeight ? current : { ...current, x: slot.offsetLeft, y: slot.offsetTop, width: slot.offsetWidth, height: slot.offsetHeight, glide: false }));
     });
     observer.observe(row);
     return () => observer.disconnect();
@@ -150,13 +156,13 @@ export function OtpInput({ length = 6, value = "", onChange, label, description,
       onChange?.(next.join(""));
     }
   };
-  const handleFocus = (event: FocusEvent<HTMLInputElement>) => { const slot = event.currentTarget.parentElement as HTMLElement; setRing(current => ({ x: slot.offsetLeft, width: slot.offsetWidth, shown: true, glide: current.shown })); };
+  const handleFocus = (event: FocusEvent<HTMLInputElement>) => { const slot = event.currentTarget.parentElement as HTMLElement; setRing(current => ({ x: slot.offsetLeft, y: slot.offsetTop, width: slot.offsetWidth, height: slot.offsetHeight, shown: true, glide: current.shown })); };
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => { if (!scope.current?.contains(event.relatedTarget as Node | null)) setRing(current => ({ ...current, shown: false, glide: false })); };
   const glyphTransition = (index: number): Transition => reduced ? { duration: motionTokens.duration.instant } : { duration: motionTokens.duration.standard, ease: [...motionTokens.ease.enter], delay: fill.wave ? index * motionTokens.stagger.item : 0 };
 
   return <div className={[styles.field, className].filter(Boolean).join(" ")}>
     <span className={styles.label}>{label}</span>
-    <div ref={scope} className={styles.inputs} role="group" aria-label={label} data-invalid={error ? "true" : undefined}>
+    <div ref={scope} className={[styles.inputs, groupSize ? styles.wrapping : null].filter(Boolean).join(" ")} style={groupSize ? { maxWidth: `min(${groupSize * 42 + (groupSize - 1) * 8}px, 100%)` } : undefined} role="group" aria-label={label} data-invalid={error ? "true" : undefined}>
       {values.map((character, index) => <div key={`${generatedId}-${index}`} className={styles.slot}>
         <input
           ref={(node) => { inputRefs.current[index] = node; }}
@@ -179,7 +185,7 @@ export function OtpInput({ length = 6, value = "", onChange, label, description,
         {/* The input text is transparent; this copy of the digit rises into the slot and unblurs. */}
         <AnimatePresence initial={false}>{character ? <motion.span key={character} className={styles.glyph} aria-hidden="true" initial={reduced ? { opacity: 0 } : { opacity: 0, y: "0.35em", filter: `blur(${motionTokens.blur.soft}px)` }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} exit={reduced ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, scale: .9, filter: `blur(${motionTokens.blur.subtle}px)`, transition: { duration: motionTokens.duration.instant, ease: [...motionTokens.ease.standard] } }} transition={glyphTransition(index)}>{character}</motion.span> : null}</AnimatePresence>
       </div>)}
-      <motion.span className={styles.ring} aria-hidden="true" initial={false} animate={{ x: ring.x, width: ring.width, opacity: ring.shown ? 1 : 0, scale: ring.shown ? 1 : .94 }} transition={reduced ? { duration: 0 } : { x: ring.glide ? motionTokens.spring.snappy : { duration: 0 }, width: { duration: 0 }, scale: motionTokens.spring.snappy, opacity: { duration: motionTokens.duration.fast } }} />
+      <motion.span className={styles.ring} aria-hidden="true" initial={false} animate={{ x: ring.x, y: ring.y, width: ring.width, height: ring.height, opacity: ring.shown ? 1 : 0, scale: ring.shown ? 1 : .94 }} transition={reduced ? { duration: 0 } : { x: ring.glide ? motionTokens.spring.snappy : { duration: 0 }, y: ring.glide ? motionTokens.spring.snappy : { duration: 0 }, width: { duration: 0 }, height: { duration: 0 }, scale: motionTokens.spring.snappy, opacity: { duration: motionTokens.duration.fast } }} />
     </div>
     <FieldMessage id={hintId} text={description} className={styles.description} />
     <FieldMessage id={errorId} text={error} className={styles.error} alert />

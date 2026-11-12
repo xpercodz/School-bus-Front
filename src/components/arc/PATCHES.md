@@ -28,6 +28,8 @@ Two hard requirements in `AGENTS.md` conflict with the files as shipped:
 | `otp-input.tsx` | Added `sanitize?: (value: string) => string`. The shipped sanitiser is `replace(/\D/g, "")`, which **deletes** Arabic-Indic digits (٠-٩) — a driver typing on an Arabic keyboard watched every digit vanish. `LoginPage` now passes `normalizeDigits`. |
 | `otp-input.tsx` | Added `digitLabel?: (index, total) => string` for the per-slot `aria-label`, so screen-reader output is translated. |
 | `otp-input.module.css` | `.inputs { direction: ltr }` — a one-time code must read left to right in Arabic too. Without it the digits render mirrored (246810 → 018642) while the arrow keys stay LTR-semantic, so the code is unenterable. |
+| `otp-input.tsx` + `otp-input.module.css` | Added `groupSize?: number`: the row is capped at one group's natural width and allowed to wrap, so an eight-digit code renders as two rows of four at full 42×48 slots instead of eight squeezed columns. The ring gained `y`/`height` so it still lands on the focused slot across rows. A prop cannot reach the slot map, and rendering two fields instead would split the focus handling and the one gliding ring. Omitted, the layout is the shipped one. |
+| `otp-input.module.css` | `.field` gained `grid-template-columns: minmax(0, 1fr)`. The implicit track sized to max-content, so `.inputs`' `max-width: 100%` resolved against an indefinite width and a long code overflowed its card — the last box was clipped. This also affected six digits on a narrow phone; it only became obvious at eight. |
 
 ## user-menu
 

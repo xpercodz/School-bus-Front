@@ -1,9 +1,15 @@
-.field { display: grid; min-width: 0; }
+/* LOCAL PATCH: `minmax(0, 1fr)` gives the row a definite width to shrink into.
+   Without it the implicit track sizes to max-content, `.inputs`' `max-width: 100%`
+   resolves against an indefinite size, and a long code overflows the card. */
+.field { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
 .label { margin-bottom: 8px; color: var(--foreground); font-size: var(--text-sm); font-weight: 500; line-height: var(--leading-body); }
 .inputs {
   /* LOCAL PATCH: a code reads left to right in every locale. */
   direction: ltr; position: relative; display: flex; width: fit-content; max-width: 100%; gap: 8px; }
 .slot { position: relative; display: grid; width: 42px; height: 48px; min-width: 0; flex: 0 1 42px; }
+/* LOCAL PATCH: `groupSize` caps the row at one group's width and lets it wrap,
+   so eight digits read as two rows of four at full slot size. */
+.wrapping { flex-wrap: wrap; align-content: flex-start; }
 /* The native text is transparent (caret stays visible); .glyph draws the digit so it can rise in. */
 .input { width: 100%; height: 100%; min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); color: transparent; caret-color: var(--accent); font: inherit; font-size: var(--text-lg); font-variant-numeric: tabular-nums; text-align: center; outline: none; transition: border-color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard); }
 @media (hover: hover) and (pointer: fine) { .input:hover:not(:disabled, [data-filled="true"], [aria-invalid="true"]) { border-color: var(--border-strong); background: var(--surface-muted); } }
@@ -14,7 +20,7 @@
 .glyph { position: absolute; inset: 0; display: grid; place-items: center; color: var(--foreground); font-size: var(--text-lg); font-variant-numeric: tabular-nums; pointer-events: none; }
 .input:disabled ~ .glyph { opacity: .48; }
 /* One ring per field. It glides to the focused slot and morphs to the danger color with the error state. */
-.ring { position: absolute; top: 0; left: 0; height: 100%; z-index: 2; border: 1px solid var(--accent-strong); border-radius: var(--radius-control); pointer-events: none; transition: border-color var(--duration-fast) var(--ease-standard); }
+.ring { position: absolute; top: 0; left: 0; z-index: 2; border: 1px solid var(--accent-strong); border-radius: var(--radius-control); pointer-events: none; transition: border-color var(--duration-fast) var(--ease-standard); }
 .inputs[data-invalid="true"] .ring { border-color: var(--danger); }
 /* The row's space is padding inside the clipped slot, so the height animates from a true zero. */
 .messageSlot { display: block; overflow: hidden; }

@@ -266,13 +266,14 @@ export default function LoginPage() {
 
         {mode === "driver" ? (
           <div className="mt-6 flex flex-col gap-4">
-            {/* Eight boxes, one ring gliding between them, and no submit button:
-                the eighth digit is the submission. The library renders the field
-                label, the hint and the error, so they are passed as props and
-                translated here. */}
+            {/* Eight boxes in two groups of four, one ring gliding between them,
+                and no submit button: the eighth digit is the submission. The
+                library renders the field label, the hint and the error, so they
+                are passed as props and translated here. */}
             <div className={codeLocked ? "pointer-events-none opacity-60" : undefined}>
               <OtpInput
                 length={8}
+                groupSize={4}
                 label={t("login.code")}
                 description={t("login.driverHint")}
                 error={codeLocked ? undefined : (codeError ?? undefined)}
