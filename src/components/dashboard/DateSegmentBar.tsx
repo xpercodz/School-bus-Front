@@ -18,18 +18,6 @@ interface DateSegmentBarProps {
   onDateChange: (d: string | null) => void;
   segment: RunSegmentId;
   onSegmentChange: (s: RunSegmentId) => void;
-  /**
-   * Picker placeholder shown while no date is selected. Defaults to "Today",
-   * the live-day meaning of null for a dashboard report.
-   */
-  placeholder?: string;
-  /** Picker clear action — defaults to "Today", because clearing means today. */
-  clearLabel?: string;
-  /**
-   * Render the run-segment control. Defaults to true; false leaves a bare date
-   * picker for a view whose numbers are not scoped to one run.
-   */
-  showSegment?: boolean;
 }
 
 /**
@@ -48,21 +36,14 @@ interface DateSegmentBarProps {
  * less than a comfortable width — 320–390px phones — and sits beside it only
  * when the labels genuinely fit.
  *
- * The three optional props exist for a caller whose date means something other
- * than "this report's live day": the Students screen's "All students" mode has
- * no single run to segment, because presence there is summarised across both
- * runs, so it hides that control rather than showing a dead switch. That same
- * mode passes its own placeholder/clear labels, since no date there means the
- * whole roll instead of today.
+ * Both callers are day-scoped screens (the live monitor and Reports), so a
+ * report always has a run to segment and today is always what "no date" means.
  */
 export function DateSegmentBar({
   date,
   onDateChange,
   segment,
   onSegmentChange,
-  placeholder,
-  clearLabel,
-  showSegment = true,
 }: DateSegmentBarProps) {
   const { t, locale } = useLocale();
   // The defaults are localized strings, so they resolve here rather than in the
@@ -76,12 +57,12 @@ export function DateSegmentBar({
         inline
         hideLabel
         label={t("dashboard.selectDate")}
-        placeholder={placeholder ?? today}
+        placeholder={today}
         value={date ? toDateValue(date) : undefined}
         onChange={(next) => onDateChange(next ? fromDateValue(next) : null)}
         locale={localeCode(locale)}
         labels={{
-          clear: clearLabel ?? today,
+          clear: today,
           chooseDay: t("datePicker.chooseDay"),
           selected: (formatted) => t("datePicker.selected", { date: formatted }),
           calendar: (label) => t("datePicker.calendar", { label }),
@@ -93,20 +74,18 @@ export function DateSegmentBar({
       />
 
       {/* Run type segmented control — sliding thumb. Full-width on phones. */}
-      {showSegment && (
-        <div className="min-w-0 flex-1 basis-64 sm:basis-auto sm:flex-none">
-          <SlideSegments
-            variant="dash-box"
-            ariaLabel={t("dashboard.runTypeAria")}
-            options={RUN_SEGMENTS.map((item) => ({
-              id: item.id,
-              label: t(SEGMENT_LABEL_KEY[item.id]),
-            }))}
-            value={segment}
-            onChange={onSegmentChange}
-          />
-        </div>
-      )}
+      <div className="min-w-0 flex-1 basis-64 sm:basis-auto sm:flex-none">
+        <SlideSegments
+          variant="dash-box"
+          ariaLabel={t("dashboard.runTypeAria")}
+          options={RUN_SEGMENTS.map((item) => ({
+            id: item.id,
+            label: t(SEGMENT_LABEL_KEY[item.id]),
+          }))}
+          value={segment}
+          onChange={onSegmentChange}
+        />
+      </div>
     </div>
   );
 }

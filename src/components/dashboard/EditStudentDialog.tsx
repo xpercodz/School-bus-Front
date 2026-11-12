@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog } from "@/components/Dialog";
 import { Button } from "@/components/arc/button/button";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/auth";
 import { useLocale } from "@/lib/i18n/context";
+import { translateDataLabel } from "@/lib/i18n/format";
+import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { updateStudent } from "@/lib/school-admin";
 
 /** The fields the roster may correct. The bus belongs to Assignments. */
@@ -17,6 +19,13 @@ export interface EditableStudent {
 
 interface EditStudentDialogProps {
   student: EditableStudent | null;
+  /**
+   * The classes the school already has, as stored on its students. A class is
+   * picked, never typed: two spellings of one class are two classes on two
+   * Reports cards, and nobody notices until the totals disagree. A class the
+   * school does not have yet arrives with the sheet import.
+   */
+  classOptions: readonly string[];
   onClose: () => void;
 }
 
@@ -31,8 +40,12 @@ const FIELD_CLASS =
  * assignment decision with its own screen, its own permissions and its own
  * audit entry. Two ways to do one thing is how they drift apart.
  */
-export function EditStudentDialog({ student, onClose }: EditStudentDialogProps) {
-  const { t } = useLocale();
+export function EditStudentDialog({
+  student,
+  classOptions,
+  onClose,
+}: EditStudentDialogProps) {
+  const { t, locale } = useLocale();
   const { user } = useAuth();
   const { showToast } = useToast();
   const [name, setName] = useState("");
@@ -52,6 +65,14 @@ export function EditStudentDialog({ student, onClose }: EditStudentDialogProps) 
     setName(student.name);
     setGrade(student.grade);
   }, [student]);
+
+  // The child's own class is always an option, even before the school's list
+  // has caught up with the roster it is drawn from.
+  const classes = useMemo(() => {
+    const all = new Set(classOptions.filter(Boolean));
+    if (grade.trim()) all.add(grade.trim());
+    return [...all].sort((a, b) => a.localeCompare(b));
+  }, [classOptions, grade]);
 
   const open = student !== null;
   const dirty = shown !== null && (name.trim() !== shown.name || grade.trim() !== shown.grade);
@@ -103,17 +124,58 @@ export function EditStudentDialog({ student, onClose }: EditStudentDialogProps) 
         </div>
 
         <div>
-          <label htmlFor="student-grade" className="block text-dash-label-md text-dash-on-surface">
-            {t("students.edit.grade")}
-          </label>
-          <input
-            id="student-grade"
-            type="text"
-            autoComplete="off"
-            value={grade}
-            onChange={(event) => setGrade(event.target.value)}
-            className={FIELD_CLASS}
-          />
+          {classes.length > 0 ? (
+            <>
+              <span className="block text-dash-label-md text-dash-on-surface">
+                {t("students.edit.grade")}
+              </span>
+              <div className="mt-1">
+                <DropdownMenu
+                  ariaLabel={t("students.edit.grade")}
+                  label={
+                    grade.trim()
+                      ? translateDataLabel(grade, locale, t)
+                      : t("students.edit.classEmpty")
+                  }
+                  align="start"
+                  matchTriggerWidth
+                  triggerClassName="arc-field w-full"
+                  searchable={
+                    classes.length >= 4
+                      ? {
+                          placeholder: t("dropdown.searchPlaceholder"),
+                          emptyLabel: t("dropdown.searchEmpty"),
+                        }
+                      : undefined
+                  }
+                  items={classes.map((option) => ({
+                    label: translateDataLabel(option, locale, t),
+                    checked: option === grade,
+                    onSelect: () => setGrade(option),
+                  }))}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* No class exists yet: there is nothing to pick from, so the field
+                  stays open until the school's first import defines one. */}
+              <label
+                htmlFor="student-grade"
+                className="block text-dash-label-md text-dash-on-surface"
+              >
+                {t("students.edit.grade")}
+              </label>
+              <input
+                id="student-grade"
+                type="text"
+                autoComplete="off"
+                value={grade}
+                onChange={(event) => setGrade(event.target.value)}
+                className={FIELD_CLASS}
+              />
+            </>
+          )}
         </div>
 
         <p className="text-[12.5px] leading-5 text-dash-on-surface-variant">

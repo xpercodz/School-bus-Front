@@ -97,9 +97,9 @@ export const messages = {
   // Route guard
   "guard.checking": "Checking access…",
 
-  // Translatable prefixes embedded in data labels (e.g. "Bus 04", "Grade 4B")
+  // Translatable prefixes embedded in data labels (e.g. "Bus 04", "Class 4B")
   "bus.bus": "Bus",
-  "bus.grade": "Grade",
+  "bus.grade": "Class",
 
   // Run-type labels
   "runType.morningPickup": "Morning Pickup",
@@ -130,9 +130,8 @@ export const messages = {
   "dashboard.enRouteOf": "{active} of {total} en route",
   "dashboard.liveAttendance": "Student roster",
   "dashboard.liveUpdating": "Live",
-  "dashboard.caption": "Live student attendance",
   "dashboard.th.studentName": "Student",
-  "dashboard.th.grade": "Grade",
+  "dashboard.th.grade": "Class",
   "dashboard.th.bus": "Bus",
   "dashboard.th.morningBoarded": "Boarded at",
   "dashboard.th.dropOffTime": "Dropped at",
@@ -209,9 +208,8 @@ export const messages = {
   // Student list (dashboard) — search, filters, and pagination
   "studentList.searchAria": "Search students",
   "studentList.searchPlaceholder": "Search student name…",
-  "studentList.statusAria": "Filter by status",
-  "studentList.gradeAria": "Filter by grade",
-  "studentList.allGrades": "All grades",
+  "studentList.gradeAria": "Filter by class",
+  "studentList.allGrades": "All classes",
   "studentList.clear": "Clear filters",
   // Inside a dropdown menu whose list is long enough to scan for a value.
   "dropdown.searchPlaceholder": "Search…",
@@ -340,21 +338,21 @@ export const messages = {
 
   "guide.students.tldr": "The whole school roll, and one child's history when you need it.",
   "guide.students.caption":
-    "With no date picked: the whole roll, with each child's presence over the window.",
-  "guide.students.s1.title": "No date means the whole roll",
+    "Every child in the school, with their presence over the last 90 days.",
+  "guide.students.s1.title": "Narrow the roll",
   "guide.students.s1.body":
-    "Leave the date empty to see every child: present days, absent days, attendance and the last recorded day, over the last 90 days.",
-  "guide.students.s2.title": "Pick a day for the run columns",
+    "Search a name, filter by class, and sort by name or class. The line above the table says how many students you are looking at.",
+  "guide.students.s2.title": "One row per child",
   "guide.students.s2.body":
-    "With a date, the same rows show boarding time, drop-off time, the off order and the status.",
+    "Present days, absent days, attendance and the last recorded day, over the days the school still keeps.",
   "guide.students.s3.title": "Open a child's history",
   "guide.students.s3.body":
     "One row per run, newest first, for the days the school still keeps.",
   "guide.students.w1.term": "The roll",
   "guide.students.w1.meaning": "Every child in the school, whatever happened today.",
-  "guide.students.w2.term": "Off order",
+  "guide.students.w2.term": "Attendance",
   "guide.students.w2.meaning":
-    "The place a child came off the bus, numbered 1, 2, 3 on that bus's sheet.",
+    "Present days out of the days that have a record, over the last 90 days.",
 
   "guide.reports.tldr": "The same day, counted by class instead of by bus.",
   "guide.reports.caption":
@@ -380,7 +378,7 @@ export const messages = {
     "The filters, one student's bus selector, and the sheet import.",
   "guide.assignments.s1.title": "Narrow the list first",
   "guide.assignments.s1.body":
-    "Search by name, or filter by bus and grade. The line above the table says how many students you are looking at.",
+    "Search by name, or filter by bus and class. The line above the table says how many students you are looking at.",
   "guide.assignments.s2.title": "Move one child",
   "guide.assignments.s2.body":
     "The bus selector saves the moment you choose, and the row shows the new bus without waiting for a re-read.",
@@ -483,10 +481,10 @@ export const messages = {
     "The guidebook explains every screen, Help holds both doors, and this row replays the tour whenever you want it.",
   "tour.step.studentsRoll.title": "The school roll",
   "tour.step.studentsRoll.body":
-    "Every child, whatever happened today. With no date picked, each row summarises the last 90 days instead of one run.",
+    "Every child, whatever happened today. Each row summarises the last 90 days: present days, absent days and attendance.",
   "tour.step.studentsToolbar.title": "Narrow the list",
   "tour.step.studentsToolbar.body":
-    "Search a name, filter by grade or status, and sort by run order on a day or by name on the roll.",
+    "Search a name, filter by class, and sort by name or class.",
   "tour.step.studentsHistory.title": "One child's history",
   "tour.step.studentsHistory.body":
     "Each row opens that child's recorded days, one per run, newest first. Nothing is edited from here.",
@@ -536,10 +534,6 @@ export const messages = {
   "hint.guidebook.title": "Guidebook",
   "hint.guidebook.body":
     "One page per screen: what it answers, how to use it, and the words it uses.",
-  "hint.date.title": "Date",
-  "hint.date.body":
-    "Leave it empty to read the whole roll. Pick a day to see that day's runs instead.",
-
   // Toasts
   "toast.exported": "Exported {count} rows",
   "toast.dispatched": "Vehicle dispatched",
@@ -560,6 +554,18 @@ export const messages = {
   "analytics.fleetAverage": "Fleet average",
   "analytics.averageShort": "Avg",
   "analytics.noData": "No data",
+  // The charts' accessible strings. Composed here, not inside the vendored
+  // component: word order is ours to get right.
+  "analytics.chartSummaryHead": "{chart}, {period}.",
+  "analytics.chartSummaryAverage": "Average {value}.",
+  "analytics.chartSummaryHighest": "Highest {name}, {value}.",
+  "analytics.chartSummaryLowest": "Lowest {name}, {value}.",
+  "analytics.chartScrubber": "{chart}, explore by {category}",
+  "analytics.legendName": "{chart}, segments. Press a segment to show or hide it.",
+  "analytics.segmentAria": "{label}, {value}, {share}",
+  "analytics.segmentAriaMembers": "{label}, {value}, {share}. Includes {members}",
+  "analytics.segmentHidden": "{label}, hidden",
+  "analytics.other": "Other",
   "analytics.emptyTitle": "No attendance data",
   "analytics.emptySubtitle": "No records exist for this date and run segment yet.",
 
@@ -587,7 +593,7 @@ export const messages = {
   "assignments.unassigned": "—",
   "assignments.students": "Students",
   "assignments.th.studentName": "Student Name",
-  "assignments.th.grade": "Grade",
+  "assignments.th.grade": "Class",
   "assignments.th.currentBus": "Current Bus",
   "assignments.th.currentDriver": "Current driver",
   "assignments.busWithoutDriver": "{bus} · no driver",
@@ -596,11 +602,11 @@ export const messages = {
   "assignments.studentsEmptyHint": "Adjust your search or load more students.",
   "assignments.filterBusAria": "Filter students by bus",
   "assignments.filterDriverAria": "Filter students by driver",
-  "assignments.filterGradeAria": "Filter students by grade",
+  "assignments.filterGradeAria": "Filter students by class",
   "assignments.allBuses": "All buses",
   "assignments.filteredCount": "{shown} of {total} students",
   "assignments.filterEmpty": "No students match these filters",
-  "assignments.filterEmptyHint": "Pick another bus or grade, or clear the filters.",
+  "assignments.filterEmptyHint": "Pick another bus or class, or clear the filters.",
   "assignments.loadingStudents": "Loading students…",
   "assignments.driverAssigned": "Driver assigned",
   "assignments.driverCleared": "Driver unassigned",
@@ -741,7 +747,8 @@ export const messages = {
   "students.edit.title": "Edit student",
   "students.edit.aria": "Edit {name}",
   "students.edit.name": "Name",
-  "students.edit.grade": "Grade",
+  "students.edit.grade": "Class",
+  "students.edit.classEmpty": "Choose a class",
   "students.edit.sheetNote":
     "If today's run is not signed off, its sheet is corrected too. Past days keep the name they recorded.",
   "students.edit.save": "Save changes",
@@ -755,11 +762,8 @@ export const messages = {
   "students.sortAria": "Sort students",
   "students.sort.runOrder": "Run order",
   "students.sort.name": "Name A–Z",
-  "students.sort.grade": "Grade",
-  "students.off": "Off",
-  "students.offAria": "Place in the drop-off run",
+  "students.sort.grade": "Class",
   // The roll with no date picked: every student, summarised over the window.
-  "students.allStudents": "All students",
   "students.th.present": "Present",
   "students.th.absent": "Absent",
   "students.th.attendance": "Attendance",
@@ -767,7 +771,6 @@ export const messages = {
   "students.presentTitle": "Days with a recorded run in the last {days} days",
   "students.absentTitle": "Days marked absent in the last {days} days",
   "students.attendanceTitle": "Present days out of the days with a record",
-  "students.range": "Last {days} days",
   "students.noRecord": "No records",
   "students.rollCaption":
     "Every student on the roll, with presence over the last {days} days",
@@ -791,7 +794,7 @@ export const messages = {
   "reports.classes": "Classes",
   "reports.classesMeta": "{classes} classes · {students} students",
   "reports.sortAria": "Order the classes",
-  "reports.sort.grade": "Grade A–Z",
+  "reports.sort.grade": "Class A–Z",
   "reports.sort.absent": "Most absent",
   "reports.sort.completion": "Lowest completion",
   "reports.sort.size": "Most students",
@@ -820,18 +823,29 @@ export const messages = {
   "sheet.matchedOn": "matched on {name}",
   "sheet.notMatched": "not matched",
   "sheet.field.studentName": "Student name",
-  "sheet.field.grade": "Grade",
+  "sheet.field.grade": "Class",
   "sheet.field.bus": "Bus",
   "sheet.field.ignore": "Ignore",
   "sheet.previewTitle": "Preview — first {shown} of {total} rows",
-  "sheet.previewNote": "Unmatched rows are listed after applying — nothing is guessed.",
-  "sheet.resultMove": "{count} students move to another bus",
+  "sheet.previewNote":
+    "The classes and the new students are listed before you apply — nothing is guessed.",
+  "sheet.resultNew": "{count} new students",
+  "sheet.resultUpdate": "{count} students updated",
   "sheet.resultUnchanged": "{count} already match",
-  "sheet.resultUnmatched": "{count} rows match no student",
-  "sheet.apply": "Apply {count} moves",
+  "sheet.resultUnmatched": "{count} rows not applied",
+  "sheet.classesTitle": "Classes in this file",
+  "sheet.classNew": "new",
+  "sheet.classesNote":
+    "Spellings that differ only in capitals, spacing or the word Class/Grade count as one class.",
+  "sheet.newChildrenLabel": "New students:",
+  "sheet.notAppliedLabel": "Not applied:",
+  "sheet.moreNames": "+{count} more",
+  "sheet.needsStudents":
+    "Creating a student or setting a class needs the Students permission. Moving a child between buses alone does not.",
+  "sheet.apply": "Apply {count} changes",
   "sheet.nothingWritten": "Nothing is written until you apply.",
   "sheet.back": "Back",
-  "sheet.imported": "Imported {count} assignments",
+  "sheet.imported": "Imported {count} students",
   "sheet.unreadable": "That file could not be read. Save it as CSV or an Excel workbook.",
   "sheet.dz.files": "Files",
   "sheet.dz.remove": "Remove {name}",

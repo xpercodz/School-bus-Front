@@ -179,43 +179,48 @@ function StudentsMap() {
     <div className="flex flex-col gap-2.5">
       <div className="flex items-center gap-2">
         <On pin={1}>
-          <Chip>
-            {t("dashboard.today")}
-            <span className="text-dash-on-surface-variant">▾</span>
-          </Chip>
+          <Chip quiet>{t("studentList.searchPlaceholder")}</Chip>
         </On>
-        <Chip quiet>{t("studentList.searchPlaceholder")}</Chip>
+        <Chip>
+          {t("studentList.allGrades")}
+          <span className="text-dash-on-surface-variant">▾</span>
+        </Chip>
       </div>
 
-      <Card className="px-3 py-2.5">
-        <div className="grid grid-cols-[1.4fr_0.6fr_0.9fr] items-center gap-x-2">
-          <Th>{t("dashboard.th.studentName")}</Th>
-          <Th>{t("dashboard.th.grade")}</Th>
-          <On pin={2}>
-            <Th>{t("dashboard.th.morningBoarded")}</Th>
-          </On>
-        </div>
-        <div className="mt-1.5 flex flex-col gap-1.5 border-t border-dash-outline-variant pt-1.5">
+      <On pin={2}>
+        <Card className="px-3 py-2.5">
           <div className="grid grid-cols-[1.4fr_0.6fr_0.9fr] items-center gap-x-2">
-            <span className="truncate text-[11px] font-medium text-dash-on-surface">Amelia T.</span>
-            <span className="text-[11px] text-dash-on-surface-variant">4B</span>
-            <span className="text-[11px] tabular-nums text-dash-on-surface-variant">7:12</span>
+            <Th>{t("dashboard.th.studentName")}</Th>
+            <Th>{t("dashboard.th.grade")}</Th>
+            <Th>{t("students.th.attendance")}</Th>
           </div>
-          <div className="grid grid-cols-[1.4fr_0.6fr_0.9fr] items-center gap-x-2">
-            <span className="truncate text-[11px] font-medium text-dash-on-surface">Liam C.</span>
-            <span className="text-[11px] text-dash-on-surface-variant">3C</span>
-            <span className="text-[11px] tabular-nums text-dash-on-surface-variant">7:18</span>
+          <div className="mt-1.5 flex flex-col gap-1.5 border-t border-dash-outline-variant pt-1.5">
+            <div className="grid grid-cols-[1.4fr_0.6fr_0.9fr] items-center gap-x-2">
+              <span className="truncate text-[11px] font-medium text-dash-on-surface">Amelia T.</span>
+              <span className="text-[11px] text-dash-on-surface-variant">4B</span>
+              <span className="text-[11px] font-medium tabular-nums text-dash-on-surface">96%</span>
+            </div>
+            <div className="grid grid-cols-[1.4fr_0.6fr_0.9fr] items-center gap-x-2">
+              <span className="truncate text-[11px] font-medium text-dash-on-surface">Liam C.</span>
+              <span className="text-[11px] text-dash-on-surface-variant">3C</span>
+              <span className="text-[11px] font-medium tabular-nums text-dash-on-surface">91%</span>
+            </div>
           </div>
-        </div>
-        <div className="mt-2 flex items-center justify-between gap-2 border-t border-dash-outline-variant pt-2">
-          <StatusChip status="BOARDED" />
-          <On pin={3}>
-            <span className="text-[10px] text-dash-on-surface-variant">
-              {t("dashboard.th.actions")}
+          <div className="mt-2 flex items-center justify-between gap-2 border-t border-dash-outline-variant pt-2">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="text-[10px] text-dash-on-surface-variant">
+                {t("students.th.lastRecord")}
+              </span>
+              <StatusChip status="ABSENT" />
             </span>
-          </On>
-        </div>
-      </Card>
+            <On pin={3}>
+              <span className="text-[10px] text-dash-on-surface-variant">
+                {t("dashboard.th.actions")}
+              </span>
+            </On>
+          </div>
+        </Card>
+      </On>
     </div>
   );
 }

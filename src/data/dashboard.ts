@@ -33,17 +33,6 @@ export const STATUS_DOT: Record<StudentStatus, string> = {
   WAITING: "bg-dash-outline",
 };
 
-/** Student-list status filter options — "All" plus every status. */
-/** Filter options a director acts on. "No record yet" is not one of them. */
-export const STUDENT_STATUS_FILTERS: readonly ("ALL" | StudentStatus)[] = [
-  "ALL",
-  "BOARDED",
-  "DROPPED_OFF",
-  "ABSENT",
-];
-
-export type StudentStatusFilter = (typeof STUDENT_STATUS_FILTERS)[number];
-
 export type MetricTone = "neutral" | "positive" | "warning" | "negative";
 
 export interface KPI {

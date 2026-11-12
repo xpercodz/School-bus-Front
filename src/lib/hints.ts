@@ -17,7 +17,6 @@ export const HINT_IDS = [
   "dispatch",
   "export",
   "guidebook",
-  "date",
 ] as const;
 
 export type HintId = (typeof HINT_IDS)[number];
@@ -30,7 +29,6 @@ export const HINT_KEYS: Record<HintId, { title: MessageKey; body: MessageKey }> 
   dispatch: { title: "hint.dispatch.title", body: "hint.dispatch.body" },
   export: { title: "hint.export.title", body: "hint.export.body" },
   guidebook: { title: "hint.guidebook.title", body: "hint.guidebook.body" },
-  date: { title: "hint.date.title", body: "hint.date.body" },
 };
 
 export function isHintId(value: string | null): value is HintId {

@@ -131,7 +131,6 @@ export const messages: Messages = {
   "dashboard.enRouteOf": "{active} من {total} في الطريق",
   "dashboard.liveAttendance": "قائمة الطلاب",
   "dashboard.liveUpdating": "مباشر",
-  "dashboard.caption": "حضور الطلاب المباشر",
   "dashboard.th.studentName": "الطالب",
   "dashboard.th.grade": "الصف",
   "dashboard.th.bus": "الحافلة",
@@ -211,7 +210,6 @@ export const messages: Messages = {
   // Student list (dashboard) — search, filters, and pagination
   "studentList.searchAria": "بحث عن الطلاب",
   "studentList.searchPlaceholder": "ابحث عن اسم الطالب…",
-  "studentList.statusAria": "تصفية حسب الحالة",
   "studentList.gradeAria": "تصفية حسب الصف",
   "studentList.allGrades": "كل الصفوف",
   "studentList.clear": "مسح التصفية",
@@ -340,20 +338,20 @@ export const messages: Messages = {
     "الاستلام الصباحي والتوصيل المسائي رحلتان بقائمتين؛ واليوم هو الاثنتان معاً.",
 
   "guide.students.tldr": "سجل المدرسة كاملاً، وسجل الطفل الواحد عند الحاجة.",
-  "guide.students.caption": "بلا تاريخ: السجل كاملاً، مع حضور كل طفل خلال المدة.",
-  "guide.students.s1.title": "بلا تاريخ تعني السجل كاملاً",
+  "guide.students.caption": "كل طفل في المدرسة، مع حضوره خلال آخر 90 يوماً.",
+  "guide.students.s1.title": "ضيّق السجل",
   "guide.students.s1.body":
-    "اترك التاريخ فارغاً لترى كل طفل: أيام الحضور، وأيام الغياب، ونسبة الحضور، وآخر يوم مسجّل خلال آخر 90 يوماً.",
-  "guide.students.s2.title": "اختر يوماً لأعمدة الرحلة",
+    "ابحث بالاسم، أو صفِّ بالصف، ورتّب بالاسم أو بالصف. والسطر فوق الجدول يبيّن عدد الطلاب الذين تنظر إليهم.",
+  "guide.students.s2.title": "صف واحد لكل طفل",
   "guide.students.s2.body":
-    "مع تاريخ، تعرض الصفوف نفسها وقت الركوب، ووقت التوصيل، وترتيب النزول، والحالة.",
+    "أيام الحضور، وأيام الغياب، ونسبة الحضور، وآخر يوم مسجّل، عن الأيام التي ما زالت المدرسة تحتفظ بها.",
   "guide.students.s3.title": "افتح سجل الطفل",
   "guide.students.s3.body": "صف لكل رحلة، الأحدث أولاً، عن الأيام التي ما زالت المدرسة تحتفظ بها.",
   "guide.students.w1.term": "السجل",
   "guide.students.w1.meaning": "كل طفل في المدرسة، أياً كان ما حدث اليوم.",
-  "guide.students.w2.term": "ترتيب النزول",
+  "guide.students.w2.term": "نسبة الحضور",
   "guide.students.w2.meaning":
-    "مكان نزول الطفل من الحافلة، مرقّماً 1 و2 و3 في ورقة تلك الحافلة.",
+    "أيام الحضور من الأيام المسجّلة، خلال آخر 90 يوماً.",
 
   "guide.reports.tldr": "اليوم نفسه، محسوباً بالصف بدل الحافلة.",
   "guide.reports.caption":
@@ -475,10 +473,10 @@ export const messages: Messages = {
     "يشرح الدليل كل شاشة، وفي «المساعدة» البابان، وهذا الصف يعيد الجولة متى شئت.",
   "tour.step.studentsRoll.title": "سجل المدرسة",
   "tour.step.studentsRoll.body":
-    "كل طفل، أياً كان ما حدث اليوم. وبلا تاريخ محدد، يلخّص كل صف آخر 90 يوماً بدل رحلة واحدة.",
+    "كل طفل، أياً كان ما حدث اليوم. يلخّص كل صف آخر 90 يوماً: أيام الحضور، وأيام الغياب، ونسبة الحضور.",
   "tour.step.studentsToolbar.title": "ضيّق القائمة",
   "tour.step.studentsToolbar.body":
-    "ابحث بالاسم، أو صفِّ بالصف والحالة، ورتّب بترتيب الرحلة في اليوم أو بالاسم في السجل.",
+    "ابحث بالاسم، أو صفِّ بالصف، ورتّب بالاسم أو بالصف.",
   "tour.step.studentsHistory.title": "سجل الطفل",
   "tour.step.studentsHistory.body":
     "يفتح كل صف أيام ذلك الطفل المسجّلة، صفاً لكل رحلة، الأحدث أولاً. ولا يُعدَّل شيء من هنا.",
@@ -528,9 +526,6 @@ export const messages: Messages = {
   "hint.guidebook.title": "الدليل",
   "hint.guidebook.body":
     "صفحة لكل شاشة: ما تجيب عنه، وكيف تستخدمها، والكلمات التي تستخدمها.",
-  "hint.date.title": "التاريخ",
-  "hint.date.body":
-    "اتركه فارغاً لقراءة السجل كاملاً. واختر يوماً لترى رحلات ذلك اليوم بدلاً منه.",
 
   // Toasts
   "toast.exported": "تم تصدير {count} صفاً",
@@ -552,6 +547,16 @@ export const messages: Messages = {
   "analytics.fleetAverage": "متوسط الأسطول",
   "analytics.averageShort": "متوسط",
   "analytics.noData": "لا توجد بيانات",
+  "analytics.chartSummaryHead": "{chart}، {period}.",
+  "analytics.chartSummaryAverage": "المتوسط {value}.",
+  "analytics.chartSummaryHighest": "الأعلى {name}، {value}.",
+  "analytics.chartSummaryLowest": "الأدنى {name}، {value}.",
+  "analytics.chartScrubber": "{chart}، استكشف حسب {category}",
+  "analytics.legendName": "{chart}، القطاعات. اضغط على قطاع لإظهاره أو إخفائه.",
+  "analytics.segmentAria": "{label}، {value}، {share}",
+  "analytics.segmentAriaMembers": "{label}، {value}، {share}. يشمل {members}",
+  "analytics.segmentHidden": "{label}، مخفي",
+  "analytics.other": "أخرى",
   "analytics.emptyTitle": "لا توجد بيانات حضور",
   "analytics.emptySubtitle": "لا توجد سجلات لهذا التاريخ ونوع الرحلة بعد.",
 
@@ -734,6 +739,7 @@ export const messages: Messages = {
   "students.edit.aria": "تعديل {name}",
   "students.edit.name": "الاسم",
   "students.edit.grade": "الصف",
+  "students.edit.classEmpty": "اختر الصف",
   "students.edit.sheetNote":
     "إذا لم تُعتمد رحلة اليوم، تُصحَّح كشوفها أيضًا. أما الأيام السابقة فتحتفظ بالاسم الذي سُجّل فيها.",
   "students.edit.save": "حفظ التغييرات",
@@ -748,10 +754,6 @@ export const messages: Messages = {
   "students.sort.runOrder": "ترتيب الرحلة",
   "students.sort.name": "الاسم أ–ي",
   "students.sort.grade": "الصف",
-  "students.off": "النزول",
-  "students.offAria": "الترتيب في رحلة التوصيل",
-  // سجل الطلاب دون تحديد يوم: كل طالب وملخّص حضوره خلال المدة.
-  "students.allStudents": "كل الطلاب",
   "students.th.present": "حاضر",
   "students.th.absent": "غائب",
   "students.th.attendance": "نسبة الحضور",
@@ -759,7 +761,6 @@ export const messages: Messages = {
   "students.presentTitle": "الأيام التي سُجّل فيها الحضور خلال آخر {days} يومًا",
   "students.absentTitle": "الأيام المسجّلة غيابًا خلال آخر {days} يومًا",
   "students.attendanceTitle": "أيام الحضور من الأيام المسجّلة",
-  "students.range": "آخر {days} يومًا",
   "students.noRecord": "لا سجلات",
   "students.rollCaption":
     "كل طالب في السجل، مع حضوره خلال آخر {days} يومًا",
@@ -815,14 +816,22 @@ export const messages: Messages = {
   "sheet.field.bus": "الحافلة",
   "sheet.field.ignore": "تجاهل",
   "sheet.previewTitle": "معاينة — أول {shown} من {total} صفًا",
-  "sheet.previewNote": "تُعرض الصفوف غير المطابقة بعد التطبيق — لا تخمين.",
-  "sheet.resultMove": "{count} طالبًا ينتقلون إلى حافلة أخرى",
+  "sheet.previewNote": "تُعرض الصفوف والطلاب الجدد قبل التطبيق — لا شيء يُخمَّن.",
+  "sheet.resultNew": "{count} طالبًا جديدًا",
+  "sheet.resultUpdate": "{count} طالبًا محدَّثًا",
   "sheet.resultUnchanged": "{count} مطابق أصلًا",
-  "sheet.resultUnmatched": "{count} صفًا بلا طالب مطابق",
-  "sheet.apply": "تطبيق {count} نقلًا",
+  "sheet.resultUnmatched": "{count} صفًا غير مطبَّق",
+  "sheet.classesTitle": "صفوف هذا الملف",
+  "sheet.classNew": "جديد",
+  "sheet.classesNote": "الصيغ التي تختلف فقط في الحروف الكبيرة أو المسافات أو كلمة Class/Grade تُعدّ صفًا واحدًا.",
+  "sheet.newChildrenLabel": "طلاب جدد:",
+  "sheet.notAppliedLabel": "غير مطبَّق:",
+  "sheet.moreNames": "+{count} أخرى",
+  "sheet.needsStudents": "إنشاء طالب أو تعيين صفه يحتاج إذن الطلاب. أما نقل الحافلة وحده فلا.",
+  "sheet.apply": "تطبيق {count} تغييرات",
   "sheet.nothingWritten": "لا يُكتب شيء قبل التطبيق.",
   "sheet.back": "رجوع",
-  "sheet.imported": "تم استيراد {count} تعيينًا",
+  "sheet.imported": "تم استيراد {count} طالبًا",
   "sheet.unreadable": "تعذّرت قراءة الملف. احفظه بصيغة CSV أو مصنّف Excel.",
   "sheet.dz.files": "الملفات",
   "sheet.dz.remove": "إزالة {name}",

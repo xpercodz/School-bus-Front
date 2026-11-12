@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { AttendanceRow, StudentStatusFilter } from "@/data/dashboard";
+import type { AttendanceRow } from "@/data/dashboard";
 
 /** Rows shown per page in the dashboard student tables. */
 const STUDENT_LIST_PAGE_SIZE = 10;
@@ -66,8 +66,6 @@ export interface StudentListState {
   // Search + filters
   query: string;
   setQuery: (q: string) => void;
-  status: StudentStatusFilter;
-  setStatus: (s: StudentStatusFilter) => void;
   grade: string | null;
   setGrade: (g: string | null) => void;
   clearFilters: () => void;
@@ -78,7 +76,7 @@ export interface StudentListState {
   // Derived
   /** Distinct, sorted grades present in the rows (grade-filter dropdown options). */
   grades: readonly string[];
-  /** Rows after search + status + grade filters, in the selected sort order
+  /** Rows after the search + grade filters, in the selected sort order
    *  (all pages — drives CSV export). */
   filtered: readonly AttendanceRow[];
   total: number;
@@ -95,10 +93,10 @@ export interface StudentListState {
 }
 
 /**
- * Search + status + grade filters, ordering and client-side pagination for a
- * student list. The rows are already fully loaded (the dashboard aggregates
- * them for KPIs / fleet / summaries), so pagination slices the view rather than
- * the Firestore query.
+ * Search + grade filters, ordering and client-side pagination for a student
+ * list. The rows are already fully loaded (the dashboard aggregates them for
+ * KPIs / fleet / summaries), so pagination slices the view rather than the
+ * Firestore query.
  *
  * The page resets to 1 when a filter or the sort changes, but not when `rows`
  * changes — live snapshots update constantly and bouncing the user to page 1
@@ -109,7 +107,6 @@ export function useStudentList(
   initialSort: StudentSort = "runOrder",
 ): StudentListState {
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<StudentStatusFilter>("ALL");
   const [grade, setGrade] = useState<string | null>(null);
   const [sort, setSort] = useState<StudentSort>(initialSort);
   const [page, setPage] = useState(1);
@@ -119,7 +116,7 @@ export function useStudentList(
   // cascade. Live `rows` snapshots update constantly but don't change this
   // signature, so the user stays on their page (clamped) while the data
   // refreshes underneath.
-  const filterSignature = `${query}|${status}|${grade}|${sort}`;
+  const filterSignature = `${query}|${grade}|${sort}`;
   const [lastSignature, setLastSignature] = useState(filterSignature);
   if (lastSignature !== filterSignature) {
     setLastSignature(filterSignature);
@@ -139,16 +136,15 @@ export function useStudentList(
     // Fast path: no filters, no copy; the sort below is a no-op when the rows
     // already arrive in this order (the common case for the roster).
     const base =
-      !q && status === "ALL" && grade === null
+      !q && grade === null
         ? rows
         : rows.filter(
             (row) =>
               (q === "" || row.name.toLowerCase().includes(q)) &&
-              (status === "ALL" || row.status === status) &&
               (grade === null || row.grade === grade),
           );
     return sortRows(base, sort);
-  }, [rows, query, status, grade, sort]);
+  }, [rows, query, grade, sort]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / STUDENT_LIST_PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -160,19 +156,16 @@ export function useStudentList(
     [filtered, safePage, end],
   );
 
-  const hasFilters = query.trim() !== "" || status !== "ALL" || grade !== null;
+  const hasFilters = query.trim() !== "" || grade !== null;
 
   function clearFilters() {
     setQuery("");
-    setStatus("ALL");
     setGrade(null);
   }
 
   return {
     query,
     setQuery,
-    status,
-    setStatus,
     grade,
     setGrade,
     clearFilters,
