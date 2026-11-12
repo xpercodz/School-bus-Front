@@ -1,5 +1,7 @@
-import { useLocale } from "@/lib/i18n/context";
+import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { Icon } from "@/components/Icon";
+import { useLocale } from "@/lib/i18n/context";
+import { LOCALE_LABEL, LOCALES } from "@/lib/i18n/config";
 
 interface LanguageToggleProps {
   /** "default" = mobile palette (rounded icons), "dash" = dashboard palette. */
@@ -7,33 +9,38 @@ interface LanguageToggleProps {
 }
 
 /**
- * Switches the whole app between English and Arabic. Shows the label of the
- * language you switch *to* (EN in Arabic mode, عربي in English mode). The
- * preference is persisted by LocaleProvider via a cookie.
+ * Chooses the app's language. Three now, so it is a value selector — the
+ * trigger shows the language being read, the menu lists the rest — rather than
+ * the two-way toggle it was when there were only two.
+ *
+ * The labels come from `LOCALE_LABEL` and are deliberately not translated:
+ * someone looking for their own language has to recognise it without first
+ * reading the one they are stuck in. LocaleProvider persists the choice in a
+ * cookie.
  */
 export function LanguageToggle({ variant = "default" }: LanguageToggleProps) {
   const { locale, setLocale, t } = useLocale();
-  const target = locale === "en" ? "ar" : "en";
-  const label = target === "ar" ? "عربي" : "EN";
-
-  const classes =
-    variant === "dash"
-      ? "press flex h-11 w-11 items-center justify-center gap-1.5 rounded-lg text-[12.5px] text-dash-on-surface-variant hover:bg-dash-surface-container-low hover:text-dash-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary min-[380px]:w-auto min-[380px]:justify-start min-[380px]:px-2 lg:h-9"
-      : "press flex h-11 w-11 items-center justify-center gap-1.5 rounded-lg text-[13.5px] text-on-surface-variant hover:bg-surface-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary min-[380px]:w-auto min-[380px]:justify-start min-[380px]:px-2";
 
   return (
-    <button
-      type="button"
-      onClick={() => setLocale(target)}
-      aria-label={t("common.changeLanguageAria")}
-      className={classes}
-    >
-      <Icon
-        name="translate"
-        size={variant === "dash" ? 16 : 20}
-        variant={variant === "dash" ? "outlined" : "rounded"}
-      />
-      <span className="hidden min-[380px]:inline">{label}</span>
-    </button>
+    <DropdownMenu
+      ariaLabel={t("common.changeLanguageAria")}
+      icon={
+        <Icon
+          name="translate"
+          size={variant === "dash" ? 16 : 20}
+          variant={variant === "dash" ? "outlined" : "rounded"}
+        />
+      }
+      label={LOCALE_LABEL[locale]}
+      align="end"
+      triggerClassName={
+        variant === "dash" ? "text-dash-on-surface-variant" : "text-on-surface-variant"
+      }
+      items={LOCALES.map((option) => ({
+        label: LOCALE_LABEL[option],
+        checked: option === locale,
+        onSelect: () => setLocale(option),
+      }))}
+    />
   );
 }

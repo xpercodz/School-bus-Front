@@ -81,7 +81,7 @@ woff2, so those woff files are unreachable. `npm run test:offline` asserts they
 stay out.
 
 Font **subsets** are deliberately left alone. `@fontsource` ships greek, cyrillic,
-vietnamese and latin-ext for IBM Plex Sans that an en/ar UI never renders — but
+vietnamese and latin-ext for IBM Plex Sans that an en/fr/ar UI never renders — but
 dropping a subset makes text in that script fall back to a system font (a student's
 name in Cyrillic, say). That is a product call about who the app is for, not a
 build tweak. If you do decide to trim, import the subset-specific CSS in
@@ -114,7 +114,7 @@ src/
     motion.ts               stagger maths + first-interaction entrance skip
     persistent-storage.ts   asks for an IndexedDB eviction exemption
     service-worker.ts       reloads the page when a new worker takes over
-    i18n/                   typed en/ar dictionaries, LocaleProvider, Intl formatting
+    i18n/                   typed en/fr/ar dictionaries, LocaleProvider, Intl formatting
 public/icons/               generated PWA/apple-touch icons (see "Offline")
 public/fonts/               generated Material Symbols subset (see "Conventions")
 scripts/build-icon-font.mjs regenerates the icon subset (run when icons change)
@@ -237,8 +237,14 @@ code now, not a dependency. Installed set: `button`, `dropdown-menu`,
 - `@/*` maps to `src/*` (see `tsconfig.json` and `vite.config.ts`). Keep both in
   sync if you ever change it.
 - User-facing strings are **never** hardcoded — add a key to
-  `src/lib/i18n/dictionaries/en.ts` (which defines the `Messages` type) and
-  `ar.ts`, then resolve via `t()`. Both languages must stay complete.
+  `src/lib/i18n/dictionaries/en.ts` (which defines the `Messages` type), then to
+  `ar.ts` **and** `fr.ts`, and resolve via `t()`. Every language must stay
+  complete: the two translations are typed as `Messages`, so a missing key fails
+  `tsc --noEmit`, which `npm run build` runs first. Three languages means three
+  dictionaries, not two and a fallback — a key that exists only in English
+  renders English to a French or Arabic reader with no warning at runtime.
+  `docs/i18n-glossary.md` is the shared vocabulary (élève, conducteur, trajet,
+  présence); follow it rather than inventing a second word for the same object.
 - A string that embeds a **count** uses `tp(key, count, vars)`, not `t`: the
   dictionary keeps the plural on the base key and adds `<key>.one`, and
   `tp` picks the CLDR category with `Intl.PluralRules` (falling back to
@@ -276,7 +282,8 @@ code now, not a dependency. Installed set: `button`, `dropdown-menu`,
   heading that *contains* an icon. Removing the CDN `<link>` without these resets
   made those icons fall back to literal text ("DIRECTIONS_BUS"), and the missing
   `font-feature-settings: "liga"` is why Firefox broke hardest. `direction: ltr`
-  matters too — this app is bilingual, and RTL would reverse the ligature. So the
+  matters too — this app runs in English, French and Arabic, and RTL would
+  reverse the ligature. So the
   classes carry `text-transform: none`, `letter-spacing: normal`,
   `font-feature-settings: "liga"`, and `direction: ltr`. **Do not remove them**,
   and prefer wrapping a label in its own span over styling a container that holds

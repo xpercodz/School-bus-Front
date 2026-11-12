@@ -10,6 +10,7 @@ import { useLocale } from "@/lib/i18n/context";
 import {
   formatDayMonth,
   formatTime,
+  localeCode,
   statusKey,
   toLocaleDigits,
   translateDataLabel,
@@ -103,7 +104,7 @@ export default function ActivityPage() {
 
   const relative = (date: Date): string => {
     const diff = Date.now() - date.getTime();
-    const formatter = new Intl.RelativeTimeFormat(locale === "ar" ? "ar-EG" : "en-US", {
+    const formatter = new Intl.RelativeTimeFormat(localeCode(locale), {
       numeric: "auto",
     });
     if (diff < 60_000) return formatter.format(0, "minute");
@@ -349,7 +350,7 @@ export default function ActivityPage() {
             value={range}
             onChange={setRange}
             label={t("activity.filter.range")}
-            locale={locale === "ar" ? "ar-EG" : "en-US"}
+            locale={localeCode(locale)}
             presets={[
               { label: presetLabel(1), range: () => defaultRangeFor(1) },
               { label: presetLabel(7), range: () => defaultRangeFor(7) },

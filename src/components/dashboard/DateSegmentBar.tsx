@@ -3,6 +3,7 @@ import { SlideSegments } from "@/components/SlideSegments";
 import { RUN_SEGMENTS, type RunSegmentId } from "@/data/dashboard";
 import { fromDateValue, toDateValue } from "@/lib/date-value";
 import { useLocale } from "@/lib/i18n/context";
+import { localeCode } from "@/lib/i18n/format";
 import type { MessageKey } from "@/lib/i18n/types";
 
 /** Run-segment label key per id. */
@@ -78,7 +79,7 @@ export function DateSegmentBar({
         placeholder={placeholder ?? today}
         value={date ? toDateValue(date) : undefined}
         onChange={(next) => onDateChange(next ? fromDateValue(next) : null)}
-        locale={locale === "ar" ? "ar-EG" : "en-US"}
+        locale={localeCode(locale)}
         labels={{
           clear: clearLabel ?? today,
           chooseDay: t("datePicker.chooseDay"),

@@ -11,6 +11,7 @@ import { fromDateValue, toDateValue } from "@/lib/date-value";
 import { useLocale } from "@/lib/i18n/context";
 import {
   formatDate,
+  localeCode,
   statusKey,
   toLocaleDigits,
   translateDataLabel,
@@ -89,7 +90,7 @@ function StudentHistoryCalendar({
   const { loading, days, entriesFor } = useStudentHistoryByDay(studentName, true);
   const today = useToday();
   const digits = (value: string | number) => toLocaleDigits(String(value), locale);
-  const localeTag = locale === "ar" ? "ar-EG" : "en-US";
+  const localeTag = localeCode(locale);
 
   // Available days are matched by key, never by Date identity.
   const daySet = useMemo(() => new Set(days), [days]);

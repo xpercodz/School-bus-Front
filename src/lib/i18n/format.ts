@@ -4,6 +4,8 @@
  *
  * Arabic (ar) intentionally formats via `ar-EG`, which produces Eastern Arabic
  * digits (٠١٢٣) and Arabic AM/PM words (ص/م) — the user's chosen numeral style.
+ * French formats via `fr-FR` (Latin digits, a comma decimal separator, a narrow
+ * no-break space before the percent sign — all from `Intl`, none hand-rolled).
  */
 
 import type { Locale } from "./config";
@@ -11,15 +13,25 @@ import type { MessageKey, TFunction } from "./types";
 
 const AR_DIGITS = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
 
-/** Replace 0-9 with Eastern Arabic digits when locale is ar; no-op for en. */
+/**
+ * Replace 0-9 with Eastern Arabic digits when the locale is Arabic; a no-op for
+ * every other locale. Note the negative test: a new locale must NOT inherit
+ * Arabic digits, which is what a `locale === "en"` check would have done.
+ */
 export function toLocaleDigits(input: string, locale: Locale): string {
-  if (locale === "en") return input;
+  if (locale !== "ar") return input;
   return input.replace(/[0-9]/g, (d) => AR_DIGITS[Number(d)]);
 }
 
-/** Intl locale tag — Arabic formats via ar-EG (Eastern Arabic digits). */
-function localeCode(locale: Locale): string {
-  return locale === "ar" ? "ar-EG" : "en-US";
+/**
+ * The Intl tag for a locale. Exported so no screen re-derives it inline — the
+ * app used to carry `locale === "ar" ? "ar-EG" : "en-US"` in four places, each
+ * of which silently sent French users to English formatting.
+ */
+export function localeCode(locale: Locale): string {
+  if (locale === "ar") return "ar-EG";
+  if (locale === "fr") return "fr-FR";
+  return "en-US";
 }
 
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
@@ -110,7 +122,9 @@ export function translateDataLabel(
  * "%" beside Eastern Arabic digits reads as a different language.
  */
 export function formatPercent(value: number, locale: Locale): string {
-  const sign = locale === "ar" ? "٪" : "%";
+  // French puts a narrow no-break space before the sign, which is exactly what
+  // `Intl.NumberFormat("fr-FR", { style: "percent" })` produces.
+  const sign = locale === "ar" ? "٪" : locale === "fr" ? "\u202f%" : "%";
   return `${toLocaleDigits(String(Math.round(value)), locale)}${sign}`;
 }
 

@@ -1,10 +1,28 @@
 /**
  * Locale configuration — the single place that lists supported languages.
- * Only `en` and `ar` exist today; add a locale to the `Locale` union, a
- * dictionary file, and a LOCALE_DIR entry to grow the set.
+ *
+ * Growing the set means four edits and nothing else: the `Locale` union here,
+ * a dictionary file beside `en.ts`/`ar.ts`, an entry in `getDictionary`, and a
+ * `LOCALE_DIR` entry (plus `localeCode` in `format.ts` if the locale needs a
+ * region tag). `fr.ts` is typed as `Messages`, so a key missing from a
+ * language fails `tsc --noEmit` — and `npm run build` runs that first.
  */
 
-export type Locale = "en" | "ar";
+export type Locale = "en" | "ar" | "fr";
+
+/** Display order in the language menu. */
+export const LOCALES: readonly Locale[] = ["en", "fr", "ar"];
+
+/**
+ * Each language's name in ITSELF. Deliberately not translated: a reader looking
+ * for their own language must recognise it without already speaking the current
+ * one, so "Français" stays "Français" on an Arabic screen.
+ */
+export const LOCALE_LABEL: Record<Locale, string> = {
+  en: "English",
+  fr: "Français",
+  ar: "العربية",
+};
 
 /** English is the default; drivers switch to Arabic with the UI toggle. */
 export const defaultLocale: Locale = "en";
@@ -13,13 +31,14 @@ export const defaultLocale: Locale = "en";
 export const LOCALE_DIR: Record<Locale, "ltr" | "rtl"> = {
   en: "ltr",
   ar: "rtl",
+  fr: "ltr",
 };
 
 /** Cookie the locale preference is persisted in. */
 export const LOCALE_COOKIE = "locale";
 
 export function isLocale(value: unknown): value is Locale {
-  return value === "en" || value === "ar";
+  return value === "en" || value === "ar" || value === "fr";
 }
 
 /**
