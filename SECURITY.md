@@ -106,9 +106,20 @@ Security model for the app. Keep this accurate when controls change.
   COMPLETED, `runType` ∈ morning / afternoon, `date` a string; attendance
   `status` ∈ BOARDED / WAITING / DROPPED_OFF / ABSENT. A staff account can no
   longer write another bus's run or forge attendance records.
-- `schools/{id}/audit`: director-read-only; written exclusively by the Admin
-  SDK (`logAudit` in `School-bus-API/src/lib/driver-admin.ts`) — driver-created and
-  code-regenerated events, never codes or passwords.
+- `schools/{id}/audit`: director-read-only. Two writers, with different
+  guarantees, and the rules keep them apart:
+  - the **Admin SDK** (`logAudit` in `School-bus-API/src/lib/driver-admin.ts`)
+    writes account and sign-in events from a verified token — evidence;
+  - the **browser** may append only, in a shape `auditShapeOk()` pins down: its
+    own uid, the server's clock (`at == request.time`), a role-scoped event
+    allowlist, bounded `changes`/`meta`, and a future `expiresAt`. `update` and
+    `delete` are refused, so an entry cannot be misattributed, back-dated or
+    rewritten. Its *values* are still only what the writer reported.
+  Never codes, passwords or tokens in either path.
+- **Provenance on the records themselves.** `attendance`, `runs`, `students`,
+  `buses` and `schools/{id}` refuse a write without `updatedBy == request.auth.uid`
+  and `updatedAt == request.time` (`stamped()`). This half cannot be skipped: a
+  client may omit the audit entry, but the record always names its last editor.
 
 ## Data
 
@@ -139,9 +150,16 @@ Security model for the app. Keep this accurate when controls change.
 - **Rule validation is shallow on director writes:** `status`/`runType`/`date`
   and student/bus core fields are enforced, but directors may still write
   arbitrary extra fields on runs/attendance docs.
-- **Audit log covers driver lifecycle only** (create/regenerate). Attendance
-  status changes happen client-side through Firestore rules and are not yet
-  audit-logged.
+- **The browser writes half the activity log.** Attendance, bus moves, imports
+  and `assignmentMode` are client writes, so their entries are appended by the
+  client that made them. Attribution is enforced by rules and entries are
+  immutable, but coverage is best-effort: a client can omit an entry, and the
+  `changes` values are unverified. Closing that needs a Firestore trigger or
+  moving those writes behind the API — recorded in
+  `docs/superpowers/specs/2026-11-11-audit-log-design.md`, not built.
+- **A failed management sign-in with unknown credentials is not in the school
+  log.** It cannot be attributed to a school, so it stays in Cloud Logging
+  (30-day retention) with the `director_signin_failed` event.
 - Seed users used to carry well-known default passwords (`Director123!`,
   `Monitor123!`); the seed now **fails closed** — real passwords must come from
   the env unless `--demo` / `ALLOW_DEMO_DEFAULTS=1` is explicitly passed.

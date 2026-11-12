@@ -578,6 +578,33 @@ a hint, an id in `HINT_IDS` plus its two keys. `data-tour` / `data-hint` are on
 real elements only — a hint whose id is unknown is ignored, and a tour step
 whose control never appears is shown centred instead of pointing at nothing.
 
+## The activity log
+
+`schools/{schoolId}/audit` is the record of what was changed and by whom, and
+`/dashboard/activity` is the only reader. Two writers, and the rules keep their
+guarantees apart:
+
+- **The Admin SDK** (`logAudit` in the API) writes account and sign-in events.
+  Evidence: verified token, server clock.
+- **The browser** appends roll, assignment and settings entries *in the same
+  atomic batch as the change*. The rules pin `actorUid` to the caller, `at` to
+  `request.time`, the vocabulary to a role-scoped allowlist, and refuse
+  update/delete. It cannot lie about who or when; its `changes` values are
+  unverified — a claim, not evidence. Both halves say which they are on screen.
+- **The records carry their own provenance.** `stamped()` in the rules refuses
+  any write to `attendance`, `runs`, `students`, `buses` or `schools/{id}`
+  without `updatedBy == request.auth.uid` and `updatedAt == request.time`. This
+  is the half that cannot be skipped, so a new write path MUST set both.
+
+Adding an event means: a name in `AuditEvent` (`src/lib/audit.ts`), a family in
+`EVENT_FAMILY`, a sentence key in `EVENT_LABEL_KEY` **and both dictionaries**,
+the matching entry in `auditEventAllowed()` in `firestore.rules`, and — if it is
+a client event — one `queueAudit(...)` in the batch that makes the change.
+Never store a sentence (the UI builds it in both languages), never store a
+child's name (resolve the id against `students`), and never put a code, password
+or token in an entry. Retention is `AUDIT_RETENTION_DAYS` + a TTL policy on
+`expiresAt`; entries are immutable by design, so there is no delete path to add.
+
 ## Deploying
 
 Firebase Hosting serves `dist/`. `firebase.json` also carries the security
