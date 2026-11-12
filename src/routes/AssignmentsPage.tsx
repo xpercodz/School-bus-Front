@@ -13,6 +13,8 @@ import {
   type AdminStudent,
 } from "@/lib/school-admin";
 import { useAssignmentMode } from "@/lib/school";
+import { canOpenScreen } from "@/lib/permissions";
+import { useUserProfile } from "@/lib/user-profile";
 import { SlideSegments } from "@/components/SlideSegments";
 import { AssignmentsSkeleton } from "@/components/dashboard/DashboardSkeletons";
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -58,6 +60,14 @@ export default function AssignmentsPage() {
   const { user } = useAuth();
   const uid = user?.uid;
   const { showToast } = useToast();
+  const { profile } = useUserProfile();
+  /**
+   * The import writes two fields owned by two different grants: `busId` (this
+   * screen) and `grade` (the Students screen). A director holds both; an
+   * operator holds whichever screens were granted, so the dialog is told which
+   * half it may promise.
+   */
+  const canWriteStudents = canOpenScreen(profile, "students");
 
   const { buses, loading: busesLoading } = useBuses();
   const { staff } = useStaffUsers();
@@ -177,7 +187,7 @@ export default function AssignmentsPage() {
     const sampleBus = buses[0]?.name ?? "Bus 01";
     downloadCsv(
       "assignments-template.csv",
-      `\uFEFFStudent name,Grade,Bus\r\n${sample("Ada Lovelace")},${sample("Grade 6")},${sample(sampleBus)}`,
+      `\uFEFFStudent name,Class,Bus\r\n${sample("Ada Lovelace")},${sample("Class 6")},${sample(sampleBus)}`,
     );
   }
 
@@ -893,6 +903,7 @@ export default function AssignmentsPage() {
         sheet={sheet}
         students={importStudents ?? students.students}
         buses={buses}
+        canWriteStudents={canWriteStudents}
         onApplied={() => {
           // The import rewrote the documents in bulk, so the loaded page is
           // stale: re-read it, and hand the bus answers back to the documents

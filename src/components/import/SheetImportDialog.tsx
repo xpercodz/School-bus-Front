@@ -6,7 +6,7 @@ import { Button } from "@/components/arc/button/button";
 import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { useAuth } from "@/lib/auth";
 import { useLocale } from "@/lib/i18n/context";
-import { toLocaleDigits } from "@/lib/i18n/format";
+import { localeCode, toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
 import type { MessageKey } from "@/lib/i18n/types";
 import type { AdminBus, AdminStudent } from "@/lib/school-admin";
 import {
@@ -30,6 +30,16 @@ const FIELD_KEY: Record<ImportField, MessageKey> = {
 
 /** The fields the preview can show, in the app's own column order. */
 const PREVIEW_FIELDS = FIELDS.filter((field) => field !== "ignore");
+
+/**
+ * At most five names, joined the way the locale joins a list, with the rest
+ * counted: the point is to recognise a typo, not to print the file.
+ */
+function nameList(names: readonly string[], locale: string, more: (n: string) => string): string {
+  const shown = names.slice(0, 5);
+  const joined = new Intl.ListFormat(locale, { style: "short", type: "conjunction" }).format(shown);
+  return names.length > shown.length ? `${joined} ${more(String(names.length - shown.length))}` : joined;
+}
 
 /** Excel-style column letters: 0 → A, 25 → Z, 26 → AA. */
 function columnLetter(index: number): string {
@@ -70,6 +80,13 @@ interface SheetImportDialogProps {
   students: readonly AdminStudent[];
   /** The school's buses, the destination names the sheet's bus column resolves to. */
   buses: readonly AdminBus[];
+  /**
+   * The reader may maintain the roster (a director, or an operator granted
+   * Students). Without it the sheet can still move children between buses but
+   * cannot create one or set a class — the rules refuse those fields, so the
+   * preview must not promise them either.
+   */
+  canWriteStudents: boolean;
   /** Called after the write so the page can refresh its per-bus figures. */
   onApplied: (moved: number) => void;
 }
@@ -90,6 +107,7 @@ export function SheetImportDialog({
   sheet,
   students,
   buses,
+  canWriteStudents,
   onApplied,
 }: SheetImportDialogProps) {
   const { t } = useLocale();
@@ -109,6 +127,7 @@ export function SheetImportDialog({
           sheet={sheet}
           students={students}
           buses={buses}
+          canWriteStudents={canWriteStudents}
           onApplied={onApplied}
           onClose={onClose}
         />
@@ -121,13 +140,15 @@ function SheetImportBody({
   sheet,
   students,
   buses,
+  canWriteStudents,
   onApplied,
   onClose,
 }: {
   sheet: ParsedSheet;
   students: readonly AdminStudent[];
   buses: readonly AdminBus[];
-  onApplied: (moved: number) => void;
+  canWriteStudents: boolean;
+  onApplied: (written: number) => void;
   onClose: () => void;
 }) {
   const { t, locale, dir } = useLocale();
@@ -145,7 +166,29 @@ function SheetImportBody({
     () => buildAssignmentPlan({ sheet, matches, students, buses }),
     [sheet, matches, students, buses],
   );
-  const moveCount = plan.rows.length;
+
+  // What will actually be written: without the Students grant, creations and
+  // class writes are dropped here rather than refused by the server halfway
+  // through a batch.
+  const writable = useMemo(() => {
+    if (canWriteStudents) return plan;
+    return {
+      ...plan,
+      creates: [],
+      rows: plan.rows
+        .map((row) => ({ ...row, toClass: null }))
+        .filter((row) => row.toBusId !== null),
+    };
+  }, [plan, canWriteStudents]);
+  const writeCount = writable.rows.length + writable.creates.length;
+  /**
+   * The sheet asks for something this reader may not write. Silent omission
+   * would be worse than an outright failure: the same file would appear to
+   * "work" while quietly leaving every class alone.
+   */
+  const blocked =
+    !canWriteStudents &&
+    (plan.creates.length > 0 || plan.rows.some((row) => row.toClass !== null));
 
   // Index of the first column mapped to each field — the preview shows one
   // column per field even if the sheet repeats one.
@@ -173,10 +216,10 @@ function SheetImportBody({
   }
 
   async function handleApply() {
-    if (!uid || moveCount === 0) return;
+    if (!uid || writeCount === 0) return;
     setApplying(true);
     try {
-      const moved = await applyAssignmentPlan(uid, plan);
+      const moved = await applyAssignmentPlan(uid, writable);
       showToast(t("sheet.imported", { count: digits(moved) }));
       onApplied(moved);
       onClose();
@@ -349,13 +392,47 @@ function SheetImportBody({
           </p>
         </section>
 
-        {/* 3 — the result, spoken as a sentence rather than drawn. The
+        {/* 3 — the classes this file will write. A new class is a decision, so
+            it is called out here rather than discovered on Reports later. */}
+        {plan.classes.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <h3 className="text-[13px] font-semibold text-dash-on-surface">
+              {t("sheet.classesTitle")}
+            </h3>
+            <ul className="flex flex-wrap gap-1.5">
+              {plan.classes.map((entry) => (
+                <li
+                  key={entry.label}
+                  className="inline-flex items-center gap-1.5 rounded-[5px] border border-dash-outline-variant bg-dash-surface px-2 py-1 text-[12px] leading-4"
+                >
+                  <span className="font-medium text-dash-on-surface">
+                    {translateDataLabel(entry.label, locale, t)}
+                  </span>
+                  <span className="tabular-nums text-dash-on-surface-variant">
+                    {digits(entry.count)}
+                  </span>
+                  {entry.isNew && (
+                    <span className="rounded-[4px] bg-dash-surface-container-high px-1.5 text-[10.5px] font-medium text-dash-on-surface-variant">
+                      {t("sheet.classNew")}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <p className="text-[11.5px] leading-4 text-dash-on-surface-variant">
+              {t("sheet.classesNote")}
+            </p>
+          </section>
+        )}
+
+        {/* 4 — the result, spoken as a sentence rather than drawn. The
             separator trails its own statement, so a wrapped line never starts
             with a lone dot. */}
         <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1 rounded-lg border border-dash-outline-variant bg-dash-surface-container-low px-3 py-2.5 text-[12.5px] leading-5 tabular-nums text-dash-on-surface-variant">
           {(
             [
-              { key: "sheet.resultMove", count: moveCount },
+              { key: "sheet.resultNew", count: writable.creates.length },
+              { key: "sheet.resultUpdate", count: writable.rows.length },
               { key: "sheet.resultUnchanged", count: plan.unchanged },
               { key: "sheet.resultUnmatched", count: plan.unmatched.length },
             ] as const
@@ -370,6 +447,46 @@ function SheetImportBody({
             </span>
           ))}
         </p>
+
+        {/* 4 — the two lists that make this a review rather than a promise: the
+            children the file would create, and the rows it would leave alone.
+            A mistyped name shows up here as a second child. */}
+        {(plan.creates.length > 0 || plan.unmatched.length > 0) && (
+          <div className="-mt-2 flex flex-col gap-1.5 text-[12px] leading-5">
+            {plan.creates.length > 0 && (
+              <p className="text-dash-on-surface-variant">
+                <span className="font-medium text-dash-on-surface">
+                  {t("sheet.newChildrenLabel")}
+                </span>{" "}
+                {nameList(
+                  plan.creates.map((create) => create.name),
+                  localeCode(locale),
+                  (rest) => t("sheet.moreNames", { count: digits(Number(rest)) }),
+                )}
+              </p>
+            )}
+            {plan.unmatched.length > 0 && (
+              <p className="text-dash-on-surface-variant">
+                <span className="font-medium text-dash-on-surface">
+                  {t("sheet.notAppliedLabel")}
+                </span>{" "}
+                {nameList(plan.unmatched, localeCode(locale), (rest) =>
+                  t("sheet.moreNames", { count: digits(Number(rest)) }),
+                )}
+              </p>
+            )}
+          </div>
+        )}
+
+        {blocked && (
+          <p
+            role="status"
+            className="flex items-start gap-1.5 text-[12px] leading-5 text-dash-error"
+          >
+            <Icon name="info" size={15} variant="outlined" className="mt-px flex-none" />
+            {t("sheet.needsStudents")}
+          </p>
+        )}
       </div>
 
       <footer className="sticky bottom-0 z-10 mt-auto flex flex-col gap-2 border-t border-dash-outline-variant bg-dash-surface-container-low px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
@@ -392,10 +509,10 @@ function SheetImportBody({
             variant="primary"
             size="md"
             onClick={handleApply}
-            disabled={moveCount === 0}
+            disabled={writeCount === 0}
             loading={applying}
           >
-            {t("sheet.apply", { count: digits(moveCount) })}
+            {t("sheet.apply", { count: digits(writeCount) })}
           </Button>
         </div>
       </footer>

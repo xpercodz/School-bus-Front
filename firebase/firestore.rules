@@ -229,19 +229,26 @@ service cloud.firestore {
             .hasOnly(['assignmentMode', 'updatedBy', 'updatedAt']))
       ) && stamped();
 
-      // Students & buses are school-administered. Creates must carry the core
-      // fields (name/grade) — shallow integrity. An operator granted Assignments
-      // may move a child between buses and link a driver to one, and may touch
-      // NOTHING else on those documents.
+      // Students & buses are school-administered. A secretary runs this school
+      // day to day, so a grant is the authority: an operator granted Students
+      // may ADD a child and correct one, exactly as a director may — that is
+      // what the screen they were given is for. Deleting a child stays
+      // director-only: nothing in the product offers it, and "remove this
+      // person" is not an office task.
+      //
       // Two separate grants, each with its own field list:
-      //   - `students` may correct a child's NAME and GRADE (the roster is
-      //     theirs to maintain);
+      //   - `students` may CREATE a child and correct NAME and GRADE (the
+      //     roster is theirs to maintain);
       //   - `assignments` may change the BUS and nothing else.
-      // A caller holding both gets the union. Neither list is a subset of the
-      // other, so a grant can never quietly grow into the other one.
+      // A caller holding both gets the union — including both fields in ONE
+      // write, which is what a sheet import does (a row carries a class and a
+      // bus, and splitting it into two updates would need two batches for one
+      // decision). Neither list is a subset of the other, so a grant can never
+      // quietly grow into the other one.
       match /students/{studentId} {
         allow read: if isMySchool(schoolId) && canSeeStudents();
-        allow create, delete: if isMySchool(schoolId) && isDirector();
+        allow create: if isMySchool(schoolId) && can('students') && stamped();
+        allow delete: if isMySchool(schoolId) && isDirector();
         allow update: if isMySchool(schoolId) && (
           isDirector()
           || (isOperator() && can('students')
@@ -250,6 +257,9 @@ service cloud.firestore {
           || (canAssign()
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['busId', 'updatedBy', 'updatedAt']))
+          || (can('students') && canAssign()
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['grade', 'busId', 'updatedBy', 'updatedAt']))
         ) && stamped();
       }
 

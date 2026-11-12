@@ -10,7 +10,13 @@
  * Reads cells as strings only; the assignment plan matches names, never
  * formulas or formats.
  */
-import { doc, serverTimestamp, writeBatch } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  serverTimestamp,
+  writeBatch,
+  type DocumentReference,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { fetchSchoolId } from "@/lib/school-id";
 import { logAudit } from "@/lib/audit";
@@ -35,15 +41,36 @@ export interface ColumnMatch {
   via: "exact" | "alias" | null;
 }
 
+/** A child the sheet corrects: one move, one class change, or both. */
 export interface AssignmentPlanRow {
   studentId: string;
   studentName: string;
-  fromBusId: string | null;
-  toBusId: string;
+  /** Null when the row does not touch the bus. */
+  toBusId: string | null;
+  /** Null when the row does not touch the class. */
+  toClass: string | null;
+}
+
+/** A child the sheet brings in — the row matched no one on the roll. */
+export interface AssignmentPlanCreate {
+  name: string;
+  className: string;
+  busId: string | null;
+}
+
+/** One class as the sheet spells it, and how many rows carry it. */
+export interface AssignmentPlanClass {
+  /** The label that will be written: the school's own spelling when it exists. */
+  label: string;
+  count: number;
+  /** True when no child in the school is in this class yet. */
+  isNew: boolean;
 }
 
 export interface AssignmentPlan {
   rows: AssignmentPlanRow[];
+  creates: AssignmentPlanCreate[];
+  classes: AssignmentPlanClass[];
   unchanged: number;
   unmatched: string[];
 }
@@ -511,14 +538,16 @@ export async function parseSheetFile(file: File): Promise<ParsedSheet> {
 /** The canonical header for each importable field ("exact" match). */
 const FIELD_LABELS: Record<Exclude<ImportField, "ignore">, string> = {
   studentName: "Student Name",
-  grade: "Grade",
+  grade: "Class",
   bus: "Bus",
 };
 
 /** Synonyms that are accepted but flagged as "alias". */
 const FIELD_ALIASES: Record<Exclude<ImportField, "ignore">, readonly string[]> = {
   studentName: ["student", "name", "full name", "pupil", "child"],
-  grade: ["grade", "class", "year", "form", "section"],
+  // "Grade" is the older name for the same column, so a sheet written before the
+  // word changed still imports.
+  grade: ["class", "grade", "year", "form", "section"],
   bus: ["bus", "bus no", "bus no.", "bus number", "route", "vehicle"],
 };
 
@@ -574,37 +603,102 @@ function nameKey(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+/**
+ * The words a class label may carry as a prefix, in the app's three languages.
+ * They are the app's own prefixes ("Class 4B"), and an older roster says
+ * "Grade 4B", so both must resolve to the same class.
+ */
+const CLASS_PREFIXES = [
+  "class",
+  "classe",
+  "grade",
+  "niveau",
+  "year",
+  "form",
+  "section",
+  "الصف",
+  "القسم",
+] as const;
+
+/**
+ * Match key for a class label: "Class 4A", "4a" and "CLASS 4-A" are one class.
+ *
+ * Classes are still plain strings on the student (`grade`), so this key is what
+ * keeps a school's sheet from inventing a second "class a" beside "Class A" —
+ * and what lets a sheet written with the new word match a roster stored with
+ * the old one.
+ */
+export function classKey(value: string): string {
+  const normalized = normalizeHeader(value);
+  if (!normalized) return "";
+  for (const prefix of CLASS_PREFIXES) {
+    if (normalized.startsWith(`${prefix} `)) {
+      return normalized.slice(prefix.length + 1).replace(/\s+/g, "");
+    }
+  }
+  return normalized.replace(/\s+/g, "");
+}
+
 function columnFor(matches: readonly ColumnMatch[], field: ImportField): number {
   return matches.find((match) => match.field === field)?.index ?? -1;
 }
 
 /**
- * Turn the sheet into moves: match each row's student by name, resolve its bus
- * by name, and skip rows that would not change anything. Rows whose student or
- * bus cannot be found are reported in `unmatched` and never applied, and a
- * duplicate row for the same student resolves to the last one (so one child can
- * never be written twice in a single import).
+ * Turn the sheet into one plan: which children it corrects, which it brings in,
+ * and what each row's class resolves to.
+ *
+ * A row whose name matches a child updates that child's class and/or bus. A row
+ * that matches no one becomes a NEW child — which is what lets a school import
+ * its whole roster — and needs a class to do so, because a class is the fact
+ * that puts a child on a class card. Rows that cannot be resolved (a bus the
+ * school does not have, a new child with no class) are reported in `unmatched`
+ * and never guessed at.
+ *
+ * Names are the only key, so the class column is what keeps two children who
+ * share a name apart, and a repeated row resolves to the last one for its
+ * (name, class) pair rather than writing twice.
  */
 export function buildAssignmentPlan(plan: {
   sheet: ParsedSheet;
   matches: readonly ColumnMatch[];
-  students: readonly { id: string; name: string; busId?: string | null }[];
+  students: readonly {
+    id: string;
+    name: string;
+    grade?: string;
+    busId?: string | null;
+  }[];
   buses: readonly { id: string; name: string }[];
 }): AssignmentPlan {
   const { sheet, matches } = plan;
   const nameIndex = columnFor(matches, "studentName");
+  const classIndex = columnFor(matches, "grade");
   const busIndex = columnFor(matches, "bus");
 
+  // Every child carrying a name, so the class column can choose between two
+  // children who share one instead of always taking the first.
   const studentsByName = new Map<
     string,
-    { id: string; name: string; busId: string | null }
+    { id: string; name: string; grade: string; busId: string | null }[]
   >();
+  /** The school's own spelling of each class, keyed by `classKey`. */
+  const knownClassLabels = new Map<string, string>();
   for (const student of plan.students) {
+    const entry = {
+      id: student.id,
+      name: student.name,
+      grade: student.grade ?? "",
+      busId: student.busId ?? null,
+    };
     const key = nameKey(student.name);
-    // Ambiguous duplicate names resolve to the first roster entry; the student
-    // id is what the write uses, so the plan never guesses twice.
-    if (key && !studentsByName.has(key)) {
-      studentsByName.set(key, { id: student.id, name: student.name, busId: student.busId ?? null });
+    if (key) {
+      const list = studentsByName.get(key);
+      if (list) list.push(entry);
+      else studentsByName.set(key, [entry]);
+    }
+    const label = entry.grade.trim().replace(/\s+/g, " ");
+    const classMatch = classKey(label);
+    if (classMatch && !knownClassLabels.has(classMatch)) {
+      knownClassLabels.set(classMatch, label);
     }
   }
 
@@ -623,46 +717,111 @@ export function buildAssignmentPlan(plan: {
     unmatched.push(name);
   };
 
-  if (nameIndex < 0) return { rows: [], unchanged: 0, unmatched };
+  if (nameIndex < 0) {
+    return { rows: [], creates: [], classes: [], unchanged: 0, unmatched };
+  }
 
-  // Last row per student wins, so a duplicate line in the sheet cannot
-  // double-move a child (or fight over which bus to write).
-  const targets = new Map<
-    string,
-    { studentId: string; studentName: string; fromBusId: string | null; toBusId: string }
-  >();
+  // Keyed by `classKey` so "class a" and "Class A" are one entry, and the label
+  // written is the school's own spelling once that class exists.
+  const classes = new Map<string, AssignmentPlanClass>();
+  function resolveClass(value: string): AssignmentPlanClass | null {
+    const raw = value.trim().replace(/\s+/g, " ");
+    const key = classKey(raw);
+    if (!key) return null;
+    const seen = classes.get(key);
+    if (seen) {
+      seen.count++;
+      return seen;
+    }
+    const known = knownClassLabels.get(key);
+    const entry: AssignmentPlanClass = {
+      label: known ?? raw,
+      count: 1,
+      isNew: known === undefined,
+    };
+    classes.set(key, entry);
+    return entry;
+  }
+
+  const targets = new Map<string, AssignmentPlanRow>();
+  const creates = new Map<string, AssignmentPlanCreate>();
+  let unchanged = 0;
+
   for (const row of sheet.rows) {
     const name = (row[nameIndex] ?? "").trim();
     if (!name) continue;
-    const student = studentsByName.get(nameKey(name));
-    if (!student) {
-      reportUnmatched(name);
-      continue;
-    }
+
+    const classValue = classIndex < 0 ? "" : (row[classIndex] ?? "").trim();
+    const resolved = classValue === "" ? null : resolveClass(classValue);
+
     const busName = busIndex < 0 ? "" : (row[busIndex] ?? "").trim();
-    const toBusId = busIdByName.get(nameKey(busName));
-    if (!toBusId) {
+    const busProvided = busName !== "";
+    const toBusId = busProvided ? busIdByName.get(nameKey(busName)) : undefined;
+    // A bus the school does not have is never guessed at: the row is reported
+    // rather than filed under a bus that does not exist.
+    if (busProvided && !toBusId) {
       reportUnmatched(name);
       continue;
     }
-    targets.set(student.id, {
-      studentId: student.id,
-      studentName: student.name,
-      fromBusId: student.busId,
-      toBusId,
+
+    const key = nameKey(name);
+    const candidates = studentsByName.get(key);
+
+    if (candidates && candidates.length > 0) {
+      // Prefer the child already in the row's class — that is what keeps two
+      // children with one name apart — and otherwise take the first, so a move
+      // to a class nobody in that name is in still lands.
+      const classMatch = resolved === null ? "" : classKey(resolved.label);
+      const student =
+        candidates.find((entry) => classMatch !== "" && classKey(entry.grade) === classMatch) ??
+        candidates[0];
+
+      // The LAST row for a child wins, so compare against what the plan already
+      // holds for them — not against the document. A later row that agrees with
+      // the record and disagrees with an earlier row cancels that row out
+      // instead of leaving the stale target behind.
+      const pending = targets.get(student.id);
+      const currentBusId = pending ? pending.toBusId : student.busId;
+      const currentClass = pending?.toClass ?? student.grade;
+      const nextBusId = toBusId !== undefined ? toBusId : currentBusId;
+      const nextClass = resolved !== null ? resolved.label : currentClass;
+
+      const touchesBus = nextBusId !== student.busId;
+      const touchesClass = nextClass !== student.grade;
+      if (!touchesBus && !touchesClass) {
+        targets.delete(student.id);
+        unchanged += 1;
+        continue;
+      }
+      targets.set(student.id, {
+        studentId: student.id,
+        studentName: student.name,
+        toBusId: touchesBus ? nextBusId : null,
+        toClass: touchesClass ? nextClass : null,
+      });
+      continue;
+    }
+
+    // No such child: the row becomes one. Without a class there is nothing to
+    // put on a class card, so the row is reported instead of half-created.
+    if (resolved === null) {
+      reportUnmatched(name);
+      continue;
+    }
+    creates.set(`${key}|${classKey(resolved.label)}`, {
+      name,
+      className: resolved.label,
+      busId: toBusId ?? null,
     });
   }
 
-  const rows: AssignmentPlanRow[] = [];
-  let unchanged = 0;
-  for (const target of targets.values()) {
-    if (target.fromBusId === target.toBusId) {
-      unchanged++;
-      continue;
-    }
-    rows.push(target);
-  }
-  return { rows, unchanged, unmatched };
+  return {
+    rows: [...targets.values()],
+    creates: [...creates.values()],
+    classes: [...classes.values()],
+    unchanged,
+    unmatched,
+  };
 }
 
 // ── applying a plan ──────────────────────────────────────────────────────────
@@ -671,29 +830,52 @@ export function buildAssignmentPlan(plan: {
 const APPLY_CHUNK_SIZE = 400;
 
 /**
- * Write the plan's bus assignments to Firestore (`students/{id}.busId`, merge),
- * mirroring `assignStudentToBus` in `school-admin.ts`, in batch-sized chunks.
- * Returns the number of students moved (0 when signed out or unresolved).
+ * Write the plan: corrections to existing children, then new ones, in
+ * batch-sized chunks.
+ *
+ * A correction only carries the fields it actually changes, because the rules
+ * grant `grade` and `busId` to different screens — a caller holding both may
+ * send both in one write, a caller holding one may send that one.
+ *
+ * Returns the number of documents written (0 when signed out or unresolved).
  */
 export async function applyAssignmentPlan(uid: string, plan: AssignmentPlan): Promise<number> {
   const firestore = db;
-  if (!firestore || !uid || plan.rows.length === 0) return 0;
+  if (!firestore || !uid) return 0;
+  if (plan.rows.length === 0 && plan.creates.length === 0) return 0;
   const schoolId = await fetchSchoolId(uid);
   if (!schoolId) return 0;
 
-  let moved = 0;
-  for (let offset = 0; offset < plan.rows.length; offset += APPLY_CHUNK_SIZE) {
-    const chunk = plan.rows.slice(offset, offset + APPLY_CHUNK_SIZE);
+  const stamp = { updatedBy: uid, updatedAt: serverTimestamp() };
+  const students = collection(firestore, "schools", schoolId, "students");
+  const writes: { ref: DocumentReference; data: Record<string, unknown> }[] = [];
+
+  for (const row of plan.rows) {
+    const data: Record<string, unknown> = { ...stamp };
+    if (row.toClass !== null) data.grade = row.toClass;
+    if (row.toBusId !== null) data.busId = row.toBusId;
+    writes.push({ ref: doc(students, row.studentId), data });
+  }
+  for (const create of plan.creates) {
+    writes.push({
+      // An empty path argument lets Firestore mint the id.
+      ref: doc(students),
+      data: {
+        name: create.name,
+        grade: create.className,
+        busId: create.busId,
+        ...stamp,
+      },
+    });
+  }
+
+  let written = 0;
+  for (let offset = 0; offset < writes.length; offset += APPLY_CHUNK_SIZE) {
+    const chunk = writes.slice(offset, offset + APPLY_CHUNK_SIZE);
     const batch = writeBatch(firestore);
-    for (const row of chunk) {
-      batch.set(
-        doc(firestore, "schools", schoolId, "students", row.studentId),
-        { busId: row.toBusId, updatedBy: uid, updatedAt: serverTimestamp() },
-        { merge: true },
-      );
-    }
+    for (const write of chunk) batch.set(write.ref, write.data, { merge: true });
     await batch.commit();
-    moved += chunk.length;
+    written += chunk.length;
   }
 
   // One entry for the whole import, written after every chunk lands: a sheet is
@@ -702,12 +884,12 @@ export async function applyAssignmentPlan(uid: string, plan: AssignmentPlan): Pr
     event: "students.imported",
     targetType: "school",
     targetId: schoolId,
-    meta: { count: moved },
+    meta: { count: written },
     occurredAt: new Date(),
   }).catch(() => {
     // Best-effort by design: a log write must never fail an import that
     // otherwise succeeded.
   });
 
-  return moved;
+  return written;
 }
