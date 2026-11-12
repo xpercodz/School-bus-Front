@@ -232,9 +232,14 @@ service cloud.firestore {
       // Students & buses are school-administered. A secretary runs this school
       // day to day, so a grant is the authority: an operator granted Students
       // may ADD a child and correct one, exactly as a director may — that is
-      // what the screen they were given is for. Deleting a child stays
-      // director-only: nothing in the product offers it, and "remove this
-      // person" is not an office task.
+      // what the screen they were given is for — and the child they add carries
+      // only the keys an import writes (`name`, `grade`, `busId`, both stamps),
+      // because the sheet already decided the class and the bus. That bound
+      // applies to every role, a director included: a create is the import's
+      // shape, and a director who needs another field can set it in an update,
+      // where their branch is unbounded. Deleting a
+      // child stays director-only: nothing in the product offers it, and
+      // "remove this person" is not an office task.
       //
       // Two separate grants, each with its own field list:
       //   - `students` may CREATE a child and correct NAME and GRADE (the
@@ -247,7 +252,10 @@ service cloud.firestore {
       // quietly grow into the other one.
       match /students/{studentId} {
         allow read: if isMySchool(schoolId) && canSeeStudents();
-        allow create: if isMySchool(schoolId) && can('students') && stamped();
+        allow create: if isMySchool(schoolId) && can('students')
+          && request.resource.data.keys()
+            .hasOnly(['name', 'grade', 'busId', 'updatedBy', 'updatedAt'])
+          && stamped();
         allow delete: if isMySchool(schoolId) && isDirector();
         allow update: if isMySchool(schoolId) && (
           isDirector()
@@ -286,7 +294,10 @@ service cloud.firestore {
 
       // Runs hold run metadata (bus, type, date, status). Office staff granted a
       // screen that records attendance may write them; a driver may only write
-      // their own bus's, and only with valid status/run-type/date fields.
+      // their own bus's, and only with valid status/run-type/date fields. On a
+      // run that already exists a driver may change the status and the two
+      // stamps and nothing else — the bus, the type and the date are what the
+      // day was, and the completed run is the record the director reads.
       match /runs/{runId} {
         allow read: if isMySchool(schoolId) && canSeeRuns();
         allow create, update: if isMySchool(schoolId) && (
@@ -296,13 +307,20 @@ service cloud.firestore {
             staffsOwnBus(request.resource.data.busId) &&
             request.resource.data.status in ['IN_PROGRESS', 'COMPLETED'] &&
             request.resource.data.runType in ['morning', 'afternoon'] &&
-            request.resource.data.date is string)
+            request.resource.data.date is string &&
+            (resource == null
+              || request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status', 'updatedBy', 'updatedAt'])))
         ) && stamped();
         allow delete: if isMySchool(schoolId) && isDirector();
       }
 
       // Attendance is a flat per-school collection, one doc per (run, student) —
-      // denormalized for single-query realtime reads. Same write shape as runs.
+      // denormalized for single-query realtime reads. Same write shape as runs:
+      // on a doc that already exists a driver records the status and its two
+      // timestamps and nothing else, so `studentName`, `grade`, `busName` and
+      // `date` stay the copies the sheet took at dispatch — the record a family
+      // is shown later is not rewritable from a bus.
       match /attendance/{attId} {
         allow read: if isMySchool(schoolId) && canSeeRuns();
         allow create, update: if isMySchool(schoolId) && (
@@ -310,7 +328,10 @@ service cloud.firestore {
           || (isOperator() && canWriteRuns())
           || (isStaff() &&
             staffsOwnBus(request.resource.data.busId) &&
-            request.resource.data.status in ['BOARDED', 'WAITING', 'DROPPED_OFF', 'ABSENT'])
+            request.resource.data.status in ['BOARDED', 'WAITING', 'DROPPED_OFF', 'ABSENT'] &&
+            (resource == null
+              || request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status', 'boardedAt', 'droppedOffAt', 'updatedBy', 'updatedAt'])))
         ) && stamped();
         allow delete: if isMySchool(schoolId) && isDirector();
       }
