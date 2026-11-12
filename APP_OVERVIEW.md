@@ -846,7 +846,8 @@ Accepted trade-offs, each with the condition that should make someone revisit it
   accounts, which one instance serves easily. Behind the throttle, a **plainly
   wrong** code is counted in Firestore (`codeAttempts`, keyed by a hash of the
   client IP: 20 wrong guesses in 15 minutes lock that bucket for 15 minutes,
-  TTL-expired, fail-open if Firestore is unreachable), and a **matched** code keeps
+  TTL-expired once the policy is enabled, fail-open if Firestore is unreachable),
+  and a **matched** code keeps
   its own `attempts`/`lockedUntil` pair for the owner-role gate. Both survive a
   restart and are shared by every instance. The deploy caps `--max-instances=1`,
   so there is one limiter counter in steady state — though a limit is per
@@ -862,11 +863,17 @@ Accepted trade-offs, each with the condition that should make someone revisit it
   chain.** `clientIp()` reads that many entries from the **end** of
   `x-forwarded-for` (proxies append; the start is caller-supplied) and folds an
   over-long chain, a too-short chain, and a non-IP entry into one `untrusted`
-  bucket — so a caller can neither mint a fresh IP per request nor pad the header.
-  Firebase Hosting documents nothing about what it forwards, so the value has to be
-  **measured** from the API's `xff_observed` line after a deploy (start at 2, and
-  treat ordinary traffic resolving to `untrusted` as a mismatch). The API repo's
-  README documents the procedure.
+  bucket. That stops a caller minting a fresh IP per request by padding the header
+  — **for the path the hop count describes.** The `hops + 1` tolerance still lets
+  a caller prepend one entry, so on a path that produces a *shorter* chain (the
+  public `run.app` URL, one proxy hop instead of Hosting's two) padding to exactly
+  `hops` entries lands the bucket on a value the caller chose. No single hop count
+  is correct for both paths while both exist, which is why the value is measured
+  from the API's `xff_observed` line after a deploy (start at 2; ordinary traffic
+  resolving to `untrusted` means a mismatch). **Both** the throttle and
+  `codeAttempts` key on that resolved address, so a padded header dodges both;
+  the structural fix is one ingress path, not a better key. The API repo's README
+  documents the procedure; `docs/ops/cloud-run-deploy.md` records the options.
 - **Contract drift is not enforced by any build step.** The two contract files are
   kept in sync by hand. Revisit when the surface outgrows a handful of endpoints.
 

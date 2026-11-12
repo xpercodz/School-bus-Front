@@ -42,9 +42,17 @@ to rate-limit.
 - **A 6-digit code is 10^6 possibilities with several hundred live.** Both guards
   bound one address, not the service. A longer code, or account-bound sign-in,
   is the structural fix.
-- **The API is reachable at its `*.run.app` URL.** Every documented lever that
-  closes that also breaks the Hosting rewrite, so the compensating control is in
-  the application.
+- **The API is reachable at its `*.run.app` URL, and the two ingress paths cost
+  different numbers of proxy hops.** Every documented lever that closes the public
+  URL also breaks the Hosting rewrite, so the compensating control is in the
+  application; and because a direct request produces a shorter
+  `x-forwarded-for` chain than the rewrite, no single `TRUSTED_PROXY_HOPS` is
+  correct for both. A caller who pads the header to exactly `hops` entries can
+  choose the throttle bucket — and `codeAttempts` keys on that same resolved
+  address, so the durable counter is dodged with it. The fix is one ingress path
+  (serve `/v1/**` from the `run.app` origin and set the hop count for that sole
+  path), with a longer code as the structural backstop for a public 6-digit
+  credential.
 - **`max-instances=1` is an availability trade.** It converts a burst into
   documented 429s rather than scaling; revisit if the fleet grows.
 - **No CI.** Neither repo has a workflow, so a rules or auth change ships on human

@@ -166,8 +166,10 @@ match this deployment. Two things make it a measurement rather than a lookup:
   in one bucket), not a bypass or an error.
 
 The API emits one `xff_observed` JSON line per request on the two rate-limited
-routes (`POST /v1/auth/director-sign-in`, `POST /v1/auth/verify-code`) with `chainLen`,
-`hops`, `resolved` and a sanitized `raw` echo. Procedure:
+routes (`POST /v1/auth/director-sign-in`, `POST /v1/auth/verify-code`) with
+`chainLen`, `hops` and `resolved` — plus a sanitized `raw` echo, but **only when
+the chain resolves to `untrusted`**, so a normal sign-in does not write an
+attacker-controlled header into the logs. Procedure:
 
 1. **Generate a few requests through Hosting.** Success or failure both log — the
    throttle runs before the handler, so even a request the handler rejects gives
@@ -280,13 +282,22 @@ practice is that the API's own guards are the only guards on the public path:
 - Every privileged route authenticates: director sign-in verifies a Firebase
   password *and* a `director` profile, then mints a token; driver routes verify a
   Firebase Bearer token and a code checked as an HMAC against `codeHash`.
-- Driver-code attempts are counted in a Firestore transaction with a 10-attempt
-  lockout for 15 minutes, so the code path cannot be hammered.
+- Driver-code attempts are counted twice: a **matched** code keeps a per-code
+  `attempts`/`lockedUntil` pair for the owner-role gate, and a **plainly wrong**
+  code is counted durably per bucket in `codeAttempts` (20 in 15 minutes, 15-minute
+  lock, fail-open, TTL on `expiresAt`).
 - The origin guard rejects a request whose `Origin` is present and not allowlisted.
   A missing `Origin` is allowed on purpose (curl, same-origin form) — so this is
   CSRF protection, not authentication.
-- The per-IP throttle (10 requests / 60 s on each auth route) applies at the
-  `run.app` URL exactly as it does through Hosting.
+- The per-IP throttle (10 requests / 60 s on each auth route) runs at the
+  `run.app` URL too, but **its key is weaker there.** The direct path produces a
+  shorter `x-forwarded-for` chain than the Hosting rewrite, and the resolver
+  tolerates one prepended entry (`hops + 1`) — so a caller who pads the header to
+  exactly `hops` entries can land the bucket on a value they chose. That is the
+  reason the hop count has to be measured rather than assumed — and note that
+  `codeAttempts` keys on the same resolved address, so padding the header dodges
+  the durable counter as well as the throttle. The fix is one ingress path, not a
+  stronger key.
 - Errors are generic (`server_error`) with the detail in logs; every privileged
   write appends to `schools/{schoolId}/audit`, with codes and tokens never in the
   trail.
