@@ -89,6 +89,33 @@ function AnalyticsBody({
     [byBus, locale, t],
   );
 
+  /**
+   * The charts' accessible strings are composed here. A chart knows the numbers
+   * and the shape of its sentence, but not the reader's language — so every
+   * word a screen reader hears is decided at this layer, and the vendored
+   * component only falls back to English when a caller passes nothing.
+   */
+  const chartName = t("analytics.chartCompleted");
+  const unitText = t("analytics.studentsUnit");
+  const countText = (value: number) => `${formatCount(value)} ${unitText}`;
+  const chartSummary = (() => {
+    if (completedByBus.length === 0) return `${chartName}. ${t("analytics.noData")}`;
+    const values = completedByBus.map((row) => row.value);
+    const average = Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+    const highest = completedByBus.reduce((best, row) => (row.value > best.value ? row : best));
+    const lowest = completedByBus.reduce((best, row) => (row.value < best.value ? row : best));
+    return [
+      t("analytics.chartSummaryHead", { chart: chartName, period: periodLabel }),
+      t("analytics.chartSummaryAverage", { value: countText(average) }),
+      t("analytics.chartSummaryHighest", { name: highest.label, value: countText(highest.value) }),
+      lowest.value !== highest.value
+        ? t("analytics.chartSummaryLowest", { name: lowest.label, value: countText(lowest.value) })
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  })();
+
   const sectionTitle = (icon: string, label: string) => (
     <h2
       className="flex items-center gap-2 text-[15px] font-semibold text-dash-on-surface"
@@ -170,6 +197,11 @@ function AnalyticsBody({
                     averageLabel={t("analytics.fleetAverage")}
                     averageValueLabel={t("analytics.averageShort")}
                     noDataLabel={t("analytics.noData")}
+                    ariaSummary={chartSummary}
+                    scrubberLabel={t("analytics.chartScrubber", {
+                      chart: chartName,
+                      category: t("dashboard.th.bus"),
+                    })}
                     showAverage
                     formatValue={formatCount}
                   />
@@ -183,6 +215,14 @@ function AnalyticsBody({
                     unit={t("analytics.studentsUnit")}
                     totalLabel={t("analytics.chartCompleted")}
                     emptyLabel={t("analytics.emptyTitle")}
+                    otherLabel={t("analytics.other")}
+                    legendAriaLabel={t("analytics.legendName", { chart: chartName })}
+                    hiddenLabel={(label) => t("analytics.segmentHidden", { label })}
+                    rowLabel={({ label, value, share, members }) =>
+                      members === null
+                        ? t("analytics.segmentAria", { label, value, share })
+                        : t("analytics.segmentAriaMembers", { label, value, share, members })
+                    }
                     formatValue={formatCount}
                   />
                 )}

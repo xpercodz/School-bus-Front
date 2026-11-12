@@ -77,6 +77,13 @@ Two hard requirements in `AGENTS.md` conflict with the files as shipped:
 | File | Patch |
 | --- | --- |
 | `bar-chart.tsx` | Added `averageValueLabel` and `noDataLabel`. The average line read `Avg 5` and the scrubber's empty reading `No data` as literals, which showed up untranslated on the Arabic Analytics modal (`متوسط الأسطول` heading above a label still saying `Avg`). |
+| `bar-chart.tsx` | Added `ariaSummary` and `scrubberLabel`. The chart built its screen-reader sentence itself (`"{label}, {period}. Daily average 5. Highest Bus 04, 7."`) and its scrubber name (`"{label}, explore by day"`), so a French or Arabic reader heard English around translated data. Both are complete strings now, composed by the caller — word order is not the component's to decide — and the built-in English sentence is only a fallback. |
+
+## donut-chart
+
+| File | Patch |
+| --- | --- |
+| `donut-chart.tsx` | Added `legendAriaLabel`, `rowLabel`, `hiddenLabel` (and our caller now passes `otherLabel`). The legend list announced `"{label}, segments. Press a segment to show or hide it"`, each row `"{label}, {value}, {share}. Includes …"` and a hidden row `"{label}, hidden"` — all literals. `rowLabel` receives the value and share already formatted, so the caller only supplies words. |
 
 ## expanding-search
 
@@ -135,12 +142,15 @@ but it is a deliberate choice rather than an accident.
 
 ## Still unpatched (known, listed so they are not forgotten)
 
-- `bar-chart` / `donut-chart`, now that the Analytics modal ships them: the bar
-  chart draws left-to-right regardless of `dir` (Arabic reads the series in the
-  opposite order to the legend), and their assistive-technology summaries
-  (`Label, period. Highest X…`, `Press a segment to show or hide it`) are still
-  English strings inside the component. The visible UI is translated; a full
-  summary formatter is the fix, and it is a bigger prop than the two above.
+- `bar-chart` / `donut-chart`: the charts' **accessible strings are now ours**
+  (see the entries above), but the bar chart still draws **left-to-right
+  regardless of `dir`**. Mirroring it means inverting the bar geometry, the axis
+  label fitting, the scrubber's hit-test and the average line together — a
+  rewrite of the plot rather than a swap, and one that needs a visual check in
+  Arabic, which no test in this repo can perform. Recorded here as a decision,
+  not an oversight: a time axis that reads left-to-right is a convention many
+  Arabic dashboards keep, while every label, unit and number around it is
+  localized.
 
 - `date-range-picker.tsx`: mirrored range band in RTL (physical `left:%` over an
   RTL-flowing grid), `weekday.slice(0, 2)` truncates Arabic to two letters, and

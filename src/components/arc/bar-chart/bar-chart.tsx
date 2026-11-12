@@ -39,6 +39,14 @@ export interface BarChartProps {
   averageValueLabel?: string;
   /** Text used instead of a reading when a datum has none. */
   noDataLabel?: string;
+  /**
+   * The complete sentence read for the chart, in the caller's language. Sent
+   * already composed because word order is not this component's to decide; the
+   * built-in English sentence is the fallback when a caller has no translation.
+   */
+  ariaSummary?: string;
+  /** The complete accessible name of the scrubber, e.g. "{chart}, explore by {category}". */
+  scrubberLabel?: string;
 }
 
 const { spring, duration, ease, blur, stagger } = motionTokens;
@@ -230,7 +238,7 @@ function useReducedMotionSafe() {
   return !!useReducedMotion() && hydrated;
 }
 
-export function BarChart({ data, label, period, unit = "", averageLabel = "Daily average", valueLabel = "Total", categoryLabel = "Day", showAverage = true, height = 176, formatValue = value => grouped.format(value), averageValueLabel = "Avg", noDataLabel = "No data" }: BarChartProps) {
+export function BarChart({ data, label, period, unit = "", averageLabel = "Daily average", valueLabel = "Total", categoryLabel = "Day", showAverage = true, height = 176, formatValue = value => grouped.format(value), averageValueLabel = "Avg", noDataLabel = "No data", ariaSummary, scrubberLabel }: BarChartProps) {
   const reduced = useReducedMotionSafe();
   const figure = useRef<HTMLElement>(null);
   const plot = useRef<HTMLDivElement>(null);
@@ -348,7 +356,7 @@ export function BarChart({ data, label, period, unit = "", averageLabel = "Daily
   const valueText = reading ? `${reading.label}: ${formatValue(reading.value)}${suffix}` : noDataLabel;
   const highest = data.reduce<BarChartDatum | null>((best, item) => !best || item.value > best.value ? item : best, null);
   const lowest = data.reduce<BarChartDatum | null>((best, item) => !best || item.value < best.value ? item : best, null);
-  const summary = `${label}, ${period}. ${averageLabel} ${formatValue(Math.round(average))}${suffix}.${highest ? ` Highest ${highest.label}, ${formatValue(highest.value)}${suffix}.` : ""}${lowest && lowest !== highest ? ` Lowest ${lowest.label}, ${formatValue(lowest.value)}${suffix}.` : ""}`;
+  const summary = ariaSummary ?? `${label}, ${period}. ${averageLabel} ${formatValue(Math.round(average))}${suffix}.${highest ? ` Highest ${highest.label}, ${formatValue(highest.value)}${suffix}.` : ""}${lowest && lowest !== highest ? ` Lowest ${lowest.label}, ${formatValue(lowest.value)}${suffix}.` : ""}`;
   const shown = inView || reduced;
   const avoid = showAverage ? meanY : null;
 
@@ -382,7 +390,7 @@ export function BarChart({ data, label, period, unit = "", averageLabel = "Daily
         <span ref={measure} className={styles.measure}>{labelTexts.split("\n").filter(Boolean).map(text => <span key={text} data-text={text}>{text}</span>)}</span>
       </div>
       {/* The scrubber lies over the plot: hover or drag across it, or focus it and use the arrow keys. Vertical swipes still scroll the page. */}
-      <div className={styles.scrubber} role="slider" tabIndex={0} aria-label={`${label}, explore by ${categoryLabel.toLowerCase()}`} aria-orientation="horizontal" aria-valuemin={1} aria-valuemax={Math.max(1, data.length)} aria-valuenow={(index ?? last) + 1} aria-valuetext={valueText}
+      <div className={styles.scrubber} role="slider" tabIndex={0} aria-label={scrubberLabel ?? `${label}, explore by ${categoryLabel.toLowerCase()}`} aria-orientation="horizontal" aria-valuemin={1} aria-valuemax={Math.max(1, data.length)} aria-valuenow={(index ?? last) + 1} aria-valuetext={valueText}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={release} onPointerCancel={() => setActive(null)} onPointerLeave={event => { if (event.pointerType === "mouse") setActive(null); }} onKeyDown={onKeyDown} onBlur={() => setActive(null)}
         onFocus={event => { if (event.currentTarget.matches(":focus-visible") && last >= 0) setActive(current => current ?? last); }} />
     </div>

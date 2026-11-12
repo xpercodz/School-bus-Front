@@ -33,6 +33,17 @@ export interface DonutChartProps {
   /** The most segments drawn, counting "Other". The smallest parts beyond it are grouped. */
   maxSegments?: number;
   otherLabel?: string;
+  /** The legend list's complete accessible name, in the caller's language. */
+  legendAriaLabel?: string;
+  /** One legend row's accessible name. Values arrive already formatted. */
+  rowLabel?: (parts: {
+    label: string;
+    value: string;
+    share: string;
+    members: string | null;
+  }) => string;
+  /** One legend row while its segment is hidden, in the caller's language. */
+  hiddenLabel?: (label: string) => string;
   /** Controlled selected segment key. Hover and focus preview other segments without changing it. */
   activeKey?: string | null;
   defaultActiveKey?: string | null;
@@ -170,7 +181,7 @@ function useReducedMotionSafe() {
   return !!useReducedMotion() && hydrated;
 }
 
-export function DonutChart({ data, label, unit = "", formatValue = value => grouped.format(value), totalLabel = "Total", size = 208, thickness = 24, groupBelow = .04, maxSegments = 6, otherLabel = "Other", activeKey, defaultActiveKey = null, onActiveChange, hiddenKeys, defaultHiddenKeys, onHiddenKeysChange, legendAction = "toggle", legend = true, emptyLabel = "No data yet", ref, className }: DonutChartProps) {
+export function DonutChart({ data, label, unit = "", formatValue = value => grouped.format(value), totalLabel = "Total", size = 208, thickness = 24, groupBelow = .04, maxSegments = 6, otherLabel = "Other", legendAriaLabel, rowLabel, hiddenLabel, activeKey, defaultActiveKey = null, onActiveChange, hiddenKeys, defaultHiddenKeys, onHiddenKeysChange, legendAction = "toggle", legend = true, emptyLabel = "No data yet", ref, className }: DonutChartProps) {
   const reduced = useReducedMotionSafe();
   const figure = useRef<HTMLElement>(null);
   useImperativeHandle(ref, () => figure.current as HTMLElement);
@@ -393,12 +404,16 @@ export function DonutChart({ data, label, unit = "", formatValue = value => grou
         </motion.span>)}
       </div>
     </div>
-    {legend && slices.length > 0 && <ul className={styles.legend} aria-label={`${label}, segments${legendAction === "toggle" ? ". Press a segment to show or hide it" : ""}`} id={legendId} onPointerLeave={() => setPreview(null)}>
+    {legend && slices.length > 0 && <ul className={styles.legend} aria-label={legendAriaLabel ?? `${label}, segments${legendAction === "toggle" ? ". Press a segment to show or hide it" : ""}`} id={legendId} onPointerLeave={() => setPreview(null)}>
       <AnimatePresence initial={false}>{slices.map((item, index) => {
         const off = hidden.has(item.key);
         // A row that joins or leaves (a part folding into Other, say) opens or closes its height, so the rows below and the card around them glide instead of jumping.
         return <motion.li key={item.key} className={styles.item} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={reduced ? { duration: 0 } : spring.smooth}>
-          <button ref={node => { if (node) rows.current[index] = node; }} type="button" className={styles.row} aria-pressed={legendAction === "toggle" ? !off : selected === item.key} aria-label={off ? `${item.label}, hidden` : describe(item)} data-active={item.key === current || undefined} data-pinned={selected === item.key || undefined} data-hidden={off || undefined} style={{ "--slice": colorFor(item) } as CSSProperties}
+          <button ref={node => { if (node) rows.current[index] = node; }} type="button" className={styles.row} aria-pressed={legendAction === "toggle" ? !off : selected === item.key} aria-label={off
+              ? (hiddenLabel ? hiddenLabel(item.label) : `${item.label}, hidden`)
+              : rowLabel
+                ? rowLabel({ label: item.label, value: format(item.value), share: shareText(item.value / (total || 1)), members: item.members ? item.members.map(member => member.label).join(", ") : null })
+                : describe(item)} data-active={item.key === current || undefined} data-pinned={selected === item.key || undefined} data-hidden={off || undefined} style={{ "--slice": colorFor(item) } as CSSProperties}
             onClick={() => legendAction === "toggle" ? setHidden(item.key) : select(selected === item.key ? null : item.key)}
             onPointerEnter={event => { if (event.pointerType === "mouse") setPreview(off ? null : item.key); }}
             onFocus={event => { if (event.currentTarget.matches(":focus-visible")) setPreview(off ? null : item.key); }} onBlur={onLegendBlur} onKeyDown={event => onLegendKey(event, index)}>
