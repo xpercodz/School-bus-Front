@@ -841,20 +841,32 @@ Accepted trade-offs, each with the condition that should make someone revisit it
 
 **Security**
 
-- **The API rate limiter is in-memory and per-instance — a decision, not a gap.**
-  The design point is tens of schools and a few thousand accounts, which one
-  instance serves easily; the durable guard is the per-code `attempts` counter and
-  15-minute lockout in Firestore (shared, survives a restart), and the deploy caps
-  `--max-instances=1`, so there is exactly one counter.
-  Revisit only if the API runs many instances — regional fan-out, off Cloud Run, or
-  a burst that needs more than a couple.
+- **The API throttle is in-memory and per-instance; the durable guard is
+  `codeAttempts`.** The design point is tens of schools and a few thousand
+  accounts, which one instance serves easily. Behind the throttle, a **plainly
+  wrong** code is counted in Firestore (`codeAttempts`, keyed by a hash of the
+  client IP: 20 wrong guesses in 15 minutes lock that bucket for 15 minutes,
+  TTL-expired, fail-open if Firestore is unreachable), and a **matched** code keeps
+  its own `attempts`/`lockedUntil` pair for the owner-role gate. Both survive a
+  restart and are shared by every instance. The deploy caps `--max-instances=1`,
+  so there is one limiter counter in steady state — though a limit is per
+  **revision**, so a rolling deploy runs two. Revisit (a distributed store) only
+  if the API runs many instances — regional fan-out, off Cloud Run, or a burst
+  that needs more than a couple.
+- **A 6-digit code is 10^6 possibilities and several hundred are live.** Both
+  guards bound one **address**, not the service: a distributed attacker is limited
+  by neither, which is why the API logs `code_verify_failed` and why a longer code
+  or an account-bound sign-in is the structural fix. The same bucketing means a
+  school behind one NAT shares its failures.
 - **The throttle's client IP depends on `TRUSTED_PROXY_HOPS` matching the real
   chain.** `clientIp()` reads that many entries from the **end** of
   `x-forwarded-for` (proxies append; the start is caller-supplied) and folds an
-  over-long chain into one `untrusted` bucket, so a caller can no longer mint a
-  fresh IP per request and step around the throttle. What is left is operational:
-  set the value to the real chain (2 today), and expect coarse throttling rather
-  than a bypass if it is wrong. The API repo's README documents the derivation.
+  over-long chain, a too-short chain, and a non-IP entry into one `untrusted`
+  bucket — so a caller can neither mint a fresh IP per request nor pad the header.
+  Firebase Hosting documents nothing about what it forwards, so the value has to be
+  **measured** from the API's `xff_observed` line after a deploy (start at 2, and
+  treat ordinary traffic resolving to `untrusted` as a mismatch). The API repo's
+  README documents the procedure.
 - **Contract drift is not enforced by any build step.** The two contract files are
   kept in sync by hand. Revisit when the surface outgrows a handful of endpoints.
 
