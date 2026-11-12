@@ -4,6 +4,23 @@ This repository is the **web client only** (Vite + React 19 + React Router SPA).
 The privileged backend is a **separate repository** at `../School-bus-API`
 (Hono on Node 22). They are independent git repos with independent deploys.
 
+## Before you write code
+
+Load the `karpathy-guidelines` skill with the skill tool and follow it for every
+task that touches code — including work delegated to a subagent, which does **not**
+inherit it from the parent conversation and must be told to load it.
+
+- **Think first.** State assumptions, surface the trade-off, and ask when a
+  request admits two readings. Do not pick an interpretation silently.
+- **Simplest thing that works.** No speculative abstraction, no configurability
+  nobody asked for, no handling for impossible states.
+- **Surgical changes.** Every changed line traces to the request. Match the
+  existing voice instead of improving it; mention unrelated dead code rather than
+  deleting it.
+- **Verify, don't assert.** Turn the task into a checkable goal (`npm run
+  typecheck`, `npm run lint`, `npm run build`, `npm run test:offline`) and run the
+  check before saying it is done.
+
 ## The one architectural rule
 
 **Firestore client SDK for realtime and offline. The API for anything privileged.**
