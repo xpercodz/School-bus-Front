@@ -123,18 +123,19 @@ export default function LoginPage() {
   }, []);
 
   /**
-   * Verify one code. Called automatically the moment the sixth digit lands —
+   * Verify one code. Called automatically the moment the eighth digit lands —
    * there is no submit button — and again for a retry, so it takes the value
    * rather than reading state.
    *
-   * A failure clears the field: the auto-submit effect fires on "six digits are
-   * present", and leaving a rejected code in place would re-submit it forever.
+   * A failure clears the field: the auto-submit effect fires on "eight digits
+   * are present", and leaving a rejected code in place would re-submit it
+   * forever.
    */
   const submitCode = useCallback(
     async (value: string) => {
       if (!auth || codeSubmitting || codeVerified) return;
       if (lockout.until > Date.now()) return;
-      if (!/^\d{6}$/.test(value)) {
+      if (!/^\d{8}$/.test(value)) {
         setCodeError(t("login.codeError"));
         return;
       }
@@ -171,9 +172,9 @@ export default function LoginPage() {
     [codeSubmitting, codeVerified, lockout.fails, lockout.until, t],
   );
 
-  // Auto-submit. Six digits is the whole interaction: no button to press.
+  // Auto-submit. Eight digits is the whole interaction: no button to press.
   useEffect(() => {
-    if (mode !== "driver" || code.length !== 6) return;
+    if (mode !== "driver" || code.length !== 8) return;
     if (codeSubmitting || codeVerified) return;
     void submitCode(code);
   }, [code, mode, codeSubmitting, codeVerified, submitCode]);
@@ -265,12 +266,13 @@ export default function LoginPage() {
 
         {mode === "driver" ? (
           <div className="mt-6 flex flex-col gap-4">
-            {/* Six boxes, one ring gliding between them, and no submit button:
-                the sixth digit is the submission. The library renders the field
+            {/* Eight boxes, one ring gliding between them, and no submit button:
+                the eighth digit is the submission. The library renders the field
                 label, the hint and the error, so they are passed as props and
                 translated here. */}
             <div className={codeLocked ? "pointer-events-none opacity-60" : undefined}>
               <OtpInput
+                length={8}
                 label={t("login.code")}
                 description={t("login.driverHint")}
                 error={codeLocked ? undefined : (codeError ?? undefined)}
@@ -308,8 +310,8 @@ export default function LoginPage() {
                   <span>
                     {t("login.codeDigitAria", {
                       label: t("login.code"),
-                      index: Math.min(code.length + 1, 6),
-                      total: 6,
+                      index: Math.min(code.length + 1, 8),
+                      total: 8,
                     })}
                   </span>
                 )}

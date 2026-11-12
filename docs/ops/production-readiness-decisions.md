@@ -51,11 +51,20 @@ to rate-limit.
   `docs/ops/cloud-run-deploy.md`; the preflight behaviour was verified locally
   against the built server before deciding.
 
+- **2026-11-12 — driver access codes are 8 digits.** Six was brute-forceable from
+  one address in about 16 hours even with the throttle; eight puts it at ~65 days,
+  because `codeAttempts` caps a bucket at 20 wrong guesses per 15 minutes. The
+  generator is `driver-admin.ts` / `seed.mjs`, the schema is `contract.ts`, and the
+  field length is `LoginPage.tsx` — the two repos must deploy together, and
+  **every existing code must be rotated**, since only hashes are stored and no
+  migration from 6 to 8 exists.
+
 ## Known residual risks (deliberate, not oversights)
 
-- **A 6-digit code is 10^6 possibilities with several hundred live.** Both guards
-  bound one address, not the service. A longer code, or account-bound sign-in,
-  is the structural fix.
+- **An 8-digit code is 10^8 possibilities with several hundred live.** Both guards
+  still bound one address, not the service: a distributed attacker is limited by
+  neither. Account-bound sign-in (a driver identifier alongside the code) is the
+  structural fix; until then, watch `code_verify_failed`.
 - **Until the cutover lands, the two-path ambiguity is live.** The direct
   `run.app` URL produces one fewer `x-forwarded-for` entry than the Hosting
   rewrite, so a caller who pads the header to exactly `hops` entries can choose

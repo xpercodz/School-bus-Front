@@ -24,7 +24,7 @@ dictionary of the shipped strings — those live in `src/lib/i18n/dictionaries/`
 | grade | niveau | الصف | School year, e.g. "Niveau 4". |
 | school | école | المدرسة | |
 | assignment | affectation | التعيين | A child's bus/driver. |
-| access code | code d'accès | رمز الوصول | The 6-digit driver credential. |
+| access code | code d'accès | رمز الوصول | The 8-digit driver credential. |
 | screen (permission) | écran | شاشة | An operator's granted pages. |
 | activity log | journal d'activité | سجل النشاط | The audit trail. |
 | entry (log) | entrée | مُدخل | One record in the log. |

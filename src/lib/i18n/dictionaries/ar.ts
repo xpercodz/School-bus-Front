@@ -25,7 +25,7 @@ export const messages: Messages = {
   "login.codePlaceholder": "٠٠٠٠٠٠",
   "login.codeError": "هذا الرمز غير صحيح. تحقق منه وحاول مرة أخرى.",
   "login.codeLocked": "محاولات كثيرة. حاول مرة أخرى بعد {minutes} دقيقة.",
-  "login.driverHint": "اطلب من مدير المدرسة رمز الوصول المكوّن من ٦ أرقام.",
+  "login.driverHint": "اطلب من مدير المدرسة رمز الوصول المكوّن من ٨ أرقام.",
   "login.email": "البريد الإلكتروني",
   "login.password": "كلمة المرور",
   "login.emailPlaceholder": "you@school.edu",
@@ -390,7 +390,7 @@ export const messages: Messages = {
   "guide.assignments.w2.meaning":
     "سطر لم يستطع الاستيراد ربطه بطالب. لا يُكتب له شيء.",
 
-  "guide.drivers.tldr": "حسابات السائقين ورموز الدخول المكوّنة من ستة أرقام.",
+  "guide.drivers.tldr": "حسابات السائقين ورموز الدخول المكوّنة من ثمانية أرقام.",
   "guide.drivers.caption": "السائقون: إنشاء حساب، ثم توليد رمز ونسخه وهو معروض.",
   "guide.drivers.s1.title": "أنشئ السائق",
   "guide.drivers.s1.body":
@@ -402,7 +402,7 @@ export const messages: Messages = {
   "guide.drivers.s3.body":
     "يستبدل الرمز الجديد القديم فوراً، ويتوقف عمل الرمز القديم.",
   "guide.drivers.w1.term": "رمز الدخول",
-  "guide.drivers.w1.meaning": "ستة أرقام يكتبها السائق بدل البريد وكلمة المرور.",
+  "guide.drivers.w1.meaning": "ثمانية أرقام يكتبها السائق بدل البريد وكلمة المرور.",
   "guide.drivers.w2.meaning":
     "يصدر رمزاً جديداً يحل محل القديم فوراً ولا يمكن الرجوع إليه لاحقاً.",
 
@@ -722,7 +722,7 @@ export const messages: Messages = {
   "theme.toggleToLight": "التبديل إلى المظهر الفاتح",
   "common.loading": "جارٍ التحميل",
 
-  // رمز وصول السائق — إدخال من ست خانات وحالة التحقق
+  // رمز وصول السائق — إدخال من ثماني خانات وحالة التحقق
   "login.codeDigitAria": "{label} — الرقم {index} من {total}",
   "login.codeChecking": "جارٍ التحقق من الرمز…",
   "login.codeVerified": "تم التحقق من الرمز",

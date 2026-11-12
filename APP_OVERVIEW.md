@@ -76,7 +76,7 @@ driver, code-only sign-in).
 | --- | --- | --- |
 | **director** | email + password | every screen, including Operators and Activity |
 | **operator** | email + password (same tab) | only the screens on their profile: `live`, `students`, `reports`, `assignments`, `drivers` |
-| **staff** | 6-digit access code | the phone roster only; writes its own bus's runs and attendance |
+| **staff** | 8-digit access code | the phone roster only; writes its own bus's runs and attendance |
 
 **A grant is the authority.** A secretary granted Students does the roster's work.
 The rule, deliberately:
@@ -301,7 +301,7 @@ page-wide drop zone pushed the roster below the fold.
 ### Drivers — accounts and access codes
 
 `DriversPage.tsx`. Bus drivers are typically in their 40s–50s with no usable email,
-so they sign in with a **6-digit numeric code** instead of email/password. Create a
+so they sign in with an **8-digit numeric code** instead of email/password. Create a
 driver by name → an auto-generated code is shown **once** (copyable), with per-row
 reveal / copy / regenerate in pages of ten, and "Generate code" for any staff
 account that has none.
@@ -550,7 +550,7 @@ collection, that is the signal the endpoint belongs in the API repo.
 | --- | --- | --- |
 | `GET` | `/health` | Liveness. Deliberately does not touch Firebase, so the server reports healthy before credentials are mounted. |
 | `POST` | `/v1/auth/director-sign-in` | Director/operator email + password → Firebase custom token. |
-| `POST` | `/v1/auth/verify-code` | Driver 6-digit code → Firebase custom token. |
+| `POST` | `/v1/auth/verify-code` | Driver 8-digit code → Firebase custom token. |
 | `POST` | `/v1/drivers` | Create a driver account (Bearer token; needs the Drivers grant). |
 | `POST` | `/v1/drivers/regenerate` | Rotate a driver's access code (Bearer token). |
 | `POST` | `/v1/operators` | Create an operator (main director only). |
@@ -585,7 +585,7 @@ registration order is load-bearing:
 
 Body parsing happens **inside** the handler, after the delay, so even a malformed
 body costs the same wall-clock time. The driver management routes carry no delay or
-throttle: they authenticate with a director Bearer ID token, not a guessable 6-digit
+throttle: they authenticate with a director Bearer ID token, not a guessable 8-digit
 code.
 
 **Error codes** are machine identifiers, so clients branch on a stable value:
@@ -615,7 +615,7 @@ default `http://localhost:5173`), `FIREBASE_API_KEY`, `FIREBASE_PROJECT_ID`,
 
 ### Sign-in
 
-**Driver code.** A 6-digit code is exchanged by the API for a Firebase custom token
+**Driver code.** An 8-digit code is exchanged by the API for a Firebase custom token
 (`POST /v1/auth/verify-code` → Admin SDK `collectionGroup` lookup on
 `driverCodes.codeHash` → `createCustomToken`), then the client calls
 `signInWithCustomToken`. The session is a normal Firebase Auth session, so
@@ -854,7 +854,7 @@ Accepted trade-offs, each with the condition that should make someone revisit it
   **revision**, so a rolling deploy runs two. Revisit (a distributed store) only
   if the API runs many instances — regional fan-out, off Cloud Run, or a burst
   that needs more than a couple.
-- **A 6-digit code is 10^6 possibilities and several hundred are live.** Both
+- **An 8-digit code is 10^8 possibilities and several hundred are live.** Both
   guards bound one **address**, not the service: a distributed attacker is limited
   by neither, which is why the API logs `code_verify_failed` and why a longer code
   or an account-bound sign-in is the structural fix. The same bucketing means a

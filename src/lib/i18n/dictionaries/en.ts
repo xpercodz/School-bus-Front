@@ -23,7 +23,7 @@ export const messages = {
   "login.codePlaceholder": "000000",
   "login.codeError": "That code isn't valid. Check it and try again.",
   "login.codeLocked": "Too many attempts. Try again in {minutes} minutes.",
-  "login.driverHint": "Ask your school director for your 6-digit access code.",
+  "login.driverHint": "Ask your school director for your 8-digit access code.",
   "login.email": "Email",
   "login.password": "Password",
   "login.emailPlaceholder": "you@school.edu",
@@ -393,7 +393,7 @@ export const messages = {
   "guide.assignments.w2.meaning":
     "A line the import could not place against a student. Nothing is written for it.",
 
-  "guide.drivers.tldr": "Driver accounts and the six-digit codes they sign in with.",
+  "guide.drivers.tldr": "Driver accounts and the eight-digit codes they sign in with.",
   "guide.drivers.caption":
     "A driver row: the account, the code, and the moment it is shown.",
   "guide.drivers.s1.title": "Create the driver",
@@ -406,7 +406,7 @@ export const messages = {
   "guide.drivers.s3.body":
     "A new code replaces the old one at once, and the old code stops working.",
   "guide.drivers.w1.term": "Access code",
-  "guide.drivers.w1.meaning": "Six digits a driver types instead of an email and password.",
+  "guide.drivers.w1.meaning": "Eight digits a driver types instead of an email and password.",
   "guide.drivers.w2.meaning":
     "Issues a new code that replaces the old one at once and cannot be looked up later.",
 
@@ -731,7 +731,7 @@ export const messages = {
   "theme.toggleToLight": "Switch to light theme",
   "common.loading": "Loading",
 
-  // Driver access code — six-box input, verified state
+  // Driver access code — eight-box input, verified state
   "login.codeDigitAria": "{label} — digit {index} of {total}",
   "login.codeChecking": "Checking the code…",
   "login.codeVerified": "Code verified",

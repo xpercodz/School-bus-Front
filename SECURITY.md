@@ -14,7 +14,7 @@ Security model for the app. Keep this accurate when controls change.
 
 ## Authentication
 
-- **Provider:** Firebase Auth — email/password for directors, 6-digit access
+- **Provider:** Firebase Auth — email/password for directors, 8-digit access
   codes for drivers (no OAuth/SSO yet).
 - **Login UI:** `/login` (`src/routes/LoginPage.tsx`) has two modes; **neither
   mode signs the client in with raw credentials.** Both exchange credentials

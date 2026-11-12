@@ -152,7 +152,7 @@ code-only sign-in).
   `owner: true` — the **main director**, the only account that sees the Operators
   page and may create, re-scope or remove operators. `owner` is a flag, not a
   role, because a director already holds everything the rules grant.
-- **staff** — unchanged: a 6-digit code, writes only their own bus's
+- **staff** — unchanged: an 8-digit code, writes only their own bus's
   runs/attendance.
 
 **The three places that have to agree, or the permission is a hidden link:**

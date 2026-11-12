@@ -363,7 +363,7 @@ function VerifiedSeal() {
 }
 
 function OtpBlock() {
-  // `?otp=246810` seeds the field so the verified / error states can be captured.
+  // `?otp=24681024` seeds the field so the verified / error states can be captured.
   const [code, setCode] = useState(
     () => new URLSearchParams(window.location.search).get("otp") ?? "",
   );
@@ -373,16 +373,16 @@ function OtpBlock() {
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  // Auto-submit: the moment the sixth digit exists, verify — no button press.
+  // Auto-submit: the moment the eighth digit exists, verify — no button press.
   useEffect(() => {
     if (state === "verified" || state === "checking") return;
-    if (code.length !== 6) {
+    if (code.length !== 8) {
       setError(undefined);
       return;
     }
     setState("checking");
     timer.current = window.setTimeout(() => {
-      if (code === "000000") {
+      if (code === "00000000") {
         setState("error");
         setError("That code isn't valid. Check it and try again.");
       } else {
@@ -410,15 +410,16 @@ function OtpBlock() {
               </span>
               <div>
                 <p className="text-[15px] font-semibold leading-tight text-on-surface">Driver sign-in</p>
-                <p className="text-[12.5px] text-on-surface-variant">Six digits from your director</p>
+                <p className="text-[12.5px] text-on-surface-variant">Eight digits from your director</p>
               </div>
               {state === "verified" && <span className="ms-auto"><VerifiedSeal /></span>}
             </div>
 
             <div className="arc-field">
             <OtpInput
+              length={8}
               label="Access code"
-              description="Type the 6-digit code — sign-in starts on the last digit."
+              description="Type the 8-digit code — sign-in starts on the last digit."
               error={error}
               value={code}
               onChange={setCode}
@@ -439,8 +440,8 @@ function OtpBlock() {
                   Signed in — redirecting to the roster.
                 </>
               )}
-              {state === "idle" && <span>{code.length} of 6 entered</span>}
-              {state === "error" && <span className="text-error">Try 000000 to see the failure state.</span>}
+              {state === "idle" && <span>{code.length} of 8 entered</span>}
+              {state === "error" && <span className="text-error">Try 00000000 to see the failure state.</span>}
             </div>
 
             {state === "verified" && (
@@ -466,9 +467,9 @@ function OtpBlock() {
             <span className="text-[12.5px] text-on-surface-variant">idle → checking → verified</span>
           </div>
           <Caption>
-            What changes on LoginPage: the single `tracking-[0.35em]` input becomes six boxes; the
+            What changes on LoginPage: the single `tracking-[0.35em]` input becomes eight boxes; the
             existing lockout (5 fails → 15 min) and the Arabic-Indic digit normalisation both stay;
-            the submit button disappears because the sixth digit submits. The server error codes
+            the submit button disappears because the eighth digit submits. The server error codes
             (`invalid_code`, `too_many_attempts`, `rate_limited`) currently collapse into one message
             on the driver path — this component is where they can finally read differently.
           </Caption>
