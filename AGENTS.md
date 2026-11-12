@@ -146,10 +146,15 @@ code-only sign-in).
 2. `firebase/firestore.rules` — reads the same `screens` names off the caller's
    profile and grants a collection to the union of screens that need it.
    Writes are narrower and split by grant, each with its own field list: an
-   operator granted **Students** may correct a student's `name` and `grade`; one
-   granted **Assignments** may change the `busId` and nothing else
-   (`diff().affectedKeys().hasOnly([...])`). Neither list is a subset of the
-   other, so handing out one grant can never quietly hand out the other.
+   operator granted **Students** may **create** a student and correct a `name`
+   or `grade`; one granted **Assignments** may change the `busId` and nothing
+   else (`diff().affectedKeys().hasOnly([...])`). Neither list is a subset of
+   the other, so handing out one grant can never quietly hand out the other —
+   and a caller holding **both** gets the union, including `grade` + `busId` in
+   one write, which is what a sheet import sends (one row, one decision, one
+   batch). A grant is the authority: a secretary granted Students does the
+   roster's work. **Deleting** a student, renaming the school and the Operators
+   page stay director-only.
 3. `School-bus-API` — `requireManager(screen)` for the privileged driver
    endpoints, `requireOwner` for `/v1/operators*`. Accounts can only be created
    there: Firebase Auth users and profiles are Admin-SDK-only.
@@ -407,38 +412,42 @@ do not hand-roll page buttons). Page size is 10.
   across, so eight is exactly two rows and every page closes its last row. Ten
   would leave page 1 ending on a two-card row.
 
-**The roll is its own screen, and "no date" means the whole roll.**
-`/dashboard/students` (`StudentsPage`) has two views of the same rows, chosen by
-the calendar alone:
+**The roll is the whole of `/dashboard/students`, and it has no date.**
+`StudentsPage` answers one question — who is on the roll, and how is each child
+doing — so it reads `useSchoolRoll` + `useRollSummary` and nothing else: every
+child in `schools/{schoolId}/students`, whatever happened today, with present
+days, absent days, attendance % and the last recorded day + state over the
+90-day retention window (`ROLL_SUMMARY_DAYS`). `rollRow` fills the day-only
+fields of `AttendanceRow` with the app's own "no time" placeholder, which the
+table never renders.
 
-- **No date picked → the roll.** Every child in `schools/{schoolId}/students`,
-  whatever happened today, with a summary instead of run columns: present days,
-  absent days, attendance % and the last recorded day + state, over the 90-day
-  retention window (`ROLL_SUMMARY_DAYS`). The add/remove day columns are not
-  "missing" — a run column over a list of every child would be a lie.
-- **A date picked → that day's runs**, exactly as before: run segment, Off
-  place, boarded/dropped times, status.
+- **A date picker here was removed, deliberately. Don't put it back.** It
+  switched the page into a per-day run view (segment, Off place, boarded /
+  dropped times, status), which is Reports' question — and having it here made
+  the screen a second Reports wearing the roll's title. The screen is not
+  day-scoped; `useSelectedDate` has no `"students"` scope any more.
+- **One day is answered where it is already sliced**: per bus on the live
+  monitor (a route opens that bus's sheet) and per class on Reports (a class
+  card opens its students). An all-students day table was the only thing the
+  picker added, and it was the least useful cut of the same data.
+- **A class is picked, never typed.** `EditStudentDialog` offers the classes the
+  school already has (distinct `grade` values on its students); a genuinely new
+  class arrives with the sheet import. Free text was what turned `4A`, `4a` and
+  `Class 4A` into three cards on Reports. Classes are still strings — there is
+  no `classes` collection, no enrolment history, and none is needed while a
+  child's class is only ever "where he belongs today".
+- Consequences of the roll being the only view: there is **no run-order sort**
+  (a place in a run is a fact about a day) and **no status filter** (the roll's
+  state is a 90-day tally, not a status) — `useStudentList` carries search,
+  class and pagination only.
 
-Both views share one `AttendanceRow` shape, one `useStudentList` (search, sort,
-grade, status, pagination) and one table (`view="day" | "roll"`), so they can
-never diverge: `rollRow` fills the day-only fields with the app's own "no time"
-placeholder, which the roll view never renders. The roll reads
-`useSchoolRoll` + `useRollSummary`; the day reads `useDashboardData`, whose
-`enabled` flag is false in roll mode so the screen never pays for a read it is
-not showing. Two consequences worth keeping: the run-order sort collapses to
-name order on the roll (a place in a run is a fact about a day), and the status
-filter is hidden there and cleared on the flip, because an invisible filter
-would silently shorten the list.
-
-**Each day-scoped screen owns its own date.** Live monitor, Students and Reports
-call `useSelectedDate("live" | "students" | "reports")`
-(`src/lib/selected-date.ts`), which remembers that screen's choice in
-`sessionStorage` — so leaving Reports and coming back keeps the day, while
-picking a day on Reports never moves Students or the Live monitor. Sharing one
-value between them was tried and reverted: the three screens answer different
-questions, and a date is part of the question. `null` keeps each screen's
-existing meaning (the live day on the monitor and Reports, the whole roll on
-Students). Cleared on sign-out; the run segment is still per-page state.
+**Each day-scoped screen owns its own date.** Live monitor and Reports call
+`useSelectedDate("live" | "reports")` (`src/lib/selected-date.ts`), which
+remembers that screen's choice in `sessionStorage` — so leaving Reports and
+coming back keeps the day, while picking a day on Reports never moves the Live
+monitor. Sharing one value between them was tried and reverted: the two screens
+answer different questions, and a date is part of the question. `null` means the
+live day on both. Cleared on sign-out; the run segment is still per-page state.
 
 The presence counts are **days**, not runs: a morning + afternoon pair is one
 schoolday, so "42 present · 2 absent" reads as schooldays. `useRollSummary` is
@@ -471,8 +480,8 @@ readable), but the word never reaches a user:
 - the pill guards a second press for 350 ms (`STATUS_TAP_GUARD_MS`): the cycle
   is WAITING → BOARDED → DROPPED_OFF, so an accidental double tap would record
   a child as off the bus;
-- no filter, tab, chip rail or KPI cell offers it. `TABS`, `CHIPS` and
-  `STUDENT_STATUS_FILTERS` are the states people act on.
+- no filter, tab, chip rail or KPI cell offers it. `TABS` and `CHIPS` are the
+  states people act on.
 
 Do not re-introduce the word, and do not give the neutral state a status hue:
 the whole point is that a child with no record must not read as a warning next
@@ -489,12 +498,36 @@ to the phone card lists (they are `divide-y` lists, not tables).
 a zip: `DecompressionStream("deflate-raw")` plus `DOMParser` over
 `xl/worksheets/sheet1.xml` and `sharedStrings.xml`), so the import adds nothing
 to the bundle and works offline. `guessColumns` matches the school's own
-headers to Student name / Grade / Bus, `buildAssignmentPlan` decides what moves
-(deduping by student id, so a duplicated sheet row cannot double-move a child,
-and counting unchanged rows instead of rewriting them), and only then does
-`applyAssignmentPlan` write `busId` in batches of ≤400. The dialog shows the
-mapping and a preview before anything is written; nothing is guessed at apply
-time — unmatched rows are reported, not dropped. The drop target itself is a
+headers to Student name / Class / Bus; `buildAssignmentPlan` then decides, per
+row, whether it **corrects** a child (class and/or bus), **creates** one, or is
+reported as not applied; and only then does `applyAssignmentPlan` write, in
+batches of ≤400, each correction carrying only the fields it actually changes.
+
+**The import is how a school's whole roster arrives, so these rules matter:**
+
+- **A name that matches no child becomes one.** Before this, a sheet could only
+  re-point children who already existed, which meant a real school had no way
+  in. A new child needs a **class**, because a class is the fact that puts them
+  on a class card — a row without one is reported, never half-created.
+- **The name is the key and the class is the tie-break.** The plan prefers the
+  matching child who is already in that class, and dedupes creations by
+  (name, class), so two children who share a name stay two children while a
+  duplicated row cannot invent a twin. The last row still wins per child.
+- **Class spellings are folded, not compared** (`classKey`): case, spacing,
+  punctuation and the leading `Class` / `Grade` / `Classe` / `Niveau` / `الصف`
+  word are noise, so a sheet written today (`Class 4A`) lands in the class the
+  roster still spells `Grade 4A`. A class nobody is in yet is flagged **new** in
+  the preview, because that is a decision, not a detail.
+- **A bus the school does not have is never guessed**: that row is reported.
+- **The preview is the guard**, since a name is the only key. It names the
+  children to be created and the rows that will not be applied, beside the class
+  tallies — a typo shows up as a second child *before* anything is written.
+- **Creating needs `can('students')`**, not the directorship: a secretary runs
+  the roster. An operator holding Assignments but not Students still imports bus
+  moves; the dialog says what it cannot write and omits exactly that half.
+
+The dialog shows the mapping and a preview before anything is written; nothing
+is guessed at apply time — unmatched rows are reported, not dropped. The drop target itself is a
 **disclosure, closed by default, capped at `max-w-xl`** — the cap is on the
 **card**, so the summary row and the drop target share one width instead of a
 page-wide band with a small box inside: importing is a
@@ -505,12 +538,12 @@ read sheet is never hidden behind a collapsed panel.
 **A dropdown over data grows a search field.** `@uiarc/dropdown-menu` already
 renders a sticky filter field; pass
 `searchable={{ placeholder: t("dropdown.searchPlaceholder"), emptyLabel: t("dropdown.searchEmpty") }}`
-on every value selector whose options come from Firestore — grades, buses,
-drivers, classes — once it has **four or more** real options (a leading
+on every value selector whose options come from Firestore — classes, buses,
+drivers — once it has **four or more** real options (a leading
 "all / no bus" reset row does not count). Below that, keep the plain menu: a
 field over three rows is noise. Sort and action menus never get it.
 
-**The Assignments student list is filtered, not just searched.** Bus and grade
+**The Assignments student list is filtered, not just searched.** Bus and class
 dropdowns sit beside the search field, both reset by one clear action, with a
 "X of Y students" line while narrowed; the page reset key includes the search
 and both filters so narrowing lands on page 1, while a live change to the rows
