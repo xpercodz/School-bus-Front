@@ -705,6 +705,13 @@ exited 0 through a `| tail`, which is how hosting silently fell releases behind.
 
 ### Production is same-origin — read this before touching API URLs
 
+> **Planned change (2026-11-12): this section is being replaced.** `/v1/**` moves
+> to the Cloud Run service's own origin (`VITE_API_URL` set, the `/v1/**` and
+> `/health` rewrites deleted, `TRUSTED_PROXY_HOPS=1`), because two ingress paths of
+> different depth let a caller pad `x-forwarded-for` to choose the throttle bucket.
+> Until that cutover lands, what follows describes the current state; the ordered
+> procedure and the reason are in `docs/ops/cloud-run-deploy.md`.
+
 `firebase.json` rewrites `/v1/**` and `/health` to the **Cloud Run** service
 `school-bus-api` (us-central1), and `.env.production` sets `VITE_API_URL=` to
 **empty**, meaning "same origin". So the browser never makes a cross-origin call

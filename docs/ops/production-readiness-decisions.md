@@ -37,22 +37,32 @@ to rate-limit.
   an existing run or attendance record.
 - The claims in `APP_OVERVIEW.md` §8 and the API README were corrected to match.
 
+## Decisions
+
+- **2026-11-12 — one ingress path for `/v1/**`.** Chosen over "keep the Hosting
+  rewrite and add a global wrong-code budget". The API will be called on its own
+  `run.app` origin (`VITE_API_URL` set, `/v1/**` and `/health` rewrites deleted,
+  `APP_ORIGINS` = the Hosting site), with `TRUSTED_PROXY_HOPS=1`. Reason: it is the
+  only option that removes the ambiguity rather than bounding its damage — with one
+  proxy the last `x-forwarded-for` entry is always the one Cloud Run wrote, so a
+  padded header cannot choose the throttle bucket or the `codeAttempts` key.
+  Accepted cost: a CORS preflight on every POST, and `/health` is no longer
+  reachable through Hosting. The ordered cutover is in
+  `docs/ops/cloud-run-deploy.md`; the preflight behaviour was verified locally
+  against the built server before deciding.
+
 ## Known residual risks (deliberate, not oversights)
 
 - **A 6-digit code is 10^6 possibilities with several hundred live.** Both guards
   bound one address, not the service. A longer code, or account-bound sign-in,
   is the structural fix.
-- **The API is reachable at its `*.run.app` URL, and the two ingress paths cost
-  different numbers of proxy hops.** Every documented lever that closes the public
-  URL also breaks the Hosting rewrite, so the compensating control is in the
-  application; and because a direct request produces a shorter
-  `x-forwarded-for` chain than the rewrite, no single `TRUSTED_PROXY_HOPS` is
-  correct for both. A caller who pads the header to exactly `hops` entries can
-  choose the throttle bucket — and `codeAttempts` keys on that same resolved
-  address, so the durable counter is dodged with it. The fix is one ingress path
-  (serve `/v1/**` from the `run.app` origin and set the hop count for that sole
-  path), with a longer code as the structural backstop for a public 6-digit
-  credential.
+- **Until the cutover lands, the two-path ambiguity is live.** The direct
+  `run.app` URL produces one fewer `x-forwarded-for` entry than the Hosting
+  rewrite, so a caller who pads the header to exactly `hops` entries can choose
+  the throttle bucket while the rewrite is still in place — and `codeAttempts`
+  keys on that same resolved address. Do not deploy the API with production
+  traffic until either the rewrites are gone (the decision above) or the hop count
+  matches the path you actually serve.
 - **`max-instances=1` is an availability trade.** It converts a burst into
   documented 429s rather than scaling; revisit if the fleet grows.
 - **No CI.** Neither repo has a workflow, so a rules or auth change ships on human

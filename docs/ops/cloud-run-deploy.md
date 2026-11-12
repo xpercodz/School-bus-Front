@@ -43,7 +43,7 @@ gcloud run deploy school-bus-api \
   --service-account school-bus-api@school-bus-a4f23.iam.gserviceaccount.com \
   --min-instances=0 --max-instances=1 \
   --memory=512Mi --cpu=1 --cpu-throttling --concurrency=80 --timeout=30 \
-  --set-env-vars "^|^NODE_ENV=production|FIREBASE_PROJECT_ID=school-bus-a4f23|APP_ORIGINS=<comma-separated origins>|FIREBASE_API_KEY=<public web key>|TRUSTED_PROXY_HOPS=2" \
+  --set-env-vars "^|^NODE_ENV=production|FIREBASE_PROJECT_ID=school-bus-a4f23|APP_ORIGINS=<comma-separated origins>|FIREBASE_API_KEY=<public web key>|TRUSTED_PROXY_HOPS=1" \
   --set-secrets CODE_PEPPER=code-pepper:latest
 ```
 
@@ -67,7 +67,7 @@ Each flag, one line:
 | `--cpu-throttling` | request-based billing: CPU is allocated only while a request is being served, which is also why idle time at `min-instances=0` is free ([CPU allocation](https://cloud.google.com/run/docs/configuring/cpu-allocation)). |
 | `--concurrency=80` | Up to 80 concurrent requests per instance before a second one would be wanted. With `--max-instances=1`, the 81st concurrent request is where queueing starts. |
 | `--timeout=30` | Per-request timeout in seconds. The auth routes add a deliberate 400 ms delay on every answer; a timeout below that would be a bug. |
-| `--set-env-vars "^|^…"` | Non-secret configuration. The `^|^` prefix is a custom delimiter: `--set-env-vars` splits on commas and `APP_ORIGINS` contains commas. `APP_ORIGINS` must list the deployed Hosting origins — same-origin calls still send an `Origin` on POST, and the API's origin guard rejects a mismatch. |
+| `--set-env-vars "^|^…"` | Non-secret configuration. The `^|^` prefix is a custom delimiter: `--set-env-vars` splits on commas and `APP_ORIGINS` contains commas. `APP_ORIGINS` must list the browser's origin (the Hosting site): after the cutover every call is cross-origin, so the `Origin` header is present on every POST and the guard rejects a mismatch. |
 | `--set-secrets CODE_PEPPER=code-pepper:latest` | The one real secret, injected from Secret Manager. `CODE_PEPPER` must be the value the existing driver codes were hashed with, or no code verifies. |
 
 Verify what actually landed, rather than what you asked for:
@@ -151,12 +151,13 @@ starts producing 429s, raising `--max-instances` is the fix and it costs the
 rate-limiter property, not much money: idle instances above the minimum are not
 billed.
 
-## Measuring `TRUSTED_PROXY_HOPS` (do this after the first deploy)
+## Confirming the hop count (do this after the first deploy)
 
 The rate limiter keys on the client IP, and `clientIp()` reads the
 `x-forwarded-for` chain `TRUSTED_PROXY_HOPS` entries **from the end** — the entries
-our own proxies append, which a caller cannot forge. The number therefore has to
-match this deployment. Two things make it a measurement rather than a lookup:
+our own proxy appends. With the cutover above there is exactly one such proxy
+(Cloud Run), so the target value is **1** and this procedure confirms it rather
+than discovering it. Two things still make it worth doing:
 
 - **Firebase Hosting's forwarding is undocumented.** The API's own middleware says
   as much — "Firebase Hosting does not document what it forwards, so the real hop
@@ -178,17 +179,16 @@ attacker-controlled header into the logs. Procedure:
 
    ```bash
    curl -s -o /dev/null -w '%{http_code}\n' -X POST \
-     https://<hosting-origin>/v1/auth/director-sign-in \
+     https://<service-url>/v1/auth/director-sign-in \
      -H 'content-type: application/json' -d '{}'
    ```
 
-   `<hosting-origin>` is the site's own origin — the one `APP_ORIGINS` lists and
-   the one the browser uses — not the `run.app` URL, or you measure the wrong
-   chain. The default Hosting domain is `<project-id>.web.app` when no custom site
-   was created; `npx firebase-tools@latest hosting:sites:list` (or the console's
-   Hosting page) gives the authoritative answer. Repeat a handful of times from
-   different networks if you can, including a mobile connection. `/health` will not
-   produce a line; it is not rate-limited.
+   `<service-url>` is the `status.url` from step 1 of the cutover — the `run.app`
+   origin the browser now calls directly. Do **not** use the Hosting domain: there
+   is no `/v1/**` there any more, and if one is still reachable the rewrite was not
+   removed (see the ordering trap below). Repeat a handful of times from different
+   networks if you can, including a mobile connection. `/health` will not produce a
+   line; it is not rate-limited.
 
 2. **Read the lines.**
 
@@ -242,17 +242,21 @@ attacker-controlled header into the logs. Procedure:
 
    ```bash
    curl -s -o /dev/null -w '%{http_code}\n' -X POST \
-     https://<hosting-origin>/v1/auth/director-sign-in \
+     https://<service-url>/v1/auth/director-sign-in \
      -H 'content-type: application/json' -H 'x-forwarded-for: 1.2.3.4' -d '{}'
    ```
 
    One forged entry must still resolve to the same address as step 5; two must fold
    to `untrusted`. If one forged entry changes the resolved address, the hop count
-   is too high.
+   is too high — with `hops = 1` the resolver reads the last entry, which is the one
+   Cloud Run wrote.
 
-The recorded deploy command above carries `TRUSTED_PROXY_HOPS=2` — the value stated
-in the API README for Hosting → Cloud Run. Treat it as the hypothesis this
-procedure confirms or corrects, not as the answer.
+The recorded deploy command above carries `TRUSTED_PROXY_HOPS=1`, which is the
+value the single-origin cutover implies. The procedure confirms it: a modal
+`chainLen` of **1** is the expected result, and a `chainLen` of **2** on ordinary
+traffic means a second proxy is still in front of the service (the Hosting rewrite
+was not removed) — not that the value should be raised. Padding the header on
+purpose is what step 6 exercises.
 
 ## The open bypass
 
@@ -275,38 +279,57 @@ Every documented control that would close it also breaks the Hosting rewrite:
 | `--no-default-url` | The docs name the affected products explicitly: disabling the default `run.app` URL "prevents these services from working as expected", and **Firebase Hosting** is one of them ([default URL](https://cloud.google.com/run/docs/configuring/instances/default-url)). |
 | `--no-allow-unauthenticated` | Hosting presents no IAM identity for the rewrite, which is why Firebase's setup answers "Y" to allowing unauthenticated invocations ([Hosting and Cloud Run](https://firebase.google.com/docs/hosting/cloud-run)). |
 
-So **the compensating control is application-level, and there is no network-level
-one available while the app is same-origin through Hosting.** What that means in
-practice is that the API's own guards are the only guards on the public path:
+**Decision (2026-11-12): stop routing `/v1/**` through Hosting.** The API is
+served from its own origin, so there is exactly one ingress path and therefore one
+chain shape. The `run.app` URL stays public, but it is the *only* door, so
+`x-forwarded-for` no longer mixes two depths and the resolver can be exact.
 
-- Every privileged route authenticates: director sign-in verifies a Firebase
-  password *and* a `director` profile, then mints a token; driver routes verify a
-  Firebase Bearer token and a code checked as an HMAC against `codeHash`.
-- Driver-code attempts are counted twice: a **matched** code keeps a per-code
-  `attempts`/`lockedUntil` pair for the owner-role gate, and a **plainly wrong**
-  code is counted durably per bucket in `codeAttempts` (20 in 15 minutes, 15-minute
-  lock, fail-open, TTL on `expiresAt`).
-- The origin guard rejects a request whose `Origin` is present and not allowlisted.
-  A missing `Origin` is allowed on purpose (curl, same-origin form) — so this is
-  CSRF protection, not authentication.
-- The per-IP throttle (10 requests / 60 s on each auth route) runs at the
-  `run.app` URL too, but **its key is weaker there.** The direct path produces a
-  shorter `x-forwarded-for` chain than the Hosting rewrite, and the resolver
-  tolerates one prepended entry (`hops + 1`) — so a caller who pads the header to
-  exactly `hops` entries can land the bucket on a value they chose. That is the
-  reason the hop count has to be measured rather than assumed — and note that
-  `codeAttempts` keys on the same resolved address, so padding the header dodges
-  the durable counter as well as the throttle. The fix is one ingress path, not a
-  stronger key.
-- Errors are generic (`server_error`) with the detail in logs; every privileged
-  write appends to `schools/{schoolId}/audit`, with codes and tokens never in the
-  trail.
+With one append (Cloud Run writes the peer it saw), `TRUSTED_PROXY_HOPS=1`:
 
-What the bypass does skip: Hosting's security headers and the path-based routing.
-Neither is an access control, and neither should be treated as one. The practical
-consequences to keep in mind are a second, unmonitored front door for the same
-endpoints, and that its presence is a standing reason to keep the auth routes'
-guards tested rather than assume the deployment is not reachable.
+| Chain received | Resolves to |
+| --- | --- |
+| `[client]` (no forgery) | the client — the last entry |
+| `[fake, client]` (one padded entry) | the client — the fake is ignored, because the last entry is the one Cloud Run wrote |
+| `[f1, f2, client]` (two padded) | `untrusted` — longer than `hops + 1` |
+
+So a caller cannot move the bucket, and both the throttle and `codeAttempts` keep
+a key they cannot choose. If Cloud Run turns out to append two entries, the same
+rule reads the last of the two it wrote, which is still not caller-controlled —
+the failure mode is coarse bucketing, never a forged key. Confirm the depth from
+`xff_observed` (step 5) rather than trusting this table.
+
+### The cutover, in order
+
+1. **Deploy the service** with billing on, then read its URL:
+   `gcloud run services describe school-bus-api --region us-central1
+   --project school-bus-a4f23 --format 'value(status.url)'`.
+2. **Set `APP_ORIGINS`** on the revision to the exact browser origin(s) that serve
+   the app — after this change that header is the only CSRF guard that matters.
+3. **Point the client at the service and close the rewrite together:** set
+   `VITE_API_URL` in `.env.production` to the URL from step 1, delete the
+   `/v1/**` and `/health` rewrites from `firebase.json`, then `npm run deploy`.
+   Deleting the rewrites is the point of the exercise: leaving them in place keeps
+   a second entrance whose chain is longer, which is the ambiguity being removed.
+4. **Set `TRUSTED_PROXY_HOPS=1`** on the revision and redeploy.
+5. **Verify**, from outside: `curl` the auth route with no header, with one padded
+   entry, and with two. `xff_observed` must show `chainLen` 1, 2 and 3; `resolved`
+   must be the same real address for the first two and `untrusted` for the third.
+6. **Confirm CORS**: a preflight from the Hosting origin must answer `204` with
+   `access-control-allow-origin` for that origin, `Content-Type,Authorization`
+   allowed, and an unlisted Origin must get `403` from the origin guard. This was
+   verified locally against the built server before the cutover.
+
+**Ordering trap:** while the rewrite still exists (before step 3), keep
+`TRUSTED_PROXY_HOPS=2`. Deploying step 4 first would put every Hosting request in
+the coarse bucket and read as a sign-in outage.
+
+**Trade-off accepted:** the client is no longer same-origin, so every POST carries
+a CORS preflight, and `/health` is no longer reachable through Hosting. Neither is
+an access control; the origin guard is unchanged and now does real work.
+
+What the old path used to skip — Hosting's security headers and path routing —
+neither is an access control. The standing reason to keep the auth routes' guards
+tested is that the service is public by design, not that it has a second door.
 
 ## Cost guardrails
 
