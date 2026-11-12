@@ -24,10 +24,11 @@
   content: "";
   position: absolute;
   inset: 0;
-  /* Brand splash colours are theme-aware (globals.css --loader-*): the light
-     splash is route blue with white boxes, the dark one is deep ink with a
-     lifted route-blue box. */
-  background: var(--loader-fg, #fff);
+  /* Theme-aware, and deliberately the app's own palette: `--loader-fg` maps to
+     `--color-primary` in globals.css (cyan blue #0e7490 on cool paper in light,
+     lifted #47cbe2 on #0d1519 in dark). No fallback hex — the token is part of
+     the app's base layer, so a copy here could drift from it. */
+  background: var(--loader-fg);
 }
 
 .box:nth-child(3n) {

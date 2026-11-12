@@ -7,6 +7,13 @@
 /* An icon-only trigger is a square of the control height: no chevron, no inline padding. */
 .iconTrigger { padding-inline: 0; aspect-ratio: 1; justify-content: center; }
 .item:focus-visible { outline: none; }
+/* The menu's filter field. Chrome/Safari draw their native focus ring on a
+   search input, and the app's global `:focus-visible` ring is the accent — two
+   blue outlines around a field inside a menu. Focus here is the field's own
+   edge stepping to `--border-strong` plus a grey wash, so the list being
+   filtered stays the loudest thing in the panel. */
+.search { width: 100%; height: 32px; min-width: 0; font: inherit; font-size: var(--text-sm); padding-inline: 28px 9px; border: 1px solid var(--border); border-radius: calc(var(--radius-control) - 2px); background: var(--surface); color: var(--foreground); }
+.search:focus, .search:focus-visible { outline: none; border-color: var(--border-strong); box-shadow: 0 0 0 3px var(--focus-ring-soft); }
 .triggerIcon { display: inline-flex; flex: none; color: var(--text-secondary); }
 .label { position: relative; display: inline-flex; min-width: 0; flex: 0 1 auto; overflow-x: clip; }
 .labelMeasure { position: absolute; top: 0; left: 0; visibility: hidden; white-space: nowrap; pointer-events: none; }

@@ -45,6 +45,18 @@
   --accent-strong: var(--color-primary);
   --accent-subtle: var(--color-primary-container);
   --focus-ring: var(--color-primary);
+  /* Text fields focus with a grey wash, not the accent: a saturated halo
+     around a search field reads as a border and pulls the eye off the list it
+     filters. The field's own edge still steps to `--border-strong` (4.2:1), so
+     the focus state is visible without the colour. */
+  --focus-ring-soft: color-mix(in srgb, var(--color-outline) 22%, transparent);
+
+  /* The filled primary action. Button's `.primary` reads these instead of
+     `--foreground`/`--background` (see PATCHES.md): an ink-filled button made
+     the app's one committing action look like chrome, and the accent then only
+     ever appeared in data. References, not copies, so `.dark` flips them. */
+  --action-bg: var(--color-primary);
+  --action-fg: var(--color-on-primary);
 
   /* Feedback. */
   --danger: var(--color-error);
@@ -83,6 +95,9 @@
   --radius-panel: 14px;
   --radius-pill: 999px;
   --menu-radius: 14px;
+  /* FileDropzone (file-dropzone): its surface is a card-sized panel, so it
+     takes the panel step rather than the control step. */
+  --radius-surface: var(--radius-panel);
 
   /* Control heights. These are the app's own scale, not Arc's: `sm` is the
      desktop control row (h-9 = 36px) and `md` is the 44px thumb floor the
@@ -101,6 +116,10 @@
   --ease-enter: var(--ease-expo);
   --ease-standard: var(--ease-out-soft);
   --ease-spring: cubic-bezier(0.34, 1.2, 0.64, 1);
+  /* FileDropzone (file-dropzone) uses this for the drag glow's breathe loop
+     and its state transitions; the app has one in-out curve, so it maps onto
+     the standard ease rather than introducing a second. */
+  --ease-in-out: var(--ease-standard);
 
   /* Chart series — the app's own four status tones, so a chart and the table
      beside it never disagree about what "absent" looks like. */

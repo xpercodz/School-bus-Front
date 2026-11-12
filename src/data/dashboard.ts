@@ -8,6 +8,7 @@
  * `t()` (i18n) — only ids and layout config live here.
  */
 
+import type { OperatorScreen } from "@/lib/api-contract";
 import type { StudentStatus } from "@/data/students";
 
 /**
@@ -19,7 +20,8 @@ export const DASH_STATUS_META: Record<StudentStatus, string> = {
   BOARDED: "bg-dash-success-container text-dash-on-success-container",
   DROPPED_OFF: "bg-dash-primary-container text-dash-on-primary-container",
   ABSENT: "bg-dash-error-container text-dash-on-error-container",
-  WAITING: "bg-dash-warning-container text-dash-on-warning-container",
+  // no record yet: a neutral chip, never amber
+  WAITING: "bg-dash-surface-container text-dash-on-surface-variant",
 };
 
 /** The tiny mark that carries the status beside its label. */
@@ -27,14 +29,14 @@ export const STATUS_DOT: Record<StudentStatus, string> = {
   BOARDED: "bg-dash-success",
   DROPPED_OFF: "bg-dash-primary",
   ABSENT: "bg-dash-error",
-  WAITING: "bg-dash-warning",
+  WAITING: "bg-dash-outline",
 };
 
 /** Student-list status filter options — "All" plus every status. */
+/** Filter options a director acts on. "No record yet" is not one of them. */
 export const STUDENT_STATUS_FILTERS: readonly ("ALL" | StudentStatus)[] = [
   "ALL",
   "BOARDED",
-  "WAITING",
   "DROPPED_OFF",
   "ABSENT",
 ];
@@ -83,14 +85,42 @@ export interface Bus {
   progress: number;
   onboard: number;
   droppedOff: number;
+  absent: number;
+  /** Children on the sheet nobody has recorded yet — counted, never labelled. */
   waiting: number;
 }
+
+/**
+ * The screen a destination is gated by (see `lib/permissions.ts`). The five
+ * operator-grantable screens come from the API contract; "operators" is the
+ * main-director-only page and is never part of a grant.
+ */
+export type NavScreen = OperatorScreen | "operators" | "activity";
 
 export interface NavItem {
   id: string;
   icon: string;
   href: string;
   group: "operate" | "manage";
+  /** Which access screen opens this destination. */
+  screen: NavScreen;
+}
+
+/**
+ * A student's presence over the retention window — the roll view's summary,
+ * shown instead of one day's run columns when no date is picked.
+ *
+ * Counts are **days**, not runs: a day with both a morning and an afternoon
+ * record is one day, so "42 present · 2 absent" reads as schooldays.
+ */
+export interface RollSummary {
+  /** Days with a run recorded BOARDED or DROPPED_OFF. */
+  present: number;
+  /** Days recorded ABSENT with no presence that same day. */
+  absent: number;
+  /** Newest day carrying a recorded state, or null when there is none. */
+  lastDate: string | null;
+  lastStatus: StudentStatus | null;
 }
 
 export interface AttendanceRow {
@@ -105,6 +135,10 @@ export interface AttendanceRow {
   runType: "morning" | "afternoon";
   morningBoarded: string;
   dropOffTime: string;
+  /** 1-based place in the run's drop-off order; null when the student has not been dropped off. */
+  dropOrder: number | null;
+  /** 1-based place in the run's boarding order; null when never boarded. */
+  boardOrder: number | null;
 }
 
 /**
@@ -113,17 +147,25 @@ export interface AttendanceRow {
  * a broken product.
  */
 export const NAV_ITEMS: readonly NavItem[] = [
-  { id: "live-map", icon: "map", href: "/dashboard", group: "operate" },
-  { id: "reports", icon: "assessment", href: "/dashboard/reports", group: "operate" },
-  { id: "assignments", icon: "assignment_ind", href: "/dashboard/assignments", group: "manage" },
-  { id: "drivers", icon: "badge", href: "/dashboard/drivers", group: "manage" },
+  { id: "live-map", icon: "map", href: "/dashboard", group: "operate", screen: "live" },
+  { id: "students", icon: "groups", href: "/dashboard/students", group: "operate", screen: "students" },
+  { id: "reports", icon: "assessment", href: "/dashboard/reports", group: "operate", screen: "reports" },
+  { id: "assignments", icon: "assignment_ind", href: "/dashboard/assignments", group: "manage", screen: "assignments" },
+  { id: "drivers", icon: "badge", href: "/dashboard/drivers", group: "manage", screen: "drivers" },
+  // Every director, never an operator: the audited do not administer the audit.
+  { id: "activity", icon: "history", href: "/dashboard/activity", group: "manage", screen: "activity" },
+  { id: "operators", icon: "manage_accounts", href: "/dashboard/operators", group: "manage", screen: "operators" },
 ];
 
 /** Map the current pathname to the active sidebar item id (shell pages → live-map). */
 export function activeIdFromPathname(pathname: string): string {
+  if (pathname.startsWith("/dashboard/guide")) return "guide";
+  if (pathname.startsWith("/dashboard/operators")) return "operators";
+  if (pathname.startsWith("/dashboard/students")) return "students";
   if (pathname.startsWith("/dashboard/reports")) return "reports";
   if (pathname.startsWith("/dashboard/assignments")) return "assignments";
   if (pathname.startsWith("/dashboard/drivers")) return "drivers";
+  if (pathname.startsWith("/dashboard/activity")) return "activity";
   return "live-map";
 }
 

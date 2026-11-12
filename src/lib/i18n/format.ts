@@ -103,6 +103,17 @@ export function translateDataLabel(
   return toLocaleDigits(input, locale);
 }
 
+/**
+ * A whole-number percentage with the locale's own digits and sign — "96%" in
+ * English, "٩٦٪" in Arabic. Use it wherever a bare number is followed by `%`;
+ * a template like "{percent}%" cannot carry the Arabic sign, and a hardcoded
+ * "%" beside Eastern Arabic digits reads as a different language.
+ */
+export function formatPercent(value: number, locale: Locale): string {
+  const sign = locale === "ar" ? "٪" : "%";
+  return `${toLocaleDigits(String(Math.round(value)), locale)}${sign}`;
+}
+
 /** `t` key for a status — handy for mapping StudentStatus → MessageKey. */
 export function statusKey(status: string): MessageKey {
   switch (status) {

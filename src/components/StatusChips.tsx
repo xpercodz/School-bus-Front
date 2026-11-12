@@ -15,15 +15,15 @@ const CELLS: {
 }[] = [
   { status: "BOARDED", label: "mobile.summaryOnboard", dot: "bg-success" },
   { status: "DROPPED_OFF", label: "mobile.summaryDropped", dot: "bg-primary" },
-  { status: "WAITING", label: "mobile.summaryWaiting", dot: "bg-waiting" },
   { status: "ABSENT", label: "mobile.summaryAbsent", dot: "bg-error" },
 ];
 
 /**
- * The run's totals as one divided strip, plus the proportion bar. Four chips
- * did not fit 390px (the last one was clipped), and four separate cards pushed
- * the first student below the fold — one divided strip says the same thing in
- * half the height.
+ * The run's totals as one divided strip, plus the proportion bar. A child with
+ * no record yet is not a status, so they are deliberately absent from this
+ * strip — it counts only what the driver has actually recorded. Three cells fit
+ * 390px comfortably; four (with the no-record bucket) clipped the last one, and
+ * four separate cards pushed the first student below the fold.
  *
  * Counts tween when attendance changes, and the bar's segments grow to their
  * new share in place, so a tap reads as a change in the run rather than a
@@ -31,7 +31,9 @@ const CELLS: {
  */
 export function StatusChips({ counts }: StatusChipsProps) {
   const { t, locale } = useLocale();
-  const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  // The bar is a proportion of the cells it renders, so the unrecorded children
+  // (no cell here) do not leave an unexplained gap in the strip.
+  const total = CELLS.reduce((sum, cell) => sum + counts[cell.status], 0);
   const digits = (value: number) => toLocaleDigits(String(value), locale);
 
   return (
@@ -39,7 +41,7 @@ export function StatusChips({ counts }: StatusChipsProps) {
       aria-label={t("mobile.summaryAria")}
       data-page-reveal className="lift overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest"
     >
-      <div className="grid grid-cols-4 divide-x divide-outline-variant">
+      <div className="grid grid-cols-3 divide-x divide-outline-variant">
         {CELLS.map((cell) => (
           <div key={cell.status} className="px-1 py-3 text-center">
             <AnimatedNumber

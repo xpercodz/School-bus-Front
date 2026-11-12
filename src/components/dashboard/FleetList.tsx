@@ -5,35 +5,32 @@ import { useLocale } from "@/lib/i18n/context";
 import { toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
 
 export function StatusPill({ bus }: { bus: Bus }) {
-  const { t, locale } = useLocale();
-  const signedOffWithWaiting = bus.status === "COMPLETED" && bus.waiting > 0;
-
-  const className = signedOffWithWaiting
-    ? "bg-dash-warning-container text-dash-on-warning-container"
-    : bus.status === "IN_PROGRESS"
-      ? "bg-dash-primary-container text-dash-on-primary-container"
-      : "bg-dash-surface-container text-dash-on-surface-variant";
-  const dot = signedOffWithWaiting
-    ? "bg-dash-warning"
-    : bus.status === "IN_PROGRESS"
-      ? "bg-dash-primary"
-      : "bg-dash-outline";
+  const { t } = useLocale();
+  // The pill states where the run is, nothing else. A "completed, but N have no
+  // record" variant used to sit here; it read as a warning about children the
+  // school had already signed off, and the counts beside it already say so.
+  const running = bus.status === "IN_PROGRESS";
 
   return (
     <span
-      className={`inline-flex flex-none items-center gap-1.5 rounded px-2 py-1 text-[11.5px] font-medium ${className}`}
+      className={`inline-flex flex-none items-center gap-1.5 rounded px-2 py-1 text-[11.5px] font-medium ${
+        running
+          ? "bg-dash-primary-container text-dash-on-primary-container"
+          : "bg-dash-surface-container text-dash-on-surface-variant"
+      }`}
     >
-      <span className={`h-1.5 w-1.5 flex-none rounded-full ${dot}`} aria-hidden="true" />
-      {signedOffWithWaiting
-        ? `${t("dashboard.completed")} · ${t("dashboard.wait")} ${toLocaleDigits(String(bus.waiting), locale)}`
-        : t(bus.status === "IN_PROGRESS" ? "dashboard.inProgress" : "dashboard.completed")}
+      <span
+        className={`h-1.5 w-1.5 flex-none rounded-full ${running ? "bg-dash-primary" : "bg-dash-outline"}`}
+        aria-hidden="true"
+      />
+      {t(running ? "dashboard.inProgress" : "dashboard.completed")}
     </span>
   );
 }
 
 interface FleetListProps {
   buses: readonly Bus[];
-  /** Open the bus overview (students on board, dropped off, still waiting). */
+  /** Open the bus overview: that bus's sheet, in drop-off order. */
   onOpenBus: (bus: Bus) => void;
 }
 
@@ -59,7 +56,13 @@ export function FleetList({ buses, onOpenBus }: FleetListProps) {
     "flex-none text-dash-outline transition-colors duration-[var(--t-hover)] group-hover:text-dash-primary";
 
   return (
-    <section data-page-reveal aria-labelledby="routes-title" className="flex flex-col gap-3">
+    <section
+      data-page-reveal
+      aria-labelledby="routes-title"
+      data-tour="routes"
+      data-hint="routes"
+      className="flex flex-col gap-3"
+    >
       <div className="flex items-end justify-between gap-4">
         <h2 id="routes-title" className="text-[15px] font-semibold text-dash-on-surface">
           {t("dashboard.activeFleet")}
@@ -147,15 +150,18 @@ export function FleetList({ buses, onOpenBus }: FleetListProps) {
                     </p>
                   </div>
                   <div>
+                    {/* Absent, not "no record": the third count is a state the
+                        school acts on, and the amber warning tint belongs to it
+                        rather than to a child nobody has tapped yet. */}
                     <p
                       className={`text-[14px] font-semibold tabular-nums ${
-                        bus.waiting > 0 ? "text-dash-warning" : "text-dash-on-surface"
+                        bus.absent > 0 ? "text-dash-error" : "text-dash-on-surface"
                       }`}
                     >
-                      {digits(bus.waiting)}
+                      {digits(bus.absent)}
                     </p>
                     <p className="mt-0.5 whitespace-nowrap text-[11.5px] leading-4 text-dash-on-surface-variant">
-                      {t("dashboard.wait")}
+                      {t("status.absent")}
                     </p>
                   </div>
                 </div>

@@ -1,4 +1,5 @@
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import type { HintId } from "@/lib/hints";
 import type { DashboardSummary, KPI } from "@/data/dashboard";
 import { STATUS_DOT } from "@/data/dashboard";
 import type { StudentStatus } from "@/data/students";
@@ -23,18 +24,24 @@ function KpiCell({
   mark,
   reserveLabelLines = false,
   className,
+  hint,
 }: {
   kpi: KPI;
   mark?: StudentStatus;
   /** Reserve two label lines on phones so every figure starts on one baseline. */
   reserveLabelLines?: boolean;
   className?: string;
+  /** Opt this cell into the rest-to-explain tooltip (`HoverHints`). */
+  hint?: HintId;
 }) {
   const { locale } = useLocale();
   const digits = (n: number) => toLocaleDigits(String(n), locale);
 
   return (
-    <div className={`min-w-0 px-2.5 py-3.5 sm:px-5 sm:py-4 ${className ?? ""}`}>
+    <div
+      data-hint={hint}
+      className={`min-w-0 px-2.5 py-3.5 sm:px-5 sm:py-4 ${className ?? ""}`}
+    >
       <div
         className={`flex items-start gap-1.5 ${reserveLabelLines ? "min-h-8 sm:min-h-0" : ""}`}
       >
@@ -77,7 +84,7 @@ export function ManifestSummary({
   summary: DashboardSummary;
   kpis: readonly KPI[];
 }) {
-  const { t, locale } = useLocale();
+  const { t, tp, locale } = useLocale();
   const digits = (n: number) => toLocaleDigits(String(n), locale);
   const byId = (id: KPI["id"]) => kpis.find((kpi) => kpi.id === id);
   const onboard = byId("onboard");
@@ -104,7 +111,10 @@ export function ManifestSummary({
         accounted: digits(summary.accounted),
         total: digits(summary.total),
       })}
-      data-page-reveal className="lift overflow-hidden rounded-lg border border-dash-outline-variant bg-dash-surface"
+      data-page-reveal
+      data-tour="summary"
+      data-hint="summary"
+      className="lift overflow-hidden rounded-lg border border-dash-outline-variant bg-dash-surface"
     >
       <div className="grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.6fr)]">
         <div className="border-b border-dash-outline-variant px-4 py-4 sm:px-5 lg:border-b-0 lg:border-e">
@@ -142,14 +152,23 @@ export function ManifestSummary({
               })}
           </div>
           <p className="mt-2 text-[11.5px] leading-4 text-dash-on-surface-variant">
-            {t("kpi.total.footer", { count: digits(summary.totalBuses) })}
+            {tp("kpi.total.footer", summary.totalBuses, {
+              count: digits(summary.totalBuses),
+            })}
           </p>
         </div>
 
         <div className="grid grid-cols-3 divide-x divide-dash-outline-variant">
           {onboard && <KpiCell kpi={onboard} mark="BOARDED" reserveLabelLines />}
           {dropped && <KpiCell kpi={dropped} mark="DROPPED_OFF" reserveLabelLines />}
-          {unaccounted && <KpiCell kpi={unaccounted} mark="WAITING" reserveLabelLines />}
+          {unaccounted && (
+            <KpiCell
+              kpi={unaccounted}
+              mark="WAITING"
+              reserveLabelLines
+              hint="unaccounted"
+            />
+          )}
         </div>
       </div>
     </section>

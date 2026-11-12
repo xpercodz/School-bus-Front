@@ -151,35 +151,16 @@ const ROSTER_COLUMNS = [
   "w-16", // history
 ];
 
-/** Mirrors StudentListToolbar: search + grade row, then the status chip rail. */
-function SkeletonToolbar() {
-  return (
-    <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
-      <div className="flex items-center gap-2 md:contents">
-        <Skeleton className="h-11 min-w-0 flex-1 rounded-md md:order-1 md:h-9 md:w-56 md:flex-none" />
-        <Skeleton className="h-11 w-24 flex-none rounded-md md:order-3 md:h-9" />
-      </div>
-      <div className="flex min-w-0 items-center gap-2 md:contents">
-        <Skeleton className="h-11 min-w-0 flex-1 rounded-md md:order-2 md:h-9 md:w-64 md:flex-none" />
-      </div>
-    </div>
-  );
-}
 
 /** Live monitor loading state: summary block + route rows + roster. */
 export function LiveMapSkeleton() {
+  // The roster left this page (it is the Students screen now, and a bus's
+  // students live in that bus's dialog), so the skeleton must not promise a
+  // block that never arrives.
   return (
     <div className="flex flex-col gap-6">
       <SkeletonSummary />
       <SkeletonFleet />
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <SkeletonText className="h-4 w-32" />
-          <SkeletonText className="w-16" />
-        </div>
-        <SkeletonToolbar />
-        <SkeletonTable widths={ROSTER_COLUMNS} variant="list" />
-      </div>
     </div>
   );
 }

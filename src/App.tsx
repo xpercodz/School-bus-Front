@@ -16,6 +16,7 @@ import {
   ReportsSkeleton,
 } from "@/components/dashboard/DashboardSkeletons";
 import { RouteFallback } from "@/components/dashboard/RouteFallback";
+import { RequireScreen } from "@/components/RequireAccess";
 import { readLocaleCookie } from "@/lib/i18n/config";
 import { useLocale } from "@/lib/i18n/context";
 import type { MessageKey } from "@/lib/i18n/types";
@@ -39,6 +40,7 @@ const DirectorShell = lazy(() =>
   })),
 );
 const DashboardPage = lazy(() => import("@/routes/DashboardPage"));
+const StudentsPage = lazy(() => import("@/routes/StudentsPage"));
 const ReportsPage = lazy(() => import("@/routes/ReportsPage"));
 const AssignmentsPage = lazy(() => import("@/routes/AssignmentsPage"));
 // TEMPORARY: the review page for the Arc Registry component changes. The import
@@ -49,6 +51,11 @@ const PreviewPage = import.meta.env.DEV
   ? lazy(() => import("@/routes/PreviewPage"))
   : null;
 const DriversPage = lazy(() => import("@/routes/DriversPage"));
+const OperatorsPage = lazy(() => import("@/routes/OperatorsPage"));
+const ActivityPage = lazy(() => import("@/routes/ActivityPage"));
+// The guidebook is its own manual: lazy so a driver and a dispatch-only session
+// never download it.
+const GuidePage = lazy(() => import("@/routes/GuidePage"));
 
 /**
  * Per-route document title/description. The Next.js layouts did this with
@@ -120,7 +127,9 @@ function AppRoutes() {
         />
       )}
 
-      {/* Director area. DirectorShell is the role guard + sidebar + top bar. */}
+      {/* Management area. DirectorShell is the signed-in access guard + sidebar
+          + top bar; each route is gated AGAIN by RequireScreen, so an operator
+          who lacks that screen is redirected to one they hold. */}
       <Route
         path="/dashboard"
         element={
@@ -138,19 +147,125 @@ function AppRoutes() {
         <Route
           index
           element={
-            <Suspense
-              fallback={
-                <RouteFallback>
-                  <LiveMapSkeleton />
-                </RouteFallback>
-              }
-            >
-              <DashboardPage />
-            </Suspense>
+            <RequireScreen screen="live">
+              <Suspense
+                fallback={
+                  <RouteFallback>
+                    <LiveMapSkeleton />
+                  </RouteFallback>
+                }
+              >
+                <DashboardPage />
+              </Suspense>
+            </RequireScreen>
+          }
+        />
+        <Route
+          path="students"
+          element={
+            <RequireScreen screen="students">
+              <Suspense
+                fallback={
+                  <RouteFallback>
+                    <LiveMapSkeleton />
+                  </RouteFallback>
+                }
+              >
+                <StudentsPage />
+              </Suspense>
+            </RequireScreen>
           }
         />
         <Route
           path="reports"
+          element={
+            <RequireScreen screen="reports">
+              <Suspense
+                fallback={
+                  <RouteFallback>
+                    <ReportsSkeleton />
+                  </RouteFallback>
+                }
+              >
+                <ReportsPage />
+              </Suspense>
+            </RequireScreen>
+          }
+        />
+        <Route
+          path="assignments"
+          element={
+            <RequireScreen screen="assignments">
+              <Suspense
+                fallback={
+                  <RouteFallback>
+                    <AssignmentsSkeleton />
+                  </RouteFallback>
+                }
+              >
+                <AssignmentsPage />
+              </Suspense>
+            </RequireScreen>
+          }
+        />
+        <Route
+          path="drivers"
+          element={
+            <RequireScreen screen="drivers">
+              <Suspense
+                fallback={
+                  <RouteFallback>
+                    <DriversSkeleton />
+                  </RouteFallback>
+                }
+              >
+                <DriversPage />
+              </Suspense>
+            </RequireScreen>
+          }
+        />
+        <Route
+          path="activity"
+          element={
+            <RequireScreen screen="activity">
+              <Suspense
+                fallback={
+                  <RouteFallback>
+                    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-3 p-4 sm:p-6">
+                      <div className="h-9 w-48 animate-pulse rounded-md bg-dash-surface-container" />
+                      <div className="h-20 animate-pulse rounded-lg border border-dash-outline-variant bg-dash-surface" />
+                      <div className="h-72 animate-pulse rounded-lg border border-dash-outline-variant bg-dash-surface" />
+                    </div>
+                  </RouteFallback>
+                }
+              >
+                <ActivityPage />
+              </Suspense>
+            </RequireScreen>
+          }
+        />
+        {/* Main director only: the page is the one place access is handed out. */}
+        <Route
+          path="operators"
+          element={
+            <RequireScreen screen="operators">
+              <Suspense
+                fallback={
+                  <RouteFallback>
+                    <ReportsSkeleton />
+                  </RouteFallback>
+                }
+              >
+                <OperatorsPage />
+              </Suspense>
+            </RequireScreen>
+          }
+        />
+        {/* The guidebook is documentation, not a privilege: every reader the
+            shell admits may open it, so it is gated by the shell alone. Its own
+            contents are filtered by what the reader can open. */}
+        <Route
+          path="guide"
           element={
             <Suspense
               fallback={
@@ -159,35 +274,7 @@ function AppRoutes() {
                 </RouteFallback>
               }
             >
-              <ReportsPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="assignments"
-          element={
-            <Suspense
-              fallback={
-                <RouteFallback>
-                  <AssignmentsSkeleton />
-                </RouteFallback>
-              }
-            >
-              <AssignmentsPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="drivers"
-          element={
-            <Suspense
-              fallback={
-                <RouteFallback>
-                  <DriversSkeleton />
-                </RouteFallback>
-              }
-            >
-              <DriversPage />
+              <GuidePage />
             </Suspense>
           }
         />
@@ -200,7 +287,7 @@ function AppRoutes() {
         />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

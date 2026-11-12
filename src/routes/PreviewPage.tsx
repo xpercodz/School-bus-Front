@@ -31,11 +31,12 @@ import { UserMenu } from "@/components/arc/user-menu/user-menu";
 
 // ── real demo-school numbers (attendance docs, 2026-09-02, morning run) ──────
 
+// Sample series for the dev-only Arc gallery. "No record yet" is not a status
+// any more (see AGENTS.md), so it is not one of the swatches.
 const STATUS_MIX = [
   { key: "boarded", label: "Boarded", value: 18 },
   { key: "droppedOff", label: "Dropped off", value: 7 },
   { key: "absent", label: "Absent", value: 2 },
-  { key: "waiting", label: "Waiting", value: 5 },
 ];
 
 const BY_BUS = [
@@ -290,6 +291,7 @@ function DropdownBlock() {
           <div className="flex flex-wrap items-center gap-2">
             <DropdownMenu
               label={bus}
+              searchable={{ placeholder: "Search…", emptyLabel: "No matches" }}
               items={[
                 { label: "All buses", onSelect: () => setBus("All buses") },
                 ...BUSES.map((name) => ({ label: name, onSelect: () => setBus(name) })),
@@ -297,6 +299,9 @@ function DropdownBlock() {
             />
             <DropdownMenu
               label={grade}
+              // The gallery must show the real control: every data-driven value
+              // selector carries the sticky filter field (AGENTS.md).
+              searchable={{ placeholder: "Search…", emptyLabel: "No matches" }}
               items={[
                 { label: "All grades", onSelect: () => setGrade("All grades") },
                 ...["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6"].map((name) => ({

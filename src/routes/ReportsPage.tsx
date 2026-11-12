@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { RunSegmentId } from "@/data/dashboard";
 import {
   summarizeByBus,
@@ -7,10 +8,13 @@ import {
   todayDateStr,
 } from "@/lib/school-data";
 import { useStudentList } from "@/lib/use-student-list";
+import { useSelectedDate } from "@/lib/selected-date";
 import { buildAttendanceCsv, downloadCsv } from "@/lib/csv";
 import { useSchoolName } from "@/lib/school";
 import { ReportsSkeleton } from "@/components/dashboard/DashboardSkeletons";
 import { AnalyticsModal } from "@/components/dashboard/AnalyticsModal";
+import { ClassGrid } from "@/components/dashboard/ClassGrid";
+import { ClassStudentsDialog } from "@/components/dashboard/ClassStudentsDialog";
 import { DateSegmentBar } from "@/components/dashboard/DateSegmentBar";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { KpiStrip } from "@/components/dashboard/Summary";
@@ -19,7 +23,6 @@ import { Button } from "@/components/arc/button/button";
 import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { Reveal } from "@/components/Reveal";
 import { StudentHistorySheet } from "@/components/StudentHistorySheet";
-import { StudentList } from "@/components/dashboard/StudentList";
 import { useToast } from "@/components/Toast";
 import { useLocale } from "@/lib/i18n/context";
 import { formatDate, toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
@@ -36,13 +39,18 @@ export default function ReportsPage() {
   const { t, locale } = useLocale();
   const { showToast } = useToast();
   const schoolName = useSchoolName();
+  const navigate = useNavigate();
 
-  const [date, setDate] = useState<string | null>(null);
+  // This screen's own day — remembered for the tab, never shared with the
+  // other day-scoped pages.
+  const [date, setDate] = useSelectedDate("reports");
   const [segment, setSegment] = useState<RunSegmentId>("morning");
   const [historyStudent, setHistoryStudent] = useState<string | null>(null);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  /** Raw grade of the open class card; null closes its dialog. */
+  const [openClass, setOpenClass] = useState<string | null>(null);
 
-  const { kpis, attendance, loading, live } = useDashboardData(date, segment);
+  const { kpis, summary, attendance, loading, live } = useDashboardData(date, segment);
   const effectiveDate = date ?? todayDateStr();
 
   const rows = useMemo(
@@ -52,6 +60,32 @@ export default function ReportsPage() {
   const byBus = useMemo(() => summarizeByBus(rows), [rows]);
   const byGrade = useMemo(() => summarizeByGrade(rows), [rows]);
   const list = useStudentList(rows);
+
+  const openSummary = openClass
+    ? (byGrade.find((row) => row.grade === openClass) ?? null)
+    : null;
+
+  /**
+   * The fourth cell is Unaccounted: students with no record yet
+   * (`summary.waiting`) plus students marked absent (`summary.absent`). The
+   * footer is composed here rather than taken from the dashboard's KPI list so
+   * Reports passes both parts under their own names.
+   */
+  const kpiCells = useMemo(
+    () =>
+      kpis.map((kpi) => {
+        if (kpi.id !== "absent") return kpi;
+        const unrecorded = toLocaleDigits(String(summary.waiting), locale);
+        return {
+          ...kpi,
+          footer: t("kpi.absent.footer", {
+            absent: toLocaleDigits(String(summary.absent), locale),
+            unrecorded,
+          }),
+        };
+      }),
+    [kpis, summary.absent, summary.waiting, t, locale],
+  );
 
   function handleExport() {
     downloadCsv(`report-${effectiveDate}.csv`, buildAttendanceCsv(list.filtered, t, locale));
@@ -121,11 +155,14 @@ export default function ReportsPage() {
           </div>
         ) : (
           <>
-            <section className="flex flex-col gap-3 print:break-inside-avoid">
+            <section
+              data-tour="reports-overview"
+              className="flex flex-col gap-3 print:break-inside-avoid"
+            >
               <h2 className="text-[15px] font-semibold text-dash-on-surface">
                 {t("reports.overview")}
               </h2>
-              <KpiStrip kpis={kpis} />
+              <KpiStrip kpis={kpiCells} />
             </section>
 
             <Reveal delay={50} className={REVEAL_PRINT}>
@@ -139,20 +176,13 @@ export default function ReportsPage() {
               />
             </Reveal>
 
+            {/* The roster now lives on the Students screen; Reports answers
+                "which class needs attention" and opens one class in place. */}
             <Reveal delay={100} className={REVEAL_PRINT}>
-              <SummaryTable
-                title={t("reports.byGrade")}
-                rows={byGrade}
-                identityLabel={t("dashboard.th.grade")}
-                identity={(row) => translateDataLabel(row.grade, locale, t)}
-              />
+              <div data-tour="reports-classes">
+                <ClassGrid classes={byGrade} onOpenClass={setOpenClass} />
+              </div>
             </Reveal>
-
-            {/* The roster rows stagger themselves; a Reveal wrapper here would
-                be a second transform on the same rows. */}
-            <section className="print:break-inside-avoid">
-              <StudentList list={list} onViewHistory={setHistoryStudent} />
-            </section>
           </>
         )}
       </div>
@@ -163,6 +193,18 @@ export default function ReportsPage() {
         date={date}
         byBus={byBus}
         segment={segment}
+      />
+
+      <ClassStudentsDialog
+        summary={openSummary}
+        rows={rows}
+        scope={subtitle}
+        onClose={() => setOpenClass(null)}
+        onViewHistory={setHistoryStudent}
+        onOpenInStudents={() => {
+          setOpenClass(null);
+          navigate("/dashboard/students");
+        }}
       />
 
       <StudentHistorySheet
@@ -247,14 +289,13 @@ interface SummaryRow {
   boarded: number;
   droppedOff: number;
   absent: number;
-  waiting: number;
 }
 
 /**
- * By-bus / by-grade summary. Desktop keeps the aligned table; below `md` the
- * same rows become labelled cards — identity on line 1, a two-column metric
- * grid, and completion as its own line with a true-ratio bar. No field is
- * dropped from the table, and an empty result keeps the frame.
+ * By-bus summary. Desktop keeps the aligned, striped table; below `md` the same
+ * rows become labelled cards — identity on line 1, a two-column metric grid,
+ * and completion as its own line with a true-ratio bar. No field is dropped from
+ * the table, and an empty result keeps the frame.
  */
 function SummaryTable<T extends SummaryRow>({
   title,
@@ -284,8 +325,8 @@ function SummaryTable<T extends SummaryRow>({
     <section className="flex flex-col gap-3 print:break-inside-avoid">
       <h2 className="text-[15px] font-semibold text-dash-on-surface">{title}</h2>
       <div className="overflow-hidden rounded-lg border border-dash-outline-variant bg-dash-surface print:overflow-visible">
-        {/* Phone: one card per bus / grade. Hidden in print: paper width can be
-            narrower than `md`, and the printed report should keep the table. */}
+        {/* Phone: one card per bus. Hidden in print: paper width can be narrower
+            than `md`, and the printed report should keep the table. */}
         <div className="md:hidden print:hidden">
           {rows.length === 0 ? (
             emptyLine
@@ -306,7 +347,6 @@ function SummaryTable<T extends SummaryRow>({
                       <Metric label={t("status.boarded")} value={digits(row.boarded)} />
                       <Metric label={t("status.droppedOff")} value={digits(row.droppedOff)} />
                       <Metric label={t("status.absent")} value={digits(row.absent)} />
-                      <Metric label={t("dashboard.th.waiting")} value={digits(row.waiting)} />
                     </dl>
                     {completion !== null && (
                       <div className="mt-2.5">
@@ -339,9 +379,10 @@ function SummaryTable<T extends SummaryRow>({
         </div>
 
         {/* Tablet / desktop: the aligned table, and the printed composition at
-            any paper width (`print:block` beats the hidden base class). */}
+            any paper width (`print:block` beats the hidden base class). The
+            `table-zebra` banding (globals.css) replaces the per-row fill. */}
         <div className="hidden overflow-x-auto md:block print:block">
-          <table className="w-full min-w-[560px] border-collapse text-start">
+          <table className="table-zebra w-full min-w-[560px] border-collapse text-start">
             <thead>
               <tr className="border-b border-dash-outline-variant">
                 <th scope="col" className="h-10 px-4 text-[11.5px] font-normal text-dash-on-surface-variant">
@@ -359,9 +400,6 @@ function SummaryTable<T extends SummaryRow>({
                 <th scope="col" className="h-10 px-4 text-end text-[11.5px] font-normal text-dash-on-surface-variant">
                   {t("status.absent")}
                 </th>
-                <th scope="col" className="h-10 px-4 text-end text-[11.5px] font-normal text-dash-on-surface-variant">
-                  {t("dashboard.th.waiting")}
-                </th>
                 {withCompletion && (
                   <th scope="col" className="h-10 px-4 text-end text-[11.5px] font-normal text-dash-on-surface-variant">
                     {t("dashboard.th.completion")}
@@ -372,15 +410,12 @@ function SummaryTable<T extends SummaryRow>({
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={withCompletion ? 7 : 6}>{emptyLine}</td>
+                  <td colSpan={withCompletion ? 6 : 5}>{emptyLine}</td>
                 </tr>
               ) : (
                 rows.map((row, index) => (
-                  <tr
-                    key={index}
-                    className="border-b border-dash-outline-variant last:border-b-0 hover:bg-dash-surface-container-low"
-                  >
-                    <th scope="row" className="h-10 px-4 text-[13.5px] font-medium text-dash-on-surface">
+                  <tr key={index} className="border-b border-dash-outline-variant last:border-b-0">
+                    <th scope="row" className="h-10 px-4 text-[13.5px] font-medium whitespace-nowrap text-dash-on-surface">
                       {identity(row)}
                     </th>
                     <td className="px-4 text-end text-[13px] tabular-nums text-dash-on-surface">
@@ -394,9 +429,6 @@ function SummaryTable<T extends SummaryRow>({
                     </td>
                     <td className="px-4 text-end text-[13px] tabular-nums text-dash-on-surface">
                       {digits(row.absent)}
-                    </td>
-                    <td className="px-4 text-end text-[13px] tabular-nums text-dash-on-surface">
-                      {digits(row.waiting)}
                     </td>
                     {withCompletion && completionOf && (
                       <td className="px-4 text-end text-[13px] tabular-nums text-dash-on-surface">

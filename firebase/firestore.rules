@@ -2,28 +2,50 @@ rules_version = '2';
 
 // School Bus Transit — Firestore security rules.
 //
-// Access model: every user has a `users/{uid}` profile with `role`
-// ("director" | "staff") and `schoolId`. Directors administer their school's
-// students/buses/driver-codes; staff operate runs (bus monitors). All data is
-// scoped under `schools/{schoolId}`, so one school can never read another's
-// data.
+// Access model: every user has a `users/{uid}` profile with `role` and
+// `schoolId`. Three roles exist:
 //
-// Profiles are created ONLY by Admin SDK code — scripts/seed.mjs and the server
-// routes both bypass these rules — so a client can never self-create a profile
-// or forge role/schoolId (the authorization gates everywhere below). Users read
-// only their own profile (directors additionally read their school's), update
-// their own ONLY with role/schoolId unchanged, and never delete.
+//   · **director** — full administration of their own school. Exactly one of
+//     them carries `owner: true` (the "main director"); that flag is not read
+//     here, because a director already holds everything these rules grant. It
+//     is the API and the Operators page that use it to decide who may hand
+//     access to other people.
+//   · **operator** — office staff who sign in with email + password (the same
+//     route as the director) and may open only the screens listed in their
+//     profile's `screens` array. The client hides what they can't use; THESE
+//     RULES are what makes that a permission rather than a hidden link, so the
+//     list below is keyed by exactly the same screen names:
+//     `live`, `students`, `reports`, `assignments`, `drivers`.
+//   · **staff** — the driver/bus monitor on the phone, signing in with a 6-digit
+//     access code. Writes only their own bus's runs/attendance.
+//
+// All data is scoped under `schools/{schoolId}`, so one school can never read
+// another's data.
+//
+// A screen is a page, not a field: the dashboard screens share collections
+// (Students and Reports both read attendance), so the `can*` helpers below
+// describe which collection each screen needs and a read is granted to the
+// union of the screens that need it. Writes are narrower than reads — an
+// operator granted Assignments may change a student's `busId` and nothing else
+// on the document.
+//
+// Profiles are created ONLY by Admin SDK code — scripts/seed.mjs, the API's
+// `/v1/drivers` and `/v1/operators` routes — so a client can never self-create a
+// profile or forge role/schoolId/owner/screens (the authorization gates
+// everywhere below). Users read only their own profile (directors, and
+// operators who need a staff list, additionally read their school's), update
+// their own ONLY with those authorization fields unchanged, and never delete.
 //
 // Driver access codes live in `schools/{schoolId}/driverCodes/{driverUid}`,
-// readable/writable ONLY by that school's director — a driver must not read a
-// colleague's code. Code verification (login) is server-side via the Admin SDK,
-// which bypasses these rules.
+// readable by that school's director and by an operator granted Drivers; the
+// stored value is a hash. Code verification (login) is server-side via the
+// Admin SDK, which bypasses these rules.
 //
-// Staff may write only their own bus's runs/attendance — buses/{busId}.driverUid
-// must be their uid — and only with validated status/run-type/date fields;
-// runs/attendance reads are school-wide. Each school's `audit` subcollection is
-// director-read-only; entries are written by the Admin SDK only (bypasses
-// rules). Anyone authenticated but without a profile is denied.
+// Each school's `audit` subcollection is director-read-only. Entries are written
+// by the Admin SDK (bypasses rules) and appended from the browser in the same
+// batch as the change they describe — pinned to the caller, the server clock and
+// a closed vocabulary, and never editable. Anyone authenticated but without a
+// profile is denied.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -35,109 +57,252 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
+    function profile() {
+      return userDoc().data;
+    }
+
     function role() {
-      return userDoc().data.role;
+      return profile().get('role', '');
+    }
+
+    function screens() {
+      return profile().get('screens', []);
+    }
+
+    function schoolId() {
+      return profile().get('schoolId', '');
     }
 
     function isDirector() {
       return isSignedIn() && role() == 'director';
     }
 
-    function isStaff() {
-      return isSignedIn() && role() == 'staff';
+    function isOperator() {
+      return isSignedIn() && role() == 'operator';
     }
 
-    function schoolId() {
-      return userDoc().data.schoolId;
+    function isStaff() {
+      return isSignedIn() && role() == 'staff';
     }
 
     function isMySchool(schoolId) {
       return isSignedIn() && schoolId() == schoolId;
     }
 
-    // True when the caller is staff AND `busId` is the bus they drive (buses/{id}.driverUid).
+    // ── screen capabilities ────────────────────────────────────────────────
+    // A director holds every screen. An operator holds only what their profile
+    // lists; `screens` defaults to [] so a malformed profile grants nothing.
+    function can(screen) {
+      return isDirector() || (isOperator() && screen in screens());
+    }
+
+    // ── collection capabilities, derived from the screens that need them ────
+    // Live monitor / Students / Reports all read students, buses and run
+    // records (the roster's summary and the live sheet both need them).
+    function canSeeStudents() {
+      return can('live') || can('students') || can('reports') || can('assignments');
+    }
+
+    // The Drivers page reads the bus list only to show which bus each driver
+    // drives, so Drivers alone reaches buses but not students.
+    function canSeeBuses() {
+      return canSeeStudents() || can('drivers');
+    }
+
+    function canSeeRuns() {
+      return can('live') || can('students') || can('reports');
+    }
+
+    function canWriteRuns() {
+      return can('live') || can('students');
+    }
+
+    function canAssign() {
+      return can('assignments');
+    }
+
+    // The pages that list staff names: Assignments (link a driver to a bus) and
+    // Drivers (the access-code list).
+    function canSeeTeam() {
+      return can('assignments') || can('drivers');
+    }
+
+    // True when the caller is staff AND `busId` is the bus they drive
+    // (buses/{id}.driverUid).
     function staffsOwnBus(busId) {
       return busId != null && isSignedIn() &&
         get(/databases/$(database)/documents/schools/$(schoolId())/buses/$(busId))
           .data.driverUid == request.auth.uid;
     }
 
+    // ── provenance ─────────────────────────────────────────────────────────
+    // Every write to a record the director can be asked about must say WHO made
+    // it and WHEN, and the rules make that claim true: `updatedBy` is the
+    // caller's uid and `updatedAt` is the server's clock, so neither can be
+    // omitted, back-dated or attributed to somebody else. This is the half of
+    // the activity log that cannot be skipped; the `audit` entry beside it is
+    // the history. See docs/superpowers/specs/*-audit-log-design.md.
+    function stamped() {
+      return request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    // ── the activity log's client half ─────────────────────────────────────
+    // A browser may append an entry, and only in this shape: authored by the
+    // caller, stamped with the server's clock, drawn from a closed vocabulary,
+    // bounded, and expiring on its own. It can never claim another actor, be
+    // back-dated, or be edited afterwards — those are the three properties that
+    // make it worth reading. It cannot prove the change happened: the values are
+    // what the writer said they were.
+    function auditShapeOk() {
+      return request.resource.data.keys().hasOnly([
+          'schemaVersion', 'event', 'outcome', 'reason', 'at', 'occurredAt',
+          'actorUid', 'actorRole', 'actorName', 'targetType', 'targetId',
+          'targetName', 'changes', 'correlationId', 'meta', 'source', 'expiresAt'
+        ])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.source == 'client'
+        && request.resource.data.at == request.time
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.outcome in ['success', 'failure']
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.changes.keys().size() <= 8
+        && request.resource.data.actorName is string
+        && request.resource.data.actorName.size() <= 80
+        // `meta` is a closed set of scalars, because an open map on the log is
+        // the dumping ground the reader must never have to defend against.
+        && (!('meta' in request.resource.data)
+          || request.resource.data.meta == null
+          || request.resource.data.meta.keys()
+            .hasOnly(['count', 'runId', 'date', 'busId', 'reason']));
+    }
+
+    // A driver appends only what a driver does. Office staff append the moves,
+    // imports and settings they are allowed to make. Nobody appends account or
+    // sign-in events — those belong to the API, which writes them itself.
+    function auditEventAllowed() {
+      return (
+          (request.resource.data.event in ['attendance.changed', 'run.completed'])
+          && (isStaff() || isOperator() || isDirector())
+        ) || (
+          (request.resource.data.event in [
+            'student.bus_changed', 'bus.driver_changed', 'students.imported',
+            'run.dispatched', 'school.assignment_mode_changed', 'activity.exported'
+          ])
+          && (isOperator() || isDirector())
+        );
+    }
+
     // ── users ──────────────────────────────────────────────────────────────
-    // Profiles are created ONLY by Admin SDK code (scripts/seed.mjs and the
-    // server routes, both of which bypass these rules) — clients never create
-    // users/{uid}, so role/schoolId (the authorization gates everywhere below)
+    // Profiles are created ONLY by Admin SDK code, so role/schoolId/owner/screens
     // can't be forged by a self-created profile. A user may read their own
-    // profile; a director may additionally read any profile of their own school
-    // (for the staff list); everyone else is denied — so a staff user can never
-    // read another user's profile. A user may update their own profile ONLY if
-    // role/schoolId are unchanged — otherwise an attacker could self-promote to
-    // director or switch tenants. Profiles are never deleted.
+    // profile; a director may read any profile of their own school, and an
+    // operator may read the profiles of the pages that list staff. Everyone else
+    // is denied, so a driver can never read another user's profile. A user may
+    // update their own profile ONLY with those four fields unchanged — otherwise
+    // an attacker could self-promote to director/operator or switch tenants.
+    // Profiles are never deleted from a client.
     match /users/{uid} {
       allow read: if request.auth.uid == uid
-        || (isDirector() && resource.data.schoolId == schoolId());
+        || (isSignedIn() && resource.data.schoolId == schoolId() && canSeeTeam());
       allow update: if request.auth.uid == uid
         && request.resource.data.role == resource.data.role
-        && request.resource.data.schoolId == resource.data.schoolId;
+        && request.resource.data.schoolId == resource.data.schoolId
+        && request.resource.data.get('owner', false) == resource.data.get('owner', false)
+        && request.resource.data.get('screens', []) == resource.data.get('screens', []);
       allow delete: if false;
     }
 
     // ── schools ────────────────────────────────────────────────────────────
+    // The school document also carries `assignmentMode` ("bus" | "driver"), which
+    // decides whether Assignments labels a row by bus or by driver. A director
+    // may write it; so may an operator granted Assignments, and ONLY that field —
+    // the diff check is what keeps a page grant from becoming a school rename.
     match /schools/{schoolId} {
       allow read: if isMySchool(schoolId);
-      allow write: if isMySchool(schoolId) && isDirector();
+      allow create, delete: if isMySchool(schoolId) && isDirector();
+      allow update: if isMySchool(schoolId) && (
+        isDirector()
+        || (canAssign()
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['assignmentMode', 'updatedBy', 'updatedAt']))
+      ) && stamped();
 
-      // Students & buses are school-administered (directors only). Creates must
-      // carry the core fields (name/grade) — shallow integrity, since directors
-      // are the only writers.
+      // Students & buses are school-administered. Creates must carry the core
+      // fields (name/grade) — shallow integrity. An operator granted Assignments
+      // may move a child between buses and link a driver to one, and may touch
+      // NOTHING else on those documents.
       match /students/{studentId} {
-        allow read: if isMySchool(schoolId);
-        allow write: if isMySchool(schoolId) && isDirector()
-          && (request.method != 'create'
-            || (request.resource.data.name is string
-              && request.resource.data.grade is string));
+        allow read: if isMySchool(schoolId) && canSeeStudents();
+        allow create, delete: if isMySchool(schoolId) && isDirector();
+        allow update: if isMySchool(schoolId) && (
+          isDirector()
+          || (canAssign()
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['busId', 'updatedBy', 'updatedAt']))
+        ) && stamped();
       }
 
       match /buses/{busId} {
-        allow read: if isMySchool(schoolId);
-        allow write: if isMySchool(schoolId) && isDirector()
-          && (request.method != 'create'
-            || request.resource.data.name is string);
+        allow read: if isMySchool(schoolId) && canSeeBuses();
+        allow create, delete: if isMySchool(schoolId) && isDirector();
+        allow update: if isMySchool(schoolId) && (
+          isDirector()
+          || (canAssign()
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['driverUid', 'driver', 'updatedBy', 'updatedAt']))
+        ) && stamped();
       }
 
       // Driver access codes — one doc per driver (a `codeHash`, never the
-      // plaintext code), director-only reads/writes. The verify route hashes the
-      // submitted code and looks it up via the Admin SDK (bypasses rules);
-      // directors' clients read these docs to see which drivers have codes, and
-      // the server routes create/rotate them (plaintext is returned once).
+      // plaintext code). Readable by the director and by an operator granted
+      // Drivers, because the Drivers page shows which accounts have a code.
+      // Writes stay director-only: the verify route (Admin SDK, bypasses rules)
+      // creates and rotates them.
       match /driverCodes/{driverUid} {
-        allow read, write: if isMySchool(schoolId) && isDirector();
+        allow read: if isMySchool(schoolId) && (isDirector() || can('drivers'));
+        allow write: if isMySchool(schoolId) && isDirector();
       }
 
-      // Runs hold run metadata (bus, type, date, status).
+      // Runs hold run metadata (bus, type, date, status). Office staff granted a
+      // screen that records attendance may write them; a driver may only write
+      // their own bus's, and only with valid status/run-type/date fields.
       match /runs/{runId} {
-        allow read: if isMySchool(schoolId);
-        allow write: if isMySchool(schoolId) && (isDirector() || (isStaff() &&
-          staffsOwnBus(request.resource.data.busId) &&
-          request.resource.data.status in ['IN_PROGRESS', 'COMPLETED'] &&
-          request.resource.data.runType in ['morning', 'afternoon'] &&
-          request.resource.data.date is string));
+        allow read: if isMySchool(schoolId) && canSeeRuns();
+        allow create, update: if isMySchool(schoolId) && (
+          isDirector()
+          || (isOperator() && canWriteRuns())
+          || (isStaff() &&
+            staffsOwnBus(request.resource.data.busId) &&
+            request.resource.data.status in ['IN_PROGRESS', 'COMPLETED'] &&
+            request.resource.data.runType in ['morning', 'afternoon'] &&
+            request.resource.data.date is string)
+        ) && stamped();
+        allow delete: if isMySchool(schoolId) && isDirector();
       }
 
-      // Attendance is a flat per-school collection, one doc per
-      // (run, student) — denormalized for single-query realtime reads.
+      // Attendance is a flat per-school collection, one doc per (run, student) —
+      // denormalized for single-query realtime reads. Same write shape as runs.
       match /attendance/{attId} {
-        allow read: if isMySchool(schoolId);
-        allow write: if isMySchool(schoolId) && (isDirector() || (isStaff() &&
-          staffsOwnBus(request.resource.data.busId) &&
-          request.resource.data.status in ['BOARDED', 'WAITING', 'DROPPED_OFF',
-            'ABSENT']));
+        allow read: if isMySchool(schoolId) && canSeeRuns();
+        allow create, update: if isMySchool(schoolId) && (
+          isDirector()
+          || (isOperator() && canWriteRuns())
+          || (isStaff() &&
+            staffsOwnBus(request.resource.data.busId) &&
+            request.resource.data.status in ['BOARDED', 'WAITING', 'DROPPED_OFF', 'ABSENT'])
+        ) && stamped();
+        allow delete: if isMySchool(schoolId) && isDirector();
       }
 
-      // Server-side audit trail (Admin SDK writes; bypasses rules). Directors
-      // may read their school's audit log; nobody writes from the client.
+      // The activity log. The API's Admin SDK writes here too and bypasses these
+      // rules; a browser may only append, in the shape `auditShapeOk` pins down,
+      // with an event its role is allowed to record. Nothing may be edited or
+      // removed by anyone but the retention policy.
       match /audit/{entryId} {
         allow read: if isMySchool(schoolId) && isDirector();
-        allow write: if false;
+        allow create: if isMySchool(schoolId) && auditShapeOk() && auditEventAllowed();
+        allow update, delete: if false;
       }
     }
   }

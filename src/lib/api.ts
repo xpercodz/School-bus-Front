@@ -12,8 +12,15 @@ import {
   API_ROUTES,
   type ApiErrorCode,
   type CreateDriverResponse,
+  type CreateOperatorRequest,
+  type CreateOperatorResponse,
   type DirectorSignInResponse,
+  type OperatorMutationResponse,
+  type OperatorScreen,
   type RegenerateDriverCodeResponse,
+  type RemoveOperatorRequest,
+  type UpdateOperatorPasswordRequest,
+  type UpdateOperatorScreensRequest,
   type VerifyCodeResponse,
 } from "@/lib/api-contract";
 import { auth } from "@/lib/firebase";
@@ -129,7 +136,7 @@ export async function directorSignIn(
   return token;
 }
 
-/** POST /v1/drivers — create a driver account (director only). */
+/** POST /v1/drivers — create a driver account (director or Drivers operator). */
 export function createDriver(name: string): Promise<CreateDriverResponse> {
   return post<CreateDriverResponse>(
     API_ROUTES.createDriver,
@@ -138,7 +145,7 @@ export function createDriver(name: string): Promise<CreateDriverResponse> {
   );
 }
 
-/** POST /v1/drivers/regenerate — rotate a driver's code (director only). */
+/** POST /v1/drivers/regenerate — rotate a driver's code (director or Drivers operator). */
 export async function regenerateDriverCode(uid: string): Promise<string> {
   const { code } = await post<RegenerateDriverCodeResponse>(
     API_ROUTES.regenerateDriverCode,
@@ -146,4 +153,51 @@ export async function regenerateDriverCode(uid: string): Promise<string> {
     { authenticated: true },
   );
   return code;
+}
+
+/**
+ * POST /v1/operators — the main director creates an operator account.
+ *
+ * The account is created server-side: Firebase Auth users and `users` profiles
+ * are Admin-SDK-only, so the browser can hold the form but never the write.
+ */
+export function createOperator(
+  input: CreateOperatorRequest,
+): Promise<CreateOperatorResponse> {
+  return post<CreateOperatorResponse>(API_ROUTES.createOperator, input, {
+    authenticated: true,
+  });
+}
+
+/** POST /v1/operators/screens — replace which screens one operator may open. */
+export async function updateOperatorScreens(
+  uid: string,
+  screens: OperatorScreen[],
+): Promise<void> {
+  await post<OperatorMutationResponse>(
+    API_ROUTES.updateOperatorScreens,
+    { uid, screens } satisfies UpdateOperatorScreensRequest,
+    { authenticated: true },
+  );
+}
+
+/** POST /v1/operators/password — set a new password for one operator. */
+export async function updateOperatorPassword(
+  uid: string,
+  password: string,
+): Promise<void> {
+  await post<OperatorMutationResponse>(
+    API_ROUTES.updateOperatorPassword,
+    { uid, password } satisfies UpdateOperatorPasswordRequest,
+    { authenticated: true },
+  );
+}
+
+/** POST /v1/operators/remove — delete an operator's profile and sign-in. */
+export async function removeOperator(uid: string): Promise<void> {
+  await post<OperatorMutationResponse>(
+    API_ROUTES.removeOperator,
+    { uid } satisfies RemoveOperatorRequest,
+    { authenticated: true },
+  );
 }

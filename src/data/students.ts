@@ -9,6 +9,16 @@
  * languages.
  */
 
+/**
+ * A student's state on a run.
+ *
+ * `WAITING` is the state of a child on today's sheet that nobody has recorded
+ * anything about yet — the run's opening state. It is **never shown as a
+ * status**: the director sees those children counted as "unaccounted", and the
+ * driver sees the tap target read "Board" (the action) rather than a state.
+ * The value keeps its stored name so attendance documents written before this
+ * change stay readable.
+ */
 export type StudentStatus = "BOARDED" | "WAITING" | "DROPPED_OFF" | "ABSENT";
 
 export interface Student {
@@ -36,9 +46,19 @@ export const STATUS_META: Record<StudentStatus, StatusMeta> = {
     cardClassName: "",
     nameClassName: "",
   },
+  // The one pill a driver still has to *act* on. It reads as a control (white
+  // with a real edge) rather than a record: at arm's length, in glare, on a
+  // moving bus, "who still needs a tap" has to survive without reading the
+  // label. The settled states below stay flat and tinted, so weight means
+  // pending and colour means what happened.
+  //
+  // Still neutral, never amber: "no record yet" is the absence of a state, so
+  // it must not read as a warning beside a real one. The edge does the work,
+  // not a warning hue.
   WAITING: {
     icon: "schedule",
-    pillClassName: "bg-waiting/10 text-waiting hover:bg-waiting/15",
+    pillClassName:
+      "border border-control-outline bg-surface-container-lowest text-on-surface hover:bg-surface-container-low",
     cardClassName: "",
     nameClassName: "",
   },
@@ -66,7 +86,6 @@ export interface ChipConfig {
 export const CHIPS: ReadonlyArray<ChipConfig> = [
   { status: "BOARDED", accentTextClass: "text-success" },
   { status: "DROPPED_OFF", accentTextClass: "text-primary" },
-  { status: "WAITING", accentTextClass: "text-waiting" },
 ];
 
 /** Filter tabs — in design order. ABSENT has no tab (matches the design). */
@@ -76,9 +95,9 @@ export interface TabConfig {
   id: TabId;
 }
 
+/** Tabs are the states a director or driver acts on, so no "no record" tab. */
 export const TABS: ReadonlyArray<TabConfig> = [
   { id: "all" },
-  { id: "WAITING" },
   { id: "BOARDED" },
   { id: "DROPPED_OFF" },
 ];

@@ -96,7 +96,12 @@ export default function LoginPage() {
   const redirectTimer = useRef<number | null>(null);
   useEffect(() => {
     if (status !== "ready" || !user || profileLoading) return;
-    const target = profile.role === "director" ? "/dashboard" : "/";
+    // Directors and operators share this tab; only a driver (code sign-in) lands
+    // on the phone roster.
+    const target =
+      profile.role === "director" || profile.role === "operator"
+        ? "/dashboard"
+        : "/";
     if (!codeVerified) {
       navigate(target, { replace: true });
       return;

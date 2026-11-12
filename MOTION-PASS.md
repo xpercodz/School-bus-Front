@@ -71,9 +71,10 @@ vocabulary.
    - An overlay kept `pointer-events` while fading out; the exiting dialog
      wrapper is now `pointer-events-none`.
    - A screen whose entrance is longer than ~400 ms gets an out. The first
-     `pointerdown`/`keydown`/`wheel` finishes the entrances that are still
-     current (`Animation.finish()` in `src/lib/motion.ts`), so the screen is
-     complete under the pointer. Content is never gated on an animation.
+     `pointerup`/`pointercancel`/`keydown`/`wheel` finishes the entrances that
+     are still current (`Animation.finish()` in `src/lib/motion.ts`), so the
+     screen is complete under the pointer. Content is never gated on an
+     animation. (Pointer release, not press — see "The first tap acts" below.)
 
 ## Other collisions fixed
 
@@ -128,11 +129,11 @@ section, four route rows, roster section) and the phone roster **13** (run
 totals, search, filter tabs, ten student rows), so the gap adapts (147 ms vs
 86 ms) and both finish at 1.65 s.
 
-- **Any interaction clears the queue** (pointer/key/wheel/touch), exactly the
-  spike's "any click skips". While the queue runs the class also holds
-  `pointer-events: none`, so a tap on a not-yet-revealed row cannot change a
-  student's status by accident; the first tap lands the whole page, the next
-  tap operates it.
+- **Any interaction lands the queue** (pointer/key/wheel), exactly the spike's
+  "any click skips". Each block carries the `pointer-events` gate only until it
+  is visibly arriving, so a tap on a row that has arrived both lands the queue
+  and does what it was aimed at; a tap on a block that has not started yet still
+  cannot change a status. See "The first tap acts" below.
 - The **page head title** is a block; the **Export / Dispatch actions are
   outside the reveal**, so the top bar is usable immediately. Same for the
   filter bar and bottom bar.
@@ -180,13 +181,14 @@ Acceptance checks:
 - [x] Hover/press lift still works — measured `scale(.97)` on the status pill and
       Complete Run button after the screen settled, and `translateY(-5px)` on the
       summary/routes cards under a fine pointer.
-- [x] First interaction mid-reveal completes the screen — pointer at 200 ms
-      during the roster queue clears every block at once (`pointer-events`
-      gate restored); the screen is complete and usable. That first tap is the
-      skip, so it does not also change a status; the next tap does.
-- [x] No invisible-but-clickable row — during the queue the blocks hold
-      `pointer-events: none`; the first interaction clears the queue. There is
-      no window in which an invisible status button can be activated.
+- [x] First interaction mid-reveal both completes the screen and acts — a
+      quarter of the way into the roster queue, a tap on an arrived row lands
+      every block at once **and** changes that student's status (measured:
+      `Boarded` → `Dropped off`, `page-reveal` count 0 after the tap).
+- [x] No invisible-but-clickable row — a block keeps `pointer-events: none`
+      until 100 ms into its own arrival (~two-thirds opaque); a tap before that
+      lands the queue and does nothing else. Measured at 120 ms: hit target is
+      the list behind the row, status unchanged.
 - [x] Reduced motion: zero entrance animation events; end drawer and settings
       drawer appear at final position with `transition: none`; hover colour
       still changes; press scale is suppressed; `animate-spin` still runs
@@ -280,6 +282,40 @@ keeps the final state, nothing is gated on an animation.
   crosses them over 620 ms, then everything rests; the node is keyed by the code,
   so rotating a code replays it. Event-driven, never looping, and under reduced
   motion the code is simply there with the band removed.
+
+## The first tap acts (2026-11-06)
+
+The reveal used to eat the first tap on the driver's roster: one
+`pointer-events: none` for the whole 1.65 s queue meant a tap on a row that had
+already arrived only landed the page, and the driver had to tap again to record
+a child. On the screen a driver opens forty times a shift, that is friction on
+every arrival.
+
+Two changes, and both are needed:
+
+- **The gate is per block.** `use-page-reveal.ts` adds `reveal-ready` to each
+  block 100 ms into its own arrival (~two-thirds opaque with ~6 px left to
+  travel), so a row takes taps as soon as it is on screen while a block that has
+  not started is still behind the gate. The class list is cleared as before.
+- **The skip moved to `pointerup`.** Landing the queue moves every block, and
+  the browser resolves a click from the pointerdown and pointerup targets — so
+  clearing on the way down slid the row out from under the finger and dropped the
+  tap. Skipping on release keeps the target stable. Same one-line change in
+  `installEntranceSkip` (motion.ts), so no entrance anywhere can be finished out
+  from under a press.
+
+Measured in headless Chrome on the real `RosterList` (13 blocks, 700 ms into the
+queue):
+
+| Gate | Hit target at 700 ms | Tap result |
+| --- | --- | --- |
+| one gate for the queue (before) | `ul` behind the row | `Boarded` → `Boarded` |
+| per block (after) | the status `button` | `Boarded` → `Dropped off`, queue landed |
+
+Safety window unchanged: at 120 ms the row is still gated (`pointer-events:
+none`, opacity 0), the tap lands the queue and changes nothing. Reduced motion
+adds no classes at all, so it takes taps exactly as before. A post-reveal tap is
+unaffected.
 
 ## Limits
 

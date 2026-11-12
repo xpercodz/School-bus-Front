@@ -89,12 +89,16 @@
 
 @theme {
   /*
-    Product palette — "manifest paper, ink and route blue".
+    Product palette — "cool paper, ink and cyan blue".
 
-    The ground is a sheet of slightly warm manifest paper, surfaces are white,
-    and the only data hue is route blue (#0f5586). Green / amber / red are
-    reserved for attendance state, never for chrome. All text tiers clear
-    4.5:1 on both the ground and white.
+    The ground is a cool, blue-tinted sheet, surfaces are white, and the only
+    data hue is cyan blue (#0e7490). Green / amber / red are reserved for
+    attendance state, never for chrome. All text tiers clear 4.5:1 on both the
+    ground and white; the outlined-field edge clears 3:1 (WCAG 1.4.11).
+
+    The accent is a product decision, not a default: the previous "manifest
+    paper + route blue" (#f3f4f1 / #0f5586) read too dark and colourless day to
+    day; `docs/color-preview.html` is the approved side-by-side.
   */
   /* Tailwind's bare transition utilities inherit the house curve and the
      colour-feedback duration, so `transition-colors` is never a second
@@ -102,38 +106,38 @@
   --default-transition-duration: var(--t-hover);
   --default-transition-timing-function: var(--ease-out-soft);
 
-  --color-surface: #f3f4f1;
-  --color-surface-dim: #d8dbd5;
-  --color-surface-bright: #fbfcf9;
+  --color-surface: #f4f8fa;
+  --color-surface-dim: #d7e3ea;
+  --color-surface-bright: #fbfdfe;
   --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #f7f8f4;
-  --color-surface-container: #eceee8;
-  --color-surface-container-high: #e4e7e0;
-  --color-surface-container-highest: #dcdfd8;
-  --color-surface-variant: #dfe2dc;
-  --color-background: #f3f4f1;
-  --color-on-surface: #15181b;
-  --color-on-surface-variant: #565d63;
-  --color-on-background: #15181b;
-  --color-outline: #646b70;
-  --color-outline-variant: #d9ddd6;
+  --color-surface-container-low: #f0f7fa;
+  --color-surface-container: #e3f0f6;
+  --color-surface-container-high: #dde9ef;
+  --color-surface-container-highest: #d3e2ea;
+  --color-surface-variant: #d9e6ed;
+  --color-background: #f4f8fa;
+  --color-on-surface: #0e1a20;
+  --color-on-surface-variant: #4a5a64;
+  --color-on-background: #0e1a20;
+  --color-outline: #5d6d77;
+  --color-outline-variant: #d3e1e8;
   /* A stronger boundary for fields and selects, whose only affordance is their
      edge (WCAG 1.4.11 wants 3:1). Dividers and card edges keep the quiet
      outline-variant step. */
-  --color-control-outline: #7c837c;
+  --color-control-outline: #6c7f8a;
   /* The selected surface inside a segmented track. In light it is white; on
      dark it must be a step LIGHTER than the track, which the surface ramp's
      naming ("lowest" = white in light) cannot express. */
   --color-selected-surface: #ffffff;
-  --color-primary: #0f5586;
+  --color-primary: #0e7490;
   --color-on-primary: #ffffff;
-  --color-primary-container: #e3eef6;
-  --color-on-primary-container: #08324f;
-  --color-secondary: #0f5586;
+  --color-primary-container: #e0f2f7;
+  --color-on-primary-container: #083344;
+  --color-secondary: #0e7490;
   --color-on-secondary: #ffffff;
   --color-error: #b3261e;
   --color-on-error: #ffffff;
-  --color-error-container: #fbe9e7;
+  --color-error-container: #fbebe9;
   --color-on-error-container: #5f1512;
   --color-success: #1b7448;
   --color-on-success: #0a3d24;
@@ -171,35 +175,35 @@
      Namespaced under --color-dash-* so the two surfaces can be tuned apart.
      Shares the product palette above; the dashboard does not get its own
      colour world any more. */
-  --color-dash-background: #f3f4f1;
+  --color-dash-background: #f4f8fa;
   --color-dash-surface: #ffffff;
-  --color-dash-on-surface: #15181b;
-  --color-dash-on-surface-variant: #565d63;
-  --color-dash-surface-container-low: #f7f8f4;
-  --color-dash-surface-container: #eef0ea;
-  --color-dash-surface-container-high: #e6e8e2;
-  --color-dash-surface-container-highest: #dfe2db;
-  --color-dash-primary: #0f5586;
+  --color-dash-on-surface: #0e1a20;
+  --color-dash-on-surface-variant: #4a5a64;
+  --color-dash-surface-container-low: #f0f7fa;
+  --color-dash-surface-container: #e6eff4;
+  --color-dash-surface-container-high: #dde9ef;
+  --color-dash-surface-container-highest: #d3e2ea;
+  --color-dash-primary: #0e7490;
   --color-dash-on-primary: #ffffff;
-  --color-dash-primary-container: #e3eef6;
-  --color-dash-on-primary-container: #08324f;
-  --color-dash-secondary-container: #eceee8;
+  --color-dash-primary-container: #e0f2f7;
+  --color-dash-on-primary-container: #083344;
+  --color-dash-secondary-container: #e3f0f6;
   --color-dash-on-secondary-container: #1f2428;
   --color-dash-success: #1b7448;
   --color-dash-on-success: #ffffff;
-  --color-dash-success-container: #e3f2e8;
+  --color-dash-success-container: #e2f2ea;
   --color-dash-on-success-container: #0a3d24;
   --color-dash-error: #b3261e;
   --color-dash-on-error: #ffffff;
-  --color-dash-error-container: #fbe9e7;
+  --color-dash-error-container: #fbebe9;
   --color-dash-on-error-container: #5f1512;
   --color-dash-warning: #8a5b00;
   --color-dash-on-warning: #ffffff;
-  --color-dash-warning-container: #fbf1dc;
+  --color-dash-warning-container: #f8f1de;
   --color-dash-on-warning-container: #4a3000;
-  --color-dash-outline: #646b70;
-  --color-dash-outline-variant: #dde1da;
-  --color-dash-control-outline: #7c837c;
+  --color-dash-outline: #5d6d77;
+  --color-dash-outline-variant: #d3e1e8;
+  --color-dash-control-outline: #6c7f8a;
   --color-dash-selected-surface: #ffffff;
 
   /* Dashboard type scale — app type, not display type. The h1 is 24px and no
@@ -221,11 +225,13 @@
 }
 
 /*
-  Brand surfaces (light mode). The product mark and the boot loader are brand
-  assets rather than theme surfaces, but they still need a night version: a
-  near-black tile on a near-black ground would disappear, and the splash's
-  route blue would lose its white loader boxes. Declared BEFORE `.dark` so the
-  dark block wins on source order (both selectors have the same specificity).
+  Brand surfaces (light mode). The mark and the boot loader are brand assets,
+  but the loader deliberately uses the app's own palette: the splash sits on
+  the same cool paper ground as the first screen, and its boxes are cyan blue.
+  Both values are references, not copies, so the dark block below resolves the
+  same names through the `.dark` tokens (the ground stays #0d1519 and the boxes
+  lift to the dark primary); no separate splash palette exists. Declared BEFORE
+  `.dark` so the dark block wins on source order (same specificity).
 */
 :root {
   --overlay: rgb(9 12 11 / 0.48);
@@ -233,58 +239,60 @@
   --mark-ink: #f7f8f4;
   --mark-accent: #e7a51b;
   --mark-edge: transparent;
-  --loader-bg: #0f5586;
-  --loader-fg: #ffffff;
-  --selection-bg: #d7e6f1;
-  --selection-ink: #0b2a40;
+  /* First paint: app background (#f4f8fa) + cyan blue (#0e7490). */
+  --loader-bg: var(--color-background);
+  --loader-fg: var(--color-primary);
+  --selection-bg: #d3eaf1;
+  --selection-ink: #062a33;
 }
 
 /*
   ── Dark theme ─────────────────────────────────────────────────────────────
-  The same "manifest paper, ink and route blue" product, at night: a neutral
-  ink ground with the same faint green cast as the paper (#f3f4f1), paper-white
-  text, and the route blue lifted to #63b3e8 so it stays legible as data and as
-  a control. No navy, no slate, no neon.
+  The same "cool paper, ink and cyan blue" product, at night: a cool ink ground
+  (`#0d1519`) with the same blue cast as the day paper (`#f4f8fa`), pale text,
+  and the cyan lifted to #47cbe2 so it stays legible as data and as a control.
+  No navy, no slate, no neon.
 
   These declarations are unlayered, so they beat the @theme layer's :root
   values on the same element. Every `bg-surface` / `text-on-surface` utility
   reads `var(--color-*)` at use time, so re-declaring the variables here flips
   the whole app; components need no `dark:` variants for the core palette.
 
-  Measured contrast (WCAG, on #101413 ground / #1a1f1d card):
-    on-surface 16.9:1 · on-surface-variant 8.9:1 · primary 8.1:1
-    success 9.4:1 · waiting 11.3:1 · error 8.7:1 · outline 7.1:1
-  Status text sits on 10%-tint surfaces, where it still clears 7.9:1.
-  Fields use `control-outline` (3.6:1 on a card) because their edge is their
+  Measured contrast (WCAG, on #0d1519 ground / #141e23 card):
+    on-surface 16.4:1 · on-surface-variant 9.0:1 · primary 9.6:1
+    success 9.3:1 · waiting 11.2:1 · error 8.6:1 · outline 7.1:1
+  Status text sits on its own tint surface, where the worst pair still clears
+  9.8:1 (primary-container 9.8, success 11.5, error 12.3).
+  Fields use `control-outline` (4.3:1 on a card) because their edge is their
   only affordance; card edges and dividers keep the quiet outline-variant.
 */
 .dark {
-  --color-surface: #101413;
-  --color-surface-dim: #0b0e0d;
-  --color-surface-bright: #1c211f;
-  --color-surface-container-lowest: #1a1f1d;
-  --color-surface-container-low: #1e2421;
-  --color-surface-container: #232a26;
-  --color-surface-container-high: #29312c;
-  --color-surface-container-highest: #303833;
-  --color-surface-variant: #2c342f;
-  --color-background: #101413;
-  --color-on-surface: #f2f5f1;
-  --color-on-surface-variant: #aeb8b1;
-  --color-on-background: #f2f5f1;
-  --color-outline: #98a29c;
-  --color-outline-variant: #2f3732;
-  --color-control-outline: #6e776f;
-  --color-selected-surface: #39433d;
-  --color-primary: #63b3e8;
-  --color-on-primary: #06131c;
-  --color-primary-container: #123247;
-  --color-on-primary-container: #cfe9fb;
-  --color-secondary: #63b3e8;
-  --color-on-secondary: #06131c;
+  --color-surface: #0d1519;
+  --color-surface-dim: #080e11;
+  --color-surface-bright: #1a262c;
+  --color-surface-container-lowest: #141e23;
+  --color-surface-container-low: #18232a;
+  --color-surface-container: #1d2a31;
+  --color-surface-container-high: #23323a;
+  --color-surface-container-highest: #2a3b44;
+  --color-surface-variant: #26353d;
+  --color-background: #0d1519;
+  --color-on-surface: #ebf3f7;
+  --color-on-surface-variant: #a7b8c2;
+  --color-on-background: #ebf3f7;
+  --color-outline: #90a3ad;
+  --color-outline-variant: #2c3b43;
+  --color-control-outline: #71838d;
+  --color-selected-surface: #33454e;
+  --color-primary: #47cbe2;
+  --color-on-primary: #04222a;
+  --color-primary-container: #0b3a45;
+  --color-on-primary-container: #bdeef8;
+  --color-secondary: #47cbe2;
+  --color-on-secondary: #04222a;
   --color-error: #ff938a;
   --color-on-error: #1d0806;
-  --color-error-container: #2d1513;
+  --color-error-container: #2e1718;
   --color-on-error-container: #ffd2cc;
   --color-success: #4ecf8b;
   --color-on-success: #06130c;
@@ -292,36 +300,36 @@
 
   /* Dashboard namespace — same values, kept separate so the two surfaces can
      still be tuned apart without touching one another. */
-  --color-dash-background: #101413;
-  --color-dash-surface: #1a1f1d;
-  --color-dash-on-surface: #f2f5f1;
-  --color-dash-on-surface-variant: #aeb8b1;
-  --color-dash-surface-container-low: #1e2421;
-  --color-dash-surface-container: #232a26;
-  --color-dash-surface-container-high: #29312c;
-  --color-dash-surface-container-highest: #303833;
-  --color-dash-primary: #63b3e8;
-  --color-dash-on-primary: #06131c;
-  --color-dash-primary-container: #123247;
-  --color-dash-on-primary-container: #cfe9fb;
-  --color-dash-secondary-container: #2a322e;
-  --color-dash-on-secondary-container: #f2f5f1;
+  --color-dash-background: #0d1519;
+  --color-dash-surface: #141e23;
+  --color-dash-on-surface: #ebf3f7;
+  --color-dash-on-surface-variant: #a7b8c2;
+  --color-dash-surface-container-low: #18232a;
+  --color-dash-surface-container: #1d2a31;
+  --color-dash-surface-container-high: #23323a;
+  --color-dash-surface-container-highest: #2a3b44;
+  --color-dash-primary: #47cbe2;
+  --color-dash-on-primary: #04222a;
+  --color-dash-primary-container: #0b3a45;
+  --color-dash-on-primary-container: #bdeef8;
+  --color-dash-secondary-container: #22323a;
+  --color-dash-on-secondary-container: #ebf3f7;
   --color-dash-success: #4ecf8b;
   --color-dash-on-success: #06130c;
-  --color-dash-success-container: #12271c;
+  --color-dash-success-container: #102a1f;
   --color-dash-on-success-container: #9ff0c4;
   --color-dash-error: #ff938a;
   --color-dash-on-error: #1d0806;
-  --color-dash-error-container: #2d1513;
+  --color-dash-error-container: #2e1718;
   --color-dash-on-error-container: #ffd2cc;
   --color-dash-warning: #f0c45c;
   --color-dash-on-warning: #1b1200;
-  --color-dash-warning-container: #2b2110;
+  --color-dash-warning-container: #2a2414;
   --color-dash-on-warning-container: #ffe4a6;
-  --color-dash-outline: #98a29c;
-  --color-dash-outline-variant: #2f3732;
-  --color-dash-control-outline: #6e776f;
-  --color-dash-selected-surface: #39433d;
+  --color-dash-outline: #90a3ad;
+  --color-dash-outline-variant: #2c3b43;
+  --color-dash-control-outline: #71838d;
+  --color-dash-selected-surface: #33454e;
 
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5);
   --shadow-float: 0 22px 60px rgb(0 0 0 / 0.55), 0 2px 10px rgb(0 0 0 / 0.35);
@@ -331,10 +339,12 @@
   --mark-ink: #f4efe6;
   --mark-accent: #f2b53a;
   --mark-edge: #5a4d3d;
-  --loader-bg: #08141d;
-  --loader-fg: #7cc0ec;
-  --selection-bg: #1d4a66;
-  --selection-ink: #eaf5ff;
+  /* Same mapping as light, resolved through the dark tokens above:
+     dark background (#0d1519) + dark primary (#47cbe2). */
+  --loader-bg: var(--color-background);
+  --loader-fg: var(--color-primary);
+  --selection-bg: #1b4351;
+  --selection-ink: #e6f7fb;
   color-scheme: dark;
 }
 
@@ -354,6 +364,29 @@ html.dark {
 */
 th {
   text-align: start;
+}
+
+/*
+  Zebra tables. Even rows take ONE tone step and the 1px row rule comes out
+  inside a striped table — a stripe and a rule are two encodings of the same
+  thing, and together they read as a grid.
+
+  Unlayered on purpose: `src/components/**` sets row rules with `border-b`
+  (`AttendanceTable`) and `divide-y` (`Assignments`, `Drivers`), and Tailwind's
+  utilities are layered, so a plain class here wins without `!`.
+*/
+.table-zebra tbody tr:nth-child(even) {
+  background-color: var(--color-dash-surface-container-low);
+}
+.table-zebra tbody tr > th,
+.table-zebra tbody tr > td {
+  border-bottom-width: 0;
+}
+.table-zebra tbody > tr + tr > * {
+  border-top-width: 0;
+}
+.table-zebra tbody tr:hover {
+  background-color: var(--color-dash-surface-container);
 }
 
 /* Horizontal scroll rows that hide the scrollbar (chips, tabs) */
@@ -541,8 +574,14 @@ html {
   .page-reveal {
     animation: page-reveal-rise var(--t-travel) var(--ease-expo) backwards;
     animation-delay: calc(var(--reveal-i, 0) * var(--reveal-gap, 0ms));
-    /* A block in the queue is not a target yet; the first interaction clears
-       the class (and this gate) on the spot. */
+  }
+
+  /* A block is not a target while it is still invisible: `use-page-reveal.ts`
+     adds `reveal-ready` to each block as it comes into view, and clears the
+     whole queue on the first interaction. Gating per block (not for the length
+     of the queue) is what lets the first tap act instead of only landing the
+     page: see the note in that hook. */
+  .page-reveal:not(.reveal-ready) {
     pointer-events: none;
   }
 }
@@ -558,6 +597,19 @@ html {
 
 @utility icon-pop {
   animation: icon-pop var(--t-enter) var(--ease-out-soft) backwards;
+}
+
+/* The hover hint's arrival: it was asked for by resting on a control, so it
+   rises 4px into place rather than appearing under the pointer. */
+@keyframes hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@utility hint-in {
+  animation: hint-in var(--t-enter) var(--ease-out-soft) backwards;
 }
 
 /* The theme toggle's glyph re-mounts on every flip (key=resolved). */
@@ -896,6 +948,7 @@ html[dir="rtl"] .grow-x {
   .stagger-in,
   .pop-in,
   .icon-pop,
+  .hint-in,
   .theme-spin,
   .grow-x,
   .code-issued,
@@ -1060,30 +1113,30 @@ html[dir="rtl"] .grow-x {
   html,
   html.dark {
     color-scheme: light;
-    --color-surface: #f3f4f1;
-    --color-surface-dim: #d8dbd5;
-    --color-surface-bright: #fbfcf9;
+    --color-surface: #f4f8fa;
+    --color-surface-dim: #d7e3ea;
+    --color-surface-bright: #fbfdfe;
     --color-surface-container-lowest: #ffffff;
-    --color-surface-container-low: #f7f8f4;
-    --color-surface-container: #eceee8;
-    --color-surface-container-high: #e4e7e0;
-    --color-surface-container-highest: #dcdfd8;
-    --color-surface-variant: #dfe2dc;
+    --color-surface-container-low: #f0f7fa;
+    --color-surface-container: #e3f0f6;
+    --color-surface-container-high: #dde9ef;
+    --color-surface-container-highest: #d3e2ea;
+    --color-surface-variant: #d9e6ed;
     --color-background: #ffffff;
-    --color-on-surface: #15181b;
-    --color-on-surface-variant: #565d63;
-    --color-on-background: #15181b;
-    --color-outline: #646b70;
-    --color-outline-variant: #d9ddd6;
-    --color-control-outline: #7c837c;
+    --color-on-surface: #0e1a20;
+    --color-on-surface-variant: #4a5a64;
+    --color-on-background: #0e1a20;
+    --color-outline: #5d6d77;
+    --color-outline-variant: #d3e1e8;
+    --color-control-outline: #6c7f8a;
     --color-selected-surface: #ffffff;
-    --color-primary: #0f5586;
+    --color-primary: #0e7490;
     --color-on-primary: #ffffff;
-    --color-primary-container: #e3eef6;
-    --color-on-primary-container: #08324f;
+    --color-primary-container: #e0f2f7;
+    --color-on-primary-container: #083344;
     --color-error: #b3261e;
     --color-on-error: #ffffff;
-    --color-error-container: #fbe9e7;
+    --color-error-container: #fbebe9;
     --color-on-error-container: #5f1512;
     --color-success: #1b7448;
     --color-on-success: #0a3d24;
@@ -1091,39 +1144,39 @@ html[dir="rtl"] .grow-x {
 
     --color-dash-background: #ffffff;
     --color-dash-surface: #ffffff;
-    --color-dash-on-surface: #15181b;
-    --color-dash-on-surface-variant: #565d63;
-    --color-dash-surface-container-low: #f7f8f4;
-    --color-dash-surface-container: #eef0ea;
-    --color-dash-surface-container-high: #e6e8e2;
-    --color-dash-surface-container-highest: #dfe2db;
-    --color-dash-primary: #0f5586;
+    --color-dash-on-surface: #0e1a20;
+    --color-dash-on-surface-variant: #4a5a64;
+    --color-dash-surface-container-low: #f0f7fa;
+    --color-dash-surface-container: #e6eff4;
+    --color-dash-surface-container-high: #dde9ef;
+    --color-dash-surface-container-highest: #d3e2ea;
+    --color-dash-primary: #0e7490;
     --color-dash-on-primary: #ffffff;
-    --color-dash-primary-container: #e3eef6;
-    --color-dash-on-primary-container: #08324f;
-    --color-dash-secondary-container: #eceee8;
+    --color-dash-primary-container: #e0f2f7;
+    --color-dash-on-primary-container: #083344;
+    --color-dash-secondary-container: #e3f0f6;
     --color-dash-on-secondary-container: #1f2428;
     --color-dash-success: #1b7448;
     --color-dash-on-success: #ffffff;
-    --color-dash-success-container: #e3f2e8;
+    --color-dash-success-container: #e2f2ea;
     --color-dash-on-success-container: #0a3d24;
     --color-dash-error: #b3261e;
     --color-dash-on-error: #ffffff;
-    --color-dash-error-container: #fbe9e7;
+    --color-dash-error-container: #fbebe9;
     --color-dash-on-error-container: #5f1512;
     --color-dash-warning: #8a5b00;
     --color-dash-on-warning: #ffffff;
-    --color-dash-warning-container: #fbf1dc;
+    --color-dash-warning-container: #f8f1de;
     --color-dash-on-warning-container: #4a3000;
-    --color-dash-outline: #646b70;
-    --color-dash-outline-variant: #dde1da;
-    --color-dash-control-outline: #7c837c;
+    --color-dash-outline: #5d6d77;
+    --color-dash-outline-variant: #d3e1e8;
+    --color-dash-control-outline: #6c7f8a;
     --color-dash-selected-surface: #ffffff;
   }
 
   body {
     background: #ffffff;
-    color: #15181b;
+    color: #0e1a20;
   }
 
   /* Reveal wrappers must be at their finished state on paper even when the

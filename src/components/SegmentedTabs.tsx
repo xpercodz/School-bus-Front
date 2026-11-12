@@ -6,13 +6,20 @@ import { toLocaleDigits } from "@/lib/i18n/format";
 import type { MessageKey } from "@/lib/i18n/types";
 
 /** Tab label key per TabId — DROPPED_OFF's tab reads "Done" (matches the design). */
-const TAB_LABEL_KEY: Record<TabId, MessageKey> = {
-  all: "tabs.all",
-  WAITING: "tabs.waiting",
-  BOARDED: "tabs.boarded",
-  DROPPED_OFF: "tabs.done",
-  ABSENT: "status.absent", // ABSENT has no tab; harmless fallback
-};
+function tabLabelKey(id: TabId): MessageKey {
+  switch (id) {
+    case "BOARDED":
+      return "tabs.boarded";
+    case "DROPPED_OFF":
+      return "tabs.done";
+    case "all":
+      return "tabs.all";
+    default:
+      // States without a tab (the no-record state, ABSENT) never render a
+      // button, so this branch is unreachable.
+      return "tabs.all";
+  }
+}
 
 interface SegmentedTabsProps {
   active: TabId;
@@ -29,13 +36,7 @@ interface SegmentedTabsProps {
 export function SegmentedTabs({ active, counts, onSelect }: SegmentedTabsProps) {
   const { t, dir, locale } = useLocale();
   const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
-  const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({
-    all: null,
-    BOARDED: null,
-    WAITING: null,
-    DROPPED_OFF: null,
-    ABSENT: null,
-  });
+  const tabRefs = useRef<Partial<Record<TabId, HTMLButtonElement | null>>>({});
   const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
 
   // On a narrow phone the row scrolls sideways; keep the selected filter in
@@ -86,14 +87,15 @@ export function SegmentedTabs({ active, counts, onSelect }: SegmentedTabsProps) 
                 : "text-on-surface-variant hover:text-on-surface"
             }`}
           >
-            {t(TAB_LABEL_KEY[tab.id])}
+            {t(tabLabelKey(tab.id))}
             <span className="text-[11px] tabular-nums text-on-surface-variant">
               {toLocaleDigits(String(count), locale)}
             </span>
           </button>
         );
       })}
-      {/* Sliding underline: one fourth of the track per filter. */}
+      {/* Sliding underline: one equal share of the track per filter, so the
+          rail stays correct as filters come and go. */}
       <span
         aria-hidden="true"
         className="pointer-events-none absolute bottom-0 h-0.5 rounded-full bg-on-surface transition-transform duration-[var(--t-ui)] ease-[var(--ease-out-soft)] motion-reduce:transition-none"

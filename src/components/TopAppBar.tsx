@@ -25,10 +25,14 @@ interface TopAppBarProps {
   students?: readonly { id: string; status: StudentStatus }[];
 }
 
-/** One hue per attendance state; the same marks as the roster pills. */
+/**
+ * One hue per attendance state; the same marks as the roster pills. A child with
+ * no record yet is the absence of a state, so its tick is neutral — the rail
+ * must not read as a row of warnings.
+ */
 const RAIL_CLASS: Record<StudentStatus, string> = {
   BOARDED: "bg-success",
-  WAITING: "bg-waiting",
+  WAITING: "bg-surface-container-highest",
   DROPPED_OFF: "bg-primary",
   ABSENT: "bg-error",
 };

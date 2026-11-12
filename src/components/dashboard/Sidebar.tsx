@@ -4,8 +4,11 @@ import { Button } from "@/components/arc/button/button";
 import { Icon } from "@/components/Icon";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeSwitchButton } from "@/components/ThemeSwitchButton";
+import { useTour } from "@/components/dashboard/Tour";
 import { ProductMark } from "@/components/ProductMark";
-import { NAV_ITEMS, type NavItem } from "@/data/dashboard";
+import type { NavItem } from "@/data/dashboard";
+import { visibleNavItems } from "@/lib/permissions";
+import { useMainDirector } from "@/lib/main-director";
 import { useAuth } from "@/lib/auth";
 import { useLocale } from "@/lib/i18n/context";
 import { useUserProfile } from "@/lib/user-profile";
@@ -14,9 +17,12 @@ import type { MessageKey } from "@/lib/i18n/types";
 /** Nav label key per item id (labels are translated, ids are stable). */
 const NAV_LABEL_KEY: Record<string, MessageKey> = {
   "live-map": "nav.liveMap",
+  students: "nav.students",
   reports: "nav.reports",
   assignments: "nav.assignments",
   drivers: "nav.drivers",
+  activity: "nav.activity",
+  operators: "nav.operators",
 };
 
 interface SidebarProps {
@@ -97,6 +103,8 @@ function SidebarContent({
   const { t } = useLocale();
   const { user } = useAuth();
   const { profile } = useUserProfile();
+  const mainDirector = useMainDirector();
+  const { start: replayTour } = useTour();
 
   const name = profile.displayName ?? user?.email ?? "";
   const initials = name
@@ -140,9 +148,18 @@ function SidebarContent({
         )}
       </div>
 
-      <nav className="mt-7 flex flex-1 flex-col gap-6" aria-label={t("nav.primaryAria")}>
+      <nav
+        className="mt-7 flex flex-1 flex-col gap-6"
+        aria-label={t("nav.primaryAria")}
+        data-tour="nav"
+      >
         {groups.map((group) => {
-          const items = NAV_ITEMS.filter((item) => item.group === group.id);
+          // Only destinations this reader may open. A director sees all six; an
+          // operator sees the screens they were granted; the Operators row is
+          // the main director's alone. Rules enforce the same answer.
+          const items = visibleNavItems(profile, mainDirector).filter(
+            (item) => item.group === group.id,
+          );
           if (items.length === 0) return null;
           return (
             <div key={group.id} className="flex flex-col gap-1">
@@ -186,6 +203,47 @@ function SidebarContent({
           rail. The language and theme controls share one row because they are
           the same kind of control. */}
       <div className="mt-6 flex flex-col gap-0.5 border-t border-dash-outline-variant pt-3">
+        {/* Redo the walkthrough. Above the guidebook because it is the thing a
+            reader looks for after skipping: the invitation is asked once, so
+            without a permanent row here "Not now" would be final. It also
+            closes the phone drawer before the tour takes over the screen. */}
+        <Button
+          type="button"
+          onClick={() => {
+            onNavigate?.();
+            replayTour();
+          }}
+          variant="ghost"
+          size="sm"
+          align="start"
+          className="w-full"
+          data-tour="replay"
+        >
+          <Icon name="refresh" size={18} variant="outlined" className="text-dash-outline" />
+          {t("guide.replayTour")}
+        </Button>
+        {/* The manual is a PAGE, not a destination the nav groups: it explains
+            the rail rather than competing with it, so it sits with Help. */}
+        <Link
+          to="/dashboard/guide"
+          data-tour="guide"
+          data-hint="guidebook"
+          aria-current={activeId === "guide" ? "page" : undefined}
+          onClick={() => onNavigate?.()}
+          className={`press-none flex h-9 items-center gap-2.5 rounded-md px-2 text-[13.5px] transition-colors ${
+            activeId === "guide"
+              ? "bg-dash-secondary-container font-medium text-dash-on-surface"
+              : "text-dash-on-surface-variant hover:bg-dash-surface-container-low hover:text-dash-on-surface"
+          }`}
+        >
+          <Icon
+            name="description"
+            size={18}
+            variant="outlined"
+            className={activeId === "guide" ? "text-dash-on-surface" : "text-dash-outline"}
+          />
+          <span>{t("guide.title")}</span>
+        </Link>
         <Button
           type="button"
           onClick={onOpenHelp}
@@ -229,7 +287,17 @@ function SidebarContent({
               {name || "—"}
             </span>
             <span className="block truncate text-[11.5px] text-dash-on-surface-variant">
-              {profile.role ? t(profile.role === "director" ? "role.director" : "role.staff") : ""}
+              {mainDirector
+                ? t("role.mainDirector")
+                : profile.role
+                  ? t(
+                      profile.role === "director"
+                        ? "role.director"
+                        : profile.role === "operator"
+                          ? "role.operator"
+                          : "role.staff",
+                    )
+                  : ""}
             </span>
           </span>
         </Button>

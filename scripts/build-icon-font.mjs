@@ -8,10 +8,18 @@
  *   node scripts/build-icon-font.mjs
  *
  * Why a subset: the full Material Symbols variable font is ~5.2 MiB per family.
- * Google's API can return only the glyphs actually referenced, which for this app
- * is 49 icons ≈ 67 KiB (Rounded) + 48 KiB (Outlined) — roughly 1% of the full
- * font, and small enough for the service worker to precache so icons work
- * offline.
+ * Google's API can return only the glyphs actually referenced. This app now
+ * collects 44 icons, and both families together are ~111 KiB (64.6 Rounded +
+ * 46.8 Outlined) — roughly 1% of the full font, and small enough for the
+ * service worker to precache so icons work offline.
+ *
+ * Google silently drops any `icon_names` entry it does not know; it never fails
+ * the request. An invalid name therefore ships as literal text, or — when a
+ * prefix is a valid icon — as that glyph plus the leftover suffix. The no-bus
+ * empty state used to ask for `directions_bus_off`, which is not a Material
+ * Symbols icon (it rendered as the bus glyph + "_OFF"); it now uses
+ * `directions_bus`. Verify a new name in a browser after building: a 24px width
+ * is a glyph, anything wider is fallback text.
  *
  * Icon names are collected three ways:
  *   1. static JSX:     <Icon name="search_off" />
@@ -131,6 +139,14 @@ for (const { id, file } of FAMILIES) {
   written.push({ id, file, bytes: buf.length });
   console.log(`  ${file}  ${(buf.length / 1024).toFixed(1)} KiB`);
 }
+
+// Written LAST, so it can only ever describe fonts that were actually saved:
+// a failed download leaves the previous manifest in place and
+// `scripts/check-icons.mjs` then fails the build on the icon that is missing.
+writeFileSync(
+  join(OUT_DIR, "icon-manifest.json"),
+  `${JSON.stringify({ icons, generatedAt: new Date().toISOString() }, null, 2)}\n`,
+);
 
 const total = written.reduce((n, w) => n + w.bytes, 0);
 console.log(`\nwrote ${written.length} fonts, ${(total / 1024).toFixed(1)} KiB total`);

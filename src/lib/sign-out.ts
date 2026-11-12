@@ -3,6 +3,7 @@ import { signOut } from "firebase/auth";
 import { auth, isFirebaseConfigured } from "@/lib/firebase";
 import { useToast } from "@/components/Toast";
 import { useLocale } from "@/lib/i18n/context";
+import { clearSelectedDates } from "@/lib/selected-date";
 
 /**
  * Shared sign-out action: clears the Firebase session, redirects to /login, and
@@ -22,6 +23,9 @@ export function useSignOut() {
         // Session already gone — redirect regardless.
       }
     }
+    // Every screen's picked day belongs to the sitting, not the account:
+    // signing out must not leave the next person on last week's day.
+    clearSelectedDates();
     showToast(t("toast.signedOut"));
     navigate("/login");
   };

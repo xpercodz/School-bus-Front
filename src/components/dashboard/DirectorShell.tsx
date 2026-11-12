@@ -1,19 +1,25 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import { RequireRole } from "@/components/RequireRole";
+import { RequireAccess } from "@/components/RequireAccess";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { MobileNav } from "@/components/dashboard/MobileNav";
 import { HelpDialog } from "@/components/dashboard/HelpDialog";
 import { SettingsDrawer } from "@/components/dashboard/SettingsDrawer";
+import { TourHost } from "@/components/dashboard/Tour";
 import { activeIdFromPathname } from "@/data/dashboard";
 import { useSchoolName } from "@/lib/school";
 
 /**
- * Director-only shell for /dashboard and its sub-pages: role guard, a labelled
- * desktop rail, a phone header with a nav drawer, and the shared Help/Settings
- * dialogs. Dialogs live here (not inside the rail) so opening Settings from the
- * mobile drawer does not unmount it when the drawer closes.
+ * Management shell for /dashboard and its sub-pages: the signed-in access guard
+ * (a director, or an operator with at least one screen), a labelled desktop
+ * rail, a phone header with a nav drawer, and the shared Help/Settings dialogs.
+ * Dialogs live here (not inside the rail) so opening Settings from the mobile
+ * drawer does not unmount it when the drawer closes.
+ *
+ * The shell admits the whole management surface; each ROUTE is gated again by
+ * `RequireScreen`, which is what actually denies an operator a page they were
+ * not granted.
  */
 export function DirectorShell({ children }: { children: ReactNode }) {
   const schoolName = useSchoolName();
@@ -43,7 +49,11 @@ export function DirectorShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <RequireRole role="director" fallback="/">
+    <RequireAccess>
+      {/* TourHost owns the one-time invitation and the tour itself. It lives
+          INSIDE RequireAccess because the tour reads `useMainDirector`, which
+          that gate provides. */}
+      <TourHost>
       <div className="min-h-dvh bg-dash-background font-sans text-dash-on-surface">
         <Sidebar
           activeId={activeId}
@@ -74,6 +84,7 @@ export function DirectorShell({ children }: { children: ReactNode }) {
         <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
         <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </div>
-    </RequireRole>
+      </TourHost>
+    </RequireAccess>
   );
 }

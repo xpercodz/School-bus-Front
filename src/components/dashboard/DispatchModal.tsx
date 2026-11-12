@@ -5,6 +5,7 @@ import {
   getDoc,
   getDocs,
   query,
+  serverTimestamp,
   where,
   writeBatch,
 } from "firebase/firestore";
@@ -18,6 +19,7 @@ import { RUN_SEGMENTS, type RunSegmentId } from "@/data/dashboard";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth";
 import { buildRunId, todayDateStr } from "@/lib/school-data";
+import { queueAudit } from "@/lib/audit";
 import { fetchSchoolId } from "@/lib/school-id";
 import { useLocale } from "@/lib/i18n/context";
 import { translateDataLabel } from "@/lib/i18n/format";
@@ -111,7 +113,9 @@ function DispatchForm({ onClose }: { onClose: () => void }) {
         ),
       );
       const batch = writeBatch(firestore);
-      batch.set(runRef, { busId, runType, date, status: "IN_PROGRESS" });
+      const stamp = { updatedBy: uid, updatedAt: serverTimestamp() };
+      batch.set(runRef, { busId, runType, date, status: "IN_PROGRESS", ...stamp });
+      let dispatched = 0;
       for (const studentDoc of studentsSnap.docs) {
         const data = studentDoc.data();
         batch.set(
@@ -126,9 +130,19 @@ function DispatchForm({ onClose }: { onClose: () => void }) {
             status: "WAITING",
             boardedAt: null,
             droppedOffAt: null,
+            ...stamp,
           },
         );
+        dispatched += 1;
       }
+      // Dispatching a run is one decision, so it is one entry — not one per child.
+      queueAudit(batch, firestore, schoolId, {
+        event: "run.dispatched",
+        targetType: "run",
+        targetId: runId,
+        meta: { runId, busId, date, count: dispatched },
+        occurredAt: new Date(),
+      });
       await batch.commit();
       onClose();
       showToast(t("toast.dispatched"));
@@ -177,6 +191,16 @@ function DispatchForm({ onClose }: { onClose: () => void }) {
               matchTriggerWidth
               disabled={busy}
               triggerClassName="arc-field h-11 w-full"
+              // A fleet-sized list is scannable, not scrollable; the leading
+              // "Select bus" row is the empty-state reset, so it is not counted.
+              searchable={
+                buses.length >= 4
+                  ? {
+                      placeholder: t("dropdown.searchPlaceholder"),
+                      emptyLabel: t("dropdown.searchEmpty"),
+                    }
+                  : undefined
+              }
               items={[
                 {
                   label: t("dispatch.selectBus"),

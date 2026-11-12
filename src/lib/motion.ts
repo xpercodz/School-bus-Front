@@ -79,6 +79,14 @@ const ENTRANCE_WINDOW_MS = 800;
  * entrance is inside its window. Once the screen has settled, a scroll wheel
  * or an auto-repeating key costs one timestamp comparison, not a document
  * recalc.
+ *
+ * The skip runs on `pointerup`, not `pointerdown`: finishing an entrance moves
+ * the element, and the browser resolves a click from the pointerdown and
+ * pointerup targets — so skipping on the way down can slide the control out from
+ * under the finger and drop the tap. (Measured on one button mid-entrance: 0
+ * clicks when clearing on pointerdown, 1 when clearing on pointerup.) The cost
+ * is that the skip happens on release instead of press; `keydown` and `wheel`
+ * still land everything on the spot.
  */
 export function installEntranceSkip(): void {
   if (installed || typeof document === "undefined") return;
@@ -115,7 +123,7 @@ export function installEntranceSkip(): void {
     }
   };
 
-  const interactions = ["pointerdown", "keydown", "wheel"] as const;
+  const interactions = ["pointerup", "pointercancel", "keydown", "wheel"] as const;
   for (const type of interactions) {
     window.addEventListener(type, finishEntrances, {
       capture: true,

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { lockBodyScroll } from "@/lib/scroll-lock";
 import { prefersReducedMotion } from "@/lib/theme";
 import { useIsMobile } from "@/lib/use-media-query";
 
@@ -193,11 +194,15 @@ export function Dialog({
     const dialogId = pushDialog();
     lastFocusedRef.current = document.activeElement as HTMLElement | null;
     panelRef.current?.focus();
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlockScroll = lockBodyScroll();
 
     function onKeyDown(event: globalThis.KeyboardEvent) {
       if (event.key === "Escape") {
+        // A menu or popover inside this dialog handles Escape first and calls
+        // preventDefault while it is open. Without this guard the same press
+        // also closed the dialog, throwing away whatever was in progress (the
+        // import's column mapping, for one).
+        if (event.defaultPrevented) return;
         if (dismissable && topDialog() === dialogId) {
           event.preventDefault();
           onCloseRef.current();
@@ -227,7 +232,7 @@ export function Dialog({
 
     return () => {
       popDialog(dialogId);
-      document.body.style.overflow = previousOverflow;
+      unlockScroll();
       document.removeEventListener("keydown", onKeyDown);
       lastFocusedRef.current?.focus();
     };

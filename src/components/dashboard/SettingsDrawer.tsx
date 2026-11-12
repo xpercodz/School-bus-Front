@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { lockBodyScroll } from "@/lib/scroll-lock";
 import { createPortal } from "react-dom";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/arc/button/button";
@@ -92,8 +93,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
 
     const dialogId = pushDialog();
     lastFocusedRef.current = document.activeElement as HTMLElement | null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlockScroll = lockBodyScroll();
 
     // Unfold to full width on the frame after mount so the browser has
     // painted the collapsed state first — that's what makes the transition a
@@ -141,7 +141,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
       cancelAnimationFrame(raf);
       document.removeEventListener("keydown", onKeyDown);
       popDialog(dialogId);
-      document.body.style.overflow = previousOverflow;
+      unlockScroll();
       lastFocusedRef.current?.focus();
     };
   }, [open]);
@@ -158,7 +158,13 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   }
 
   const roleLabel = profile.role
-    ? t(profile.role === "director" ? "role.director" : "role.staff")
+    ? t(
+        profile.role === "director"
+          ? "role.director"
+          : profile.role === "operator"
+            ? "role.operator"
+            : "role.staff",
+      )
     : "—";
 
   if (!open) return null;

@@ -15,8 +15,8 @@ export const THEME_STORAGE_KEY = "sb:theme";
 
 /** The light/dark theme-color values used by the inline boot script too. */
 export const THEME_COLORS: Record<ResolvedTheme, string> = {
-  light: "#f3f4f1",
-  dark: "#101413",
+  light: "#f4f8fa",
+  dark: "#0d1519",
 };
 
 export function isThemeMode(value: unknown): value is ThemeMode {

@@ -241,7 +241,7 @@ export default function DriversPage() {
         ) : (
           <>
             {/* Add driver */}
-            <section data-page-reveal className="flex flex-col gap-4">
+            <section data-page-reveal data-tour="drivers-add" className="flex flex-col gap-4">
               {sectionTitle(
                 <Icon name="person_add" size={18} variant="outlined" className="flex-none" />,
                 t("drivers.addTitle"),
@@ -277,7 +277,7 @@ export default function DriversPage() {
             </section>
 
             {/* Access codes: cards on a phone, the table at md+ */}
-            <section className="flex flex-col gap-4">
+            <section data-tour="drivers-codes" className="flex flex-col gap-4">
               <div data-page-reveal className="flex flex-col gap-4">
                 {sectionTitle(
                   <Icon name="badge" size={18} variant="outlined" className="flex-none" />,
@@ -404,7 +404,10 @@ export default function DriversPage() {
                     </ul>
 
                     <div className="hidden overflow-x-auto md:block">
-                      <table className="w-full min-w-[560px] border-collapse text-start">
+                      {/* `table-zebra` (globals.css) owns the banding: even rows
+                          take one tone step and the 1px row rules are dropped, so
+                          the tbody carries no divide-y and rows carry no fill. */}
+                      <table className="table-zebra w-full min-w-[560px] border-collapse text-start">
                         <thead className="border-b border-dash-outline-variant text-[11.5px] text-dash-on-surface-variant">
                           <tr>
                             <th scope="col" className="h-10 px-4 py-2 font-medium">{t("drivers.th.name")}</th>
@@ -412,14 +415,14 @@ export default function DriversPage() {
                             <th scope="col" className="h-10 px-4 py-2 font-medium">{t("drivers.th.code")}</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-dash-outline-variant text-dash-body-sm text-dash-on-surface">
+                        <tbody className="text-dash-body-sm text-dash-on-surface">
                           {staffPage.paged.map((driver) => {
                             const issued = Boolean(issuedCodes[driver.uid]);
                             const code = issuedCodes[driver.uid] ?? codes[driver.uid] ?? "";
                             const bus = buses.find((b) => b.driverUid === driver.uid);
                             const shown = revealed.has(driver.uid);
                             return (
-                              <tr key={driver.uid} className="hover:bg-dash-surface-container-low">
+                              <tr key={driver.uid}>
                                 <td className="px-4 py-3 font-medium">{driver.displayName}</td>
                                 <td className="px-4 py-3">
                                   {bus ? translateDataLabel(bus.name, locale, t) : t("drivers.noBus")}

@@ -1,0 +1,2609 @@
+<!doctype html>
+<html lang="en" data-skin="cl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Colour preview — cyan-blue accent · School Bus Transit</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+   Fonts, from this repo, by relative path. If they fail, the app still
+   reads: IBM Plex Sans falls back to the system grotesk, and the icon font
+   falls back to … words. (Check the screenshots.)
+   ───────────────────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: "IBM Plex Sans Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 700;
+  src: url("../node_modules/@fontsource-variable/ibm-plex-sans/files/ibm-plex-sans-latin-wght-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Material Symbols Rounded";
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url("../public/fonts/material-symbols-rounded-subset.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Material Symbols Outlined";
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url("../public/fonts/material-symbols-outlined-subset.woff2") format("woff2");
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   The four token sets. SAME NAMES as src/globals.css, so the paste block at
+   the foot of the page is the whole change. cl = current light, pl =
+   proposed light, cd = current dark, pd = proposed dark.
+   ───────────────────────────────────────────────────────────────────────── */
+[data-skin="cl"] {
+  --color-surface: #f3f4f1;
+  --color-surface-dim: #d8dbd5;
+  --color-surface-bright: #fbfcf9;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f7f8f4;
+  --color-surface-container: #eceee8;
+  --color-surface-container-high: #e4e7e0;
+  --color-surface-container-highest: #dcdfd8;
+  --color-surface-variant: #dfe2dc;
+  --color-background: #f3f4f1;
+  --color-on-surface: #15181b;
+  --color-on-surface-variant: #565d63;
+  --color-on-background: #15181b;
+  --color-outline: #646b70;
+  --color-outline-variant: #d9ddd6;
+  --color-control-outline: #7c837c;
+  --color-selected-surface: #ffffff;
+  --color-primary: #0f5586;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #e3eef6;
+  --color-on-primary-container: #08324f;
+  --color-secondary: #0f5586;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #eceee8;
+  --color-on-secondary-container: #1f2428;
+  --color-error: #b3261e;
+  --color-on-error: #ffffff;
+  --color-error-container: #fbe9e7;
+  --color-on-error-container: #5f1512;
+  --color-success: #1b7448;
+  --color-on-success: #0a3d24;
+  --color-success-container: #e3f2e8;
+  --color-on-success-container: #0a3d24;
+  --color-waiting: #8a5b00;
+  --color-warning-container: #fbf1dc;
+  --color-on-warning-container: #4a3000;
+  --action-bg: #15181b;
+  --action-fg: #ffffff;
+  --mark-tile: #15181b;
+  --mark-ink: #f7f8f4;
+  --mark-accent: #e7a51b;
+  --mark-edge: transparent;
+}
+
+[data-skin="pl"] {
+  --color-surface: #f4f8fa;
+  --color-surface-dim: #d7e3ea;
+  --color-surface-bright: #fbfdfe;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f0f7fa;
+  --color-surface-container: #e6eff4;
+  --color-surface-container-high: #dde9ef;
+  --color-surface-container-highest: #d3e2ea;
+  --color-surface-variant: #d9e6ed;
+  --color-background: #f4f8fa;
+  --color-on-surface: #0e1a20;
+  --color-on-surface-variant: #4a5a64;
+  --color-on-background: #0e1a20;
+  --color-outline: #5d6d77;
+  --color-outline-variant: #d3e1e8;
+  --color-control-outline: #6c7f8a;
+  --color-selected-surface: #ffffff;
+  --color-primary: #0e7490;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #e0f2f7;
+  --color-on-primary-container: #083344;
+  --color-secondary: #0e7490;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #e3f0f6;
+  --color-on-secondary-container: #123442;
+  --color-error: #b3261e;
+  --color-on-error: #ffffff;
+  --color-error-container: #fbebe9;
+  --color-on-error-container: #5f1512;
+  --color-success: #1b7448;
+  --color-on-success: #ffffff;
+  --color-success-container: #e2f2ea;
+  --color-on-success-container: #0a3d24;
+  --color-waiting: #8a5b00;
+  --color-warning-container: #f8f1de;
+  --color-on-warning-container: #4a3000;
+  --action-bg: #0e7490;
+  --action-fg: #ffffff;
+  --mark-tile: #15181b;
+  --mark-ink: #f7f8f4;
+  --mark-accent: #e7a51b;
+  --mark-edge: transparent;
+}
+
+[data-skin="cd"] {
+  color-scheme: dark;
+  --color-surface: #101413;
+  --color-surface-dim: #0b0e0d;
+  --color-surface-bright: #1c211f;
+  --color-surface-container-lowest: #1a1f1d;
+  --color-surface-container-low: #1e2421;
+  --color-surface-container: #232a26;
+  --color-surface-container-high: #29312c;
+  --color-surface-container-highest: #303833;
+  --color-surface-variant: #2c342f;
+  --color-background: #101413;
+  --color-on-surface: #f2f5f1;
+  --color-on-surface-variant: #aeb8b1;
+  --color-on-background: #f2f5f1;
+  --color-outline: #98a29c;
+  --color-outline-variant: #2f3732;
+  --color-control-outline: #6e776f;
+  --color-selected-surface: #39433d;
+  --color-primary: #63b3e8;
+  --color-on-primary: #06131c;
+  --color-primary-container: #123247;
+  --color-on-primary-container: #cfe9fb;
+  --color-secondary: #63b3e8;
+  --color-on-secondary: #06131c;
+  --color-secondary-container: #2a322e;
+  --color-on-secondary-container: #f2f5f1;
+  --color-error: #ff938a;
+  --color-on-error: #1d0806;
+  --color-error-container: #2d1513;
+  --color-on-error-container: #ffd2cc;
+  --color-success: #4ecf8b;
+  --color-on-success: #06130c;
+  --color-success-container: #12271c;
+  --color-on-success-container: #9ff0c4;
+  --color-waiting: #f0c45c;
+  --color-warning-container: #2b2110;
+  --color-on-warning-container: #ffe4a6;
+  --action-bg: #f2f5f1;
+  --action-fg: #101413;
+  --mark-tile: #2f2922;
+  --mark-ink: #f4efe6;
+  --mark-accent: #f2b53a;
+  --mark-edge: #5a4d3d;
+}
+
+[data-skin="pd"] {
+  color-scheme: dark;
+  --color-surface: #0d1519;
+  --color-surface-dim: #080e11;
+  --color-surface-bright: #1a262c;
+  --color-surface-container-lowest: #141e23;
+  --color-surface-container-low: #18232a;
+  --color-surface-container: #1d2a31;
+  --color-surface-container-high: #23323a;
+  --color-surface-container-highest: #2a3b44;
+  --color-surface-variant: #26353d;
+  --color-background: #0d1519;
+  --color-on-surface: #ebf3f7;
+  --color-on-surface-variant: #a7b8c2;
+  --color-on-background: #ebf3f7;
+  --color-outline: #90a3ad;
+  --color-outline-variant: #2c3b43;
+  --color-control-outline: #71838d;
+  --color-selected-surface: #33454e;
+  --color-primary: #47cbe2;
+  --color-on-primary: #04222a;
+  --color-primary-container: #0b3a45;
+  --color-on-primary-container: #bdeef8;
+  --color-secondary: #47cbe2;
+  --color-on-secondary: #04222a;
+  --color-secondary-container: #22323a;
+  --color-on-secondary-container: #ebf3f7;
+  --color-error: #ff938a;
+  --color-on-error: #1d0806;
+  --color-error-container: #2e1718;
+  --color-on-error-container: #ffd2cc;
+  --color-success: #4ecf8b;
+  --color-on-success: #06130c;
+  --color-success-container: #102a1f;
+  --color-on-success-container: #9ff0c4;
+  --color-waiting: #f0c45c;
+  --color-warning-container: #2a2414;
+  --color-on-warning-container: #ffe4a6;
+  --action-bg: #47cbe2;
+  --action-fg: #04222a;
+  --mark-tile: #26302f;
+  --mark-ink: #eaf4f5;
+  --mark-accent: #f2b53a;
+  --mark-edge: #3c4d50;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   This document's own chrome — deliberately neutral, so it never competes
+   with the app surfaces it frames.
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  --pg-bg: #ffffff;
+  --pg-ink: #14181c;
+  --pg-muted: #5a646d;
+  --pg-line: #e7eaee;
+  --pg-line-strong: #ccd3da;
+  --pg-tint: #f6f8fa;
+  --pass-bg: #e7f4ec;
+  --pass-ink: #16603a;
+  --fail-bg: #fbe9e7;
+  --fail-ink: #97201a;
+  --note-bg: #f4f7f9;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--pg-bg);
+  color: var(--pg-ink);
+  font-family: "IBM Plex Sans Variable", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 13.5px;
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+}
+h1, h2, h3, h4, p, dl, dd, dt, figure { margin: 0; }
+code, pre { font-family: var(--mono); }
+a { color: inherit; }
+::selection { background: #cfe6ee; color: #08222c; }
+
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 32px 96px; }
+
+/* sticky comparison switch */
+.top {
+  position: sticky; top: 0; z-index: 60;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid var(--pg-line);
+  backdrop-filter: blur(6px);
+}
+.top-in {
+  max-width: 1280px; margin: 0 auto; padding: 10px 32px;
+  display: flex; align-items: center; gap: 16px; justify-content: space-between;
+}
+.top-id { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex-wrap: wrap; }
+.top-title { font-size: 13.5px; font-weight: 600; }
+.top-sub { font-size: 12px; color: var(--pg-muted); }
+.switch {
+  display: inline-flex; flex: none; gap: 2px; padding: 2px;
+  border: 1px solid var(--pg-line-strong); border-radius: 10px; background: var(--pg-tint);
+}
+.switch button {
+  appearance: none; border: 1px solid transparent; border-radius: 8px;
+  background: transparent; color: var(--pg-muted);
+  font: inherit; font-size: 12.5px; font-weight: 500;
+  height: 32px; padding: 0 14px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.switch button:hover { color: var(--pg-ink); }
+.switch button[aria-pressed="true"] {
+  background: var(--pg-bg); color: var(--pg-ink);
+  border-color: var(--pg-line-strong); font-weight: 600;
+}
+.switch button:focus-visible { outline: 2px solid #14181c; outline-offset: 2px; }
+.switch-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pg-line-strong); }
+.switch button[aria-pressed="true"] .switch-dot { background: #14181c; }
+.switch button[data-set="proposed"] .switch-dot { background: #0e7490; }
+
+/* intro */
+.intro { padding: 54px 0 8px; max-width: 860px; }
+.kicker { font-size: 12.5px; color: var(--pg-muted); }
+.intro h1 {
+  margin-top: 8px; font-size: 30px; line-height: 1.15; letter-spacing: -0.02em;
+  font-weight: 600; text-wrap: balance;
+}
+.lede { margin-top: 14px; font-size: 14.5px; line-height: 1.6; color: #2b343b; }
+.lede code { font-size: 12.5px; background: var(--pg-tint); border: 1px solid var(--pg-line); border-radius: 5px; padding: 1px 5px; }
+.facts { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px 28px; border-top: 1px solid var(--pg-line); padding-top: 14px; }
+.fact { font-size: 12.5px; color: var(--pg-muted); }
+.fact b { color: var(--pg-ink); font-weight: 600; }
+
+/* section scaffolding */
+.sec { margin-top: 58px; scroll-margin-top: 72px; }
+.sec-head { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; align-items: start; margin-bottom: 16px; }
+.idx { font-family: var(--mono); font-size: 11.5px; color: #8b959d; padding-top: 5px; }
+.sec-head h2 { font-size: 18px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
+.cap { margin-top: 5px; font-size: 13px; color: var(--pg-muted); max-width: 82ch; }
+.flag { margin-top: 7px; font-family: var(--mono); font-size: 11px; color: #7b858d; }
+.panel {
+  border: 1px solid var(--pg-line-strong); border-radius: 14px;
+  background: var(--pg-bg); overflow: hidden;
+}
+.canvas {
+  border: 1px solid var(--pg-line-strong); border-radius: 14px;
+  overflow: hidden;
+  background: var(--color-background);
+}
+.canvas + .canvas { margin-top: 14px; }
+.minicap { margin-top: 8px; font-size: 12px; color: var(--pg-muted); }
+.minicap b { color: var(--pg-ink); font-weight: 600; }
+.stack { display: flex; flex-direction: column; gap: 14px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.grid2-wide { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 16px; align-items: start; }
+.phone-col { width: 390px; max-width: 100%; }
+@media (max-width: 1120px) {
+  .grid2, .grid2-wide, .split { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── app surface primitives (names mirror the app's own screens) ─────────── */
+.app {
+  background: var(--color-background);
+  color: var(--color-on-surface);
+  font-size: 13.5px;
+  line-height: 1.5;
+  min-width: 0;
+}
+.app .pad { padding: 20px; }
+.app .pad-sm { padding: 16px; }
+.app .num { font-variant-numeric: tabular-nums; }
+.app .muted { color: var(--color-on-surface-variant); }
+.app .card {
+  background: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 8px;
+}
+.app .ms {
+  font-family: "Material Symbols Rounded", sans-serif;
+  font-weight: normal; font-style: normal;
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+  line-height: 1; letter-spacing: normal; text-transform: none;
+  white-space: nowrap; word-wrap: normal; direction: ltr;
+  font-feature-settings: "liga"; -webkit-font-smoothing: antialiased;
+  user-select: none; display: inline-block; flex: none;
+}
+.app .ms-o {
+  font-family: "Material Symbols Outlined", sans-serif;
+  font-weight: normal; font-style: normal;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  line-height: 1; letter-spacing: normal; text-transform: none;
+  white-space: nowrap; word-wrap: normal; direction: ltr;
+  font-feature-settings: "liga"; -webkit-font-smoothing: antialiased;
+  user-select: none; display: inline-block; flex: none;
+}
+
+/* buttons — Arc geometry: 44 / 36 / 48, radius 10, 12.5px, 8px gap */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 0 16px;
+  border: 1px solid transparent; border-radius: 10px;
+  font: inherit; font-size: 12.5px; font-weight: 500; line-height: 1.5;
+  white-space: nowrap; cursor: pointer;
+  transition: background-color 180ms, color 180ms, border-color 180ms;
+}
+.btn .ms, .btn .ms-o { font-size: 16px; }
+.btn.sm { min-height: 36px; padding: 0 12px; }
+.btn.icon { width: 44px; min-height: 44px; padding: 0; }
+.btn.icon.sm { width: 36px; min-height: 36px; }
+.btn.icon .ms, .btn.icon .ms-o { font-size: 20px; }
+.btn-primary { background: var(--action-bg); color: var(--action-fg); border-color: var(--action-bg); }
+.btn-secondary { background: var(--color-surface-container-lowest); color: var(--color-on-surface); border-color: var(--color-control-outline); }
+.btn-ghost { background: transparent; color: var(--color-on-surface-variant); border-color: transparent; }
+.btn-danger { background: var(--color-surface-container-lowest); color: var(--color-error); border-color: var(--color-control-outline); }
+.btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+/* status chips — pale tint, 6px dot, radius 4 */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  border-radius: 4px; padding: 2px 8px;
+  font-size: 11.5px; font-weight: 500; line-height: 1.4; white-space: nowrap;
+}
+.dot { width: 6px; height: 6px; border-radius: 50%; flex: none; display: inline-block; }
+.bg-success { background: var(--color-success); }
+.bg-primary { background: var(--color-primary); }
+.bg-error { background: var(--color-error); }
+.bg-outline { background: var(--color-outline); }
+.chip-success { background: var(--color-success-container); color: var(--color-on-success-container); }
+.chip-primary { background: var(--color-primary-container); color: var(--color-on-primary-container); }
+.chip-error { background: var(--color-error-container); color: var(--color-on-error-container); }
+.chip-neutral { background: var(--color-surface-container); color: var(--color-on-surface-variant); }
+.chip-warning { background: var(--color-warning-container); color: var(--color-on-warning-container); }
+
+/* fields, dropdown triggers, date trigger — control height 36 / 44 / 48 */
+.field {
+  display: block; width: 100%; height: 48px;
+  border: 1px solid var(--color-control-outline); border-radius: 10px;
+  background: var(--color-surface-container-lowest); color: var(--color-on-surface);
+  font: inherit; font-size: 15px; padding: 0 12px;
+}
+.field::placeholder { color: var(--color-on-surface-variant); }
+.field-label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--color-on-surface); }
+.field-hint { margin-top: 6px; font-size: 12px; color: var(--color-on-surface-variant); }
+.dd {
+  display: inline-flex; align-items: center; gap: 8px; height: 36px;
+  padding: 0 12px; border: 1px solid var(--color-control-outline); border-radius: 10px;
+  background: var(--color-surface-container-lowest); color: var(--color-on-surface);
+  font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer;
+}
+.dd .chev { color: var(--color-on-surface-variant); display: block; flex: none; }
+.date-trigger {
+  display: inline-flex; align-items: center; gap: 9px; height: 44px;
+  padding: 0 12px; border: 1px solid var(--color-control-outline); border-radius: 10px;
+  background: var(--color-surface-container-lowest); color: var(--color-on-surface);
+  font: inherit; font-size: 12.5px; font-weight: 400; cursor: pointer;
+}
+.date-trigger .cal, .date-trigger .chev { color: var(--color-on-surface-variant); flex: none; display: block; }
+.date-trigger .val { font-variant-numeric: tabular-nums; }
+
+/* segmented control — dash-box: 36px track, 4px thumb, 12.5px labels */
+.seg {
+  display: inline-flex; align-items: stretch; height: 36px; padding: 2px;
+  border: 1px solid var(--color-outline-variant); border-radius: 8px;
+  background: var(--color-surface-container-low);
+}
+.seg button {
+  flex: 1 1 0; min-width: 0; padding: 0 10px; border: 1px solid transparent; white-space: nowrap;
+  border-radius: 4px; background: transparent; color: var(--color-on-surface-variant);
+  font: inherit; font-size: 12.5px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.seg button[aria-pressed="true"] {
+  background: var(--color-selected-surface); border-color: var(--color-outline-variant);
+  color: var(--color-on-surface); font-weight: 500;
+}
+.seg.pill { height: 44px; border-radius: 6px; background: var(--color-surface-container-high); }
+
+/* app page header */
+.a-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.a-head h1 { font-size: 24px; line-height: 1.2; letter-spacing: -0.01em; font-weight: 600; }
+.a-sub { margin-top: 5px; font-size: 13.5px; line-height: 20px; color: var(--color-on-surface-variant); }
+.a-find { margin-top: 9px; display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; font-weight: 500; line-height: 20px; }
+.a-find .dot { margin-top: 7px; }
+.a-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.scope {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--color-outline-variant);
+  border-bottom: 1px solid var(--color-outline-variant);
+}
+.scope .right { margin-inline-start: auto; font-size: 11.5px; color: var(--color-on-surface-variant); }
+.sec-title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.sec-title { font-size: 15px; font-weight: 600; }
+.sec-meta { font-size: 12px; color: var(--color-on-surface-variant); }
+
+/* KPI / summary */
+.sum-band { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.6fr); }
+.sum-left { padding: 16px 20px; border-inline-end: 1px solid var(--color-outline-variant); }
+.sum-label { font-size: 11.5px; font-weight: 500; color: var(--color-on-surface-variant); }
+.sum-figure { margin-top: 8px; display: flex; align-items: baseline; gap: 8px; }
+.sum-figure .big { font-size: 34px; line-height: 1; font-weight: 600; letter-spacing: -0.02em; }
+.sum-figure .of { font-size: 13.5px; color: var(--color-on-surface-variant); }
+.sum-bar { margin-top: 16px; display: flex; gap: 2px; height: 8px; border-radius: 999px; overflow: hidden; background: var(--color-surface-container); }
+.sum-bar span { height: 100%; flex: 1 1 0; }
+.sum-foot { margin-top: 8px; font-size: 11.5px; line-height: 16px; color: var(--color-on-surface-variant); }
+.sum-cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sum-cells > div + div { border-inline-start: 1px solid var(--color-outline-variant); }
+.kpi { padding: 14px 20px 15px; min-width: 0; }
+.kpi-label { display: flex; align-items: flex-start; gap: 6px; font-size: 11.5px; line-height: 16px; font-weight: 500; color: var(--color-on-surface-variant); }
+.kpi-label .dot { margin-top: 5px; }
+.kpi-value { margin-top: 6px; font-size: 26px; line-height: 1; font-weight: 600; letter-spacing: -0.02em; }
+.kpi-foot { margin-top: 6px; font-size: 11px; line-height: 16px; color: var(--color-on-surface-variant); }
+.kpi-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.kpi-strip .kpi { border-inline-start: 1px solid var(--color-outline-variant); }
+.kpi-strip .kpi:first-child { border-inline-start: 0; }
+@media (max-width: 700px) {
+  .sum-band { grid-template-columns: minmax(0, 1fr); }
+  .sum-left { border-inline-end: 0; border-bottom: 1px solid var(--color-outline-variant); }
+  .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi-strip .kpi:nth-child(odd) { border-inline-start: 0; }
+  .kpi-strip .kpi:nth-child(n + 3) { border-top: 1px solid var(--color-outline-variant); }
+}
+
+/* tables — 40px header, 44px rows, zebra, no row rule */
+.tbl-wrap { overflow-x: auto; overscroll-behavior-x: contain; }
+.tbl { width: 100%; border-collapse: collapse; text-align: start; }
+.tbl th, .tbl td { padding: 0 16px; text-align: start; height: 44px; font-weight: 400; vertical-align: middle; white-space: nowrap; }
+.tbl thead th { height: 40px; font-size: 11.5px; color: var(--color-on-surface-variant); border-bottom: 1px solid var(--color-outline-variant); }
+.tbl tbody th { font-size: 13.5px; font-weight: 500; color: var(--color-on-surface); }
+.tbl tbody td { font-size: 13px; color: var(--color-on-surface); }
+.tbl .end { text-align: end; }
+.tbl tbody tr:nth-child(even) { background: var(--color-surface-container-low); }
+.tbl .soft { color: var(--color-on-surface-variant); }
+.tbl .rec { display: inline-flex; align-items: center; gap: 8px; }
+.tbl .rec-date { font-size: 13px; color: var(--color-on-surface-variant); }
+.tbl .pct { font-weight: 500; }
+.tbl .att { color: var(--color-on-surface-muted, var(--color-on-surface-variant)); }
+.tbl .name { font-size: 13.5px; font-weight: 500; }
+.tbl .off { color: var(--color-primary); font-size: 13px; }
+.tbl .rowbtn { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--color-on-surface-variant); font: inherit; font-size: 12.5px; font-weight: 500; }
+.tbl .rowbtn .ms-o { font-size: 16px; }
+.tbl .rowbtn:hover { background: var(--color-surface-container); color: var(--color-on-surface); }
+.tbl tbody tr:hover { background: var(--color-surface-container); }
+
+/* toolbar */
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.search {
+  display: inline-flex; align-items: center; gap: 8px; height: 36px; width: 224px; max-width: 100%;
+  padding: 0 10px; border: 1px solid var(--color-control-outline); border-radius: 999px;
+  background: var(--color-surface-container-lowest); color: var(--color-on-surface);
+  font-size: 12.5px;
+}
+.search .ms-o { font-size: 18px; color: var(--color-on-surface-variant); }
+.search .q { flex: 1 1 auto; min-width: 0; border: 0; background: transparent; font: inherit; color: inherit; outline: none; }
+.search .x { color: var(--color-on-surface-variant); display: grid; place-items: center; width: 22px; height: 22px; border: 0; background: transparent; border-radius: 50%; cursor: pointer; }
+.search .x .ms-o { font-size: 16px; }
+
+/* pagination */
+.pager-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.pager-row p { font-size: 12.5px; color: var(--color-on-surface-variant); }
+.pager { display: flex; align-items: center; gap: 4px; }
+.pager button {
+  position: relative; display: grid; place-items: center; width: 36px; height: 36px;
+  border: 1px solid transparent; border-radius: 10px; background: transparent;
+  color: var(--color-on-surface-variant); font: inherit; font-size: 11px;
+  font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.pager button[aria-current="page"] { border-color: var(--color-outline-variant); background: var(--color-surface-container-lowest); color: var(--color-on-surface); }
+.pager button .ms-o { font-size: 18px; }
+.pager button:disabled { opacity: 0.4; }
+
+/* shell / rail */
+.shell { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 372px; }
+.rail {
+  border-inline-end: 1px solid var(--color-outline-variant);
+  background: var(--color-background);
+  padding: 16px 12px 12px;
+  display: flex; flex-direction: column;
+}
+.rail-brand { display: flex; align-items: flex-start; gap: 10px; padding: 0 8px; }
+.rail-brand .mk { flex: none; width: 30px; height: 30px; }
+.brand-name { font-size: 14px; font-weight: 600; line-height: 20px; }
+.brand-sub { font-size: 11.5px; line-height: 16px; color: var(--color-on-surface-variant); }
+.rail-nav { margin-top: 28px; display: flex; flex-direction: column; gap: 24px; flex: 1 1 auto; }
+.nav-group { display: flex; flex-direction: column; gap: 4px; }
+.nav-label { padding: 0 8px 4px; font-size: 11px; font-weight: 500; color: var(--color-on-surface-variant); }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 8px;
+  border-radius: 6px; font-size: 13.5px; color: var(--color-on-surface-variant); text-decoration: none;
+}
+.nav-item .ms-o { font-size: 18px; color: var(--color-outline); }
+.nav-item[aria-current="page"] { background: var(--color-secondary-container); color: var(--color-on-secondary-container); font-weight: 500; }
+.nav-item[aria-current="page"] .ms-o { color: var(--color-on-secondary-container); }
+.rail-foot { margin-top: 24px; border-top: 1px solid var(--color-outline-variant); padding-top: 12px; display: flex; flex-direction: column; gap: 2px; }
+.rail-row {
+  display: flex; align-items: center; gap: 8px; width: 100%; height: 36px; padding: 0 8px;
+  border: 0; border-radius: 10px; background: transparent; text-align: start;
+  color: var(--color-on-surface-variant); font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer;
+}
+.rail-row .ms-o { font-size: 18px; color: var(--color-outline); }
+.rail-utils { margin-top: 4px; display: flex; align-items: center; gap: 4px; padding: 0 2px; }
+.rail-user { margin-top: 8px; display: flex; align-items: center; gap: 8px; padding: 0 8px 2px; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--color-surface-container); color: var(--color-on-surface); display: grid; place-items: center; font-size: 11px; font-weight: 600; flex: none; }
+.rail-user .who { font-size: 12.5px; font-weight: 500; line-height: 16px; }
+.rail-user .role { font-size: 11.5px; line-height: 16px; color: var(--color-on-surface-variant); }
+.main-col { min-width: 0; }
+
+/* director phone top bar */
+.topbar { border-bottom: 1px solid var(--color-outline-variant); background: var(--color-background); padding: 0 12px; }
+.topbar-in { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; }
+.topbar-id { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.topbar-id .mk { width: 24px; height: 24px; flex: none; }
+.topbar-title { font-size: 13.5px; font-weight: 600; line-height: 16px; }
+.topbar-sub { font-size: 11px; line-height: 16px; color: var(--color-on-surface-variant); }
+
+/* driver app bar */
+.drvbar { background: var(--color-surface-container-lowest); border-bottom: 1px solid var(--color-outline-variant); }
+.drvbar-in { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 56px; padding: 0 16px; }
+.drvbar-id { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.bus-tile { width: 36px; height: 36px; border-radius: 8px; background: var(--color-surface-container); color: var(--color-on-surface); display: grid; place-items: center; flex: none; }
+.bus-tile .ms { font-size: 20px; }
+.drvbar h1 { font-size: 16px; font-weight: 600; line-height: 20px; }
+.drvbar .stat { display: flex; align-items: center; gap: 6px; font-size: 11.5px; line-height: 16px; color: var(--color-on-surface-variant); }
+.drvbar .stat .sep { color: var(--color-on-surface-variant); }
+.rail-ticks { display: flex; align-items: center; gap: 1px; padding: 0 16px 8px; }
+.rail-ticks span { height: 4px; flex: 1 1 0; min-width: 2px; border-radius: 999px; }
+
+/* driver summary strip + roster */
+.strip { border-radius: 12px; overflow: hidden; }
+.strip-cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.strip-cells > div { padding: 12px 4px; text-align: center; }
+.strip-cells > div + div { border-inline-start: 1px solid var(--color-outline-variant); }
+.strip-value { font-size: 20px; line-height: 24px; font-weight: 600; }
+.strip-label { margin-top: 2px; display: flex; align-items: flex-start; justify-content: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--color-on-surface-variant); }
+.strip-label .dot { margin-top: 5px; }
+.strip-bar { display: flex; gap: 2px; height: 6px; background: var(--color-surface-container); }
+.strip-bar span { height: 100%; flex: 1 1 0; }
+.roster { border-top: 1px solid var(--color-outline-variant); }
+.roster-row { display: flex; align-items: center; gap: 8px; min-height: 68px; padding: 10px 14px; border-bottom: 1px solid var(--color-outline-variant); }
+.roster-row:last-child { border-bottom: 0; }
+.roster-who { flex: 1 1 auto; min-width: 0; }
+.roster-name { font-size: 15.5px; font-weight: 500; line-height: 20px; }
+.roster-grade { margin-top: 2px; font-size: 12px; line-height: 16px; color: var(--color-on-surface-variant); }
+.pill {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 44px; min-width: 104px; padding: 0 10px; border: 0; border-radius: 8px;
+  font: inherit; font-size: 12px; font-weight: 500; white-space: nowrap; cursor: pointer;
+}
+.pill .ms { font-size: 15px; }
+
+/* fleet rows */
+.fleet { border-radius: 8px; overflow: hidden; }
+.fleet-row {
+  display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.5fr) auto auto;
+  align-items: center; gap: 20px;
+  padding: 16px; border-bottom: 1px solid var(--color-outline-variant);
+}
+.fleet-row:last-child { border-bottom: 0; }
+.fleet-row .bus-name { font-size: 14px; font-weight: 600; }
+.fleet-row .driver { margin-top: 2px; font-size: 12px; color: var(--color-on-surface-variant); }
+.run-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11.5px; color: var(--color-on-surface-variant); }
+.route { position: relative; height: 6px; margin-top: 9px; border-radius: 999px; background: var(--color-surface-container); }
+.route .fill { position: absolute; inset-block: 0; inset-inline-start: 0; border-radius: 999px; background: var(--color-outline); }
+.route .fill.live { background: var(--color-primary); }
+.route .bead { position: absolute; top: 50%; width: 14px; height: 14px; margin-top: -7px; margin-inline-start: -7px; border-radius: 50%; background: var(--color-surface-container-lowest); border: 2px solid var(--color-primary); }
+.fleet-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; width: 192px; }
+.fleet-counts .v { font-size: 14px; font-weight: 600; line-height: 20px; }
+.fleet-counts .l { font-size: 11.5px; line-height: 16px; color: var(--color-on-surface-variant); }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px; border-radius: 4px;
+  padding: 4px 8px; font-size: 11.5px; font-weight: 500; white-space: nowrap;
+}
+.chev { color: var(--color-outline); font-size: 18px; }
+
+/* dialog */
+.scrim { background: rgba(9, 12, 11, 0.4); padding: 26px 20px; display: grid; place-items: center; }
+.dialog {
+  width: 100%; max-width: 880px; border-radius: 12px; overflow: hidden;
+  background: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  box-shadow: 0 18px 48px rgba(9, 12, 11, 0.28), 0 2px 6px rgba(9, 12, 11, 0.12);
+}
+.dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 24px; border-bottom: 1px solid var(--color-outline-variant); background: var(--color-surface-container-low); }
+.dialog-head h2 { font-size: 24px; font-weight: 600; line-height: 1.2; }
+.dialog-head .hint { margin-top: 4px; font-size: 12.5px; line-height: 16px; color: var(--color-on-surface-variant); }
+.dialog-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; }
+.dialog-figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dialog-figs > div { min-width: 0; }
+.dialog-figs > div + div { border-inline-start: 1px solid var(--color-outline-variant); padding-inline-start: 16px; }
+.dialog-figs .l { font-size: 11.5px; line-height: 16px; color: var(--color-on-surface-variant); }
+.dialog-figs .v { margin-top: 5px; font-size: 20px; font-weight: 600; line-height: 1.1; }
+.dialog-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px; border-top: 1px solid var(--color-outline-variant); background: var(--color-surface-container-low); flex-wrap: wrap; }
+.dialog-foot p { font-size: 12.5px; color: var(--color-on-surface-variant); }
+.dialog-foot .acts { display: flex; gap: 8px; margin-inline-start: auto; }
+.tbl.dialog-tbl { min-width: 620px; }
+.tbl.dialog-tbl tbody tr.seq-end { border-bottom: 1px solid var(--color-outline); }
+
+/* login */
+.login-ground { padding: 40px 20px 44px; display: flex; justify-content: center; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+.login-card {
+  width: 400px; max-width: 100%;
+  border: 1px solid var(--color-outline-variant); border-radius: 16px;
+  background: var(--color-surface-container-lowest);
+  padding: 28px;
+}
+.login-brand { display: flex; align-items: center; gap: 10px; }
+.login-brand .mk { width: 32px; height: 32px; flex: none; }
+.login-card h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; line-height: 28px; }
+.login-sub { margin-top: 8px; font-size: 13.5px; line-height: 20px; color: var(--color-on-surface-variant); }
+.login-form { margin-top: 22px; display: flex; flex-direction: column; gap: 16px; }
+.login-label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+.otp { display: flex; gap: 8px; }
+.otp span {
+  display: grid; place-items: center; width: 42px; height: 48px;
+  border: 1px solid var(--color-control-outline); border-radius: 10px;
+  background: var(--color-surface-container-lowest);
+  font-size: 16px; font-weight: 500;
+}
+.otp span.filled { border-color: var(--color-primary); background: var(--color-primary-container); }
+.otp span.caret { border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary) inset; }
+.otp-hint { margin-top: 8px; font-size: 11px; line-height: 16px; color: var(--color-on-surface-variant); }
+
+/* controls inventory */
+.ctl { padding: 18px 20px; display: flex; flex-direction: column; gap: 0; }
+.ctl-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 16px 0; border-top: 1px solid var(--color-outline-variant); }
+.ctl-row:first-child { border-top: 0; padding-top: 0; }
+.ctl-label { flex: 0 0 132px; font-size: 12px; color: var(--color-on-surface-variant); }
+.ctl-note { flex: 1 1 100%; font-size: 11.5px; color: var(--color-on-surface-variant); padding-inline-start: 144px; }
+.tabs-rail { position: relative; display: flex; border-bottom: 1px solid var(--color-outline-variant); }
+.tabs-rail button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 48px; min-width: 88px; padding: 0 10px; border: 0; background: transparent; color: var(--color-on-surface-variant); font: inherit; font-size: 12.5px; cursor: pointer; }
+.tabs-rail button[aria-pressed="true"] { color: var(--color-on-surface); font-weight: 600; }
+.tabs-rail .count { font-size: 11px; color: var(--color-on-surface-variant); }
+.tabs-rail .underline { position: absolute; bottom: 0; left: 0; height: 2px; width: 33.333%; border-radius: 999px; background: var(--color-on-surface); }
+
+/* variant strip */
+.variants { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; width: 100%; }
+.variant { border: 1px solid var(--color-outline-variant); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--color-surface-container-lowest); }
+.variant-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.variant-name { font-size: 12px; font-weight: 600; }
+.variant-hex { font-family: var(--mono); font-size: 11px; color: var(--color-on-surface-variant); }
+.variant .btn, .variant .chip { align-self: flex-start; }
+.variant .r { align-self: flex-start; }
+.variant .chip { font-size: 11.5px; }
+
+/* ratio badges (this document's own read-out, page colours) */
+.r {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--mono); font-size: 10.5px; line-height: 1.4;
+  padding: 0 5px; border-radius: 4px; white-space: nowrap;
+  background: var(--pass-bg); color: var(--pass-ink);
+}
+.r.mid { background: #eef2e9; color: #4a5a22; }
+.r.bad { background: var(--fail-bg); color: var(--fail-ink); }
+.r.quiet { background: var(--pg-tint); color: var(--pg-muted); font-style: normal; }
+.r-lg { font-size: 11px; padding: 1px 6px; }
+
+/* palette table */
+.pal-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 18px; border-bottom: 1px solid var(--pg-line); background: var(--pg-tint); }
+.pal-legend { display: flex; gap: 18px; flex-wrap: wrap; }
+.legend-item { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--pg-muted); }
+.legend-sw { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--pg-line-strong); box-shadow: inset 0 0 0 1px rgba(20, 24, 28, 0.14); }
+.pal-scroll { overflow-x: auto; }
+.tokens { width: 100%; border-collapse: collapse; min-width: 980px; }
+.tokens th, .tokens td { text-align: start; vertical-align: top; padding: 10px 14px; }
+.tokens thead th { font-size: 11.5px; font-weight: 600; color: var(--pg-muted); border-bottom: 1px solid var(--pg-line); white-space: nowrap; }
+.tokens thead th.group { color: var(--pg-ink); border-bottom: 1px solid var(--pg-line); }
+.tokens thead tr:first-child th { padding-bottom: 6px; }
+.tokens tbody tr { border-top: 1px solid var(--pg-line); }
+.tokens tbody tr:hover { background: #fbfcfd; }
+.tokens .tk { font-family: var(--mono); font-size: 11.5px; color: var(--pg-ink); white-space: nowrap; }
+.tokens .role { display: block; margin-top: 3px; font-family: "IBM Plex Sans Variable", system-ui, sans-serif; font-size: 12px; color: var(--pg-muted); }
+.tokens .cell { display: flex; gap: 8px; align-items: flex-start; }
+.tokens .sw { width: 26px; height: 26px; border-radius: 6px; border: 1px solid rgba(20, 24, 28, 0.14); flex: none; display: grid; place-items: center; font-size: 11px; font-weight: 500; }
+.tokens .hex { font-family: var(--mono); font-size: 11.5px; color: var(--pg-ink); }
+.tokens .pairs { margin-top: 4px; display: flex; flex-direction: column; gap: 3px; }
+.tokens .pair { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--pg-muted); white-space: nowrap; }
+.tokens .pairs .r { flex: none; }
+.tokens .group-sep { border-inline-start: 1px solid var(--pg-line); }
+
+/* dark frames */
+.dark-stack { display: flex; flex-direction: column; gap: 14px; }
+.dark-frame { border: 1px solid var(--pg-line-strong); border-radius: 14px; overflow: hidden; }
+.dark-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 14px; background: var(--pg-tint); border-bottom: 1px solid var(--pg-line); }
+.dark-name { font-size: 12px; font-weight: 600; }
+.dark-tag { font-family: var(--mono); font-size: 11px; color: var(--pg-muted); }
+.dark-frame.active { outline: 2px solid #14181c; outline-offset: 2px; }
+.dark-shell { display: grid; grid-template-columns: 216px minmax(0, 1fr); }
+.dark-rail { border-inline-end: 1px solid var(--color-outline-variant); padding: 12px 10px; display: flex; flex-direction: column; gap: 10px; }
+.dark-rail .rail-brand { padding: 0 6px; }
+.dark-rail .brand-name { font-size: 13px; }
+.dark-rail .brand-sub { font-size: 10.5px; }
+.dark-rail .nav-item { height: 32px; font-size: 12.5px; gap: 8px; padding: 0 6px; }
+.dark-rail .nav-item .ms-o { font-size: 16px; }
+.dark-rail .nav-label { font-size: 10.5px; padding: 0 6px 3px; }
+.dark-main { min-width: 0; }
+
+/* footer */
+.foot { margin-top: 64px; }
+.paste-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #10161a; }
+.paste {
+  margin: 0; padding: 20px 22px; overflow-x: auto;
+  background: transparent; color: #dbe7ec;
+  font-family: var(--mono); font-size: 11px; line-height: 1.6;
+  border-radius: 0;
+}
+.paste-grid .paste:first-child { border-inline-end: 1px solid #24323a; }
+@media (max-width: 1100px) {
+  .paste-grid { grid-template-columns: minmax(0, 1fr); }
+  .paste-grid .paste:first-child { border-inline-end: 0; border-bottom: 1px solid #24323a; }
+}
+.paste .c { color: #8aa3ad; }
+.paste .k { color: #7fd6e6; }
+.paste .v { color: #f0d9a8; }
+.paste .sel { color: #b7c9d1; }
+.paste .hl { background: rgba(127, 214, 230, 0.12); border-radius: 3px; padding: 0 2px; }
+.foot-note { padding: 18px 22px 20px; border-top: 1px solid var(--pg-line); display: flex; flex-direction: column; gap: 10px; }
+.foot-note p { font-size: 12.5px; color: var(--pg-muted); max-width: 96ch; }
+.foot-note b { color: var(--pg-ink); }
+.foot-note code { background: var(--pg-tint); border: 1px solid var(--pg-line); border-radius: 5px; padding: 1px 5px; font-size: 11.5px; }
+.copybar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px; background: var(--pg-tint); border-bottom: 1px solid var(--pg-line); flex-wrap: wrap; }
+.copybar .t { font-size: 12px; color: var(--pg-muted); }
+.copy {
+  height: 32px; padding: 0 12px; border: 1px solid var(--pg-line-strong); border-radius: 8px;
+  background: var(--pg-bg); color: var(--pg-ink); font: inherit; font-size: 12px; font-weight: 500; cursor: pointer;
+}
+.copy:hover { background: #f1f5f7; }
+
+/* narrow-screens: the app surfaces keep their desktop pitch and scroll inside,
+   exactly like the app's own overflow-x-auto frames. */
+@media (max-width: 900px) {
+  /* PageHeader's own phone behaviour: actions leave the baseline row and share
+     a full-width line, so nothing runs past a 390px crop. */
+  .a-head { flex-direction: column; align-items: stretch; gap: 14px; }
+  .a-actions { width: 100%; }
+  .a-actions .btn { flex: 1 1 128px; min-height: 44px; }
+  /* The laptop shell crop is not shown at phone widths: the phone shell below
+     it is the same chrome, and a 760px crop cut at 358px reads as breakage. */
+  .split > .canvas { display: none; }
+  .scope .right { margin-inline-start: 0; }
+}
+@media (max-width: 760px) {
+  .wrap { padding: 0 16px 64px; }
+  .top-in { padding: 8px 16px; flex-wrap: wrap; gap: 8px; }
+  .intro { padding-top: 32px; }
+  .intro h1 { font-size: 24px; }
+  .lede { font-size: 13.5px; }
+  .sec-head { grid-template-columns: 24px minmax(0, 1fr); gap: 8px; }
+  .tokens { min-width: 900px; }
+  .variants { grid-template-columns: minmax(0, 1fr); }
+  .ctl-label { flex-basis: 100%; }
+  .ctl-note { padding-inline-start: 0; }
+  .dark-shell { grid-template-columns: minmax(0, 1fr); }
+  .dark-rail { display: none; }
+  .login-card { padding: 20px; }
+  .dialog { border-radius: 12px; }
+  .fleet-row { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .fleet-counts { width: 100%; }
+  .sum-band { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* late additions */
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.mk { display: block; }
+.rtl-note { color: var(--pg-muted); }
+/* the route line is 2px in the app, the bead 20px with a 12px glyph */
+.route { height: 2px; }
+.route .bead { width: 20px; height: 20px; margin-top: -10px; margin-inline-start: -10px; display: grid; place-items: center; border: 0; background: var(--color-primary); }
+.route .bead .ms-o { font-size: 12px; color: var(--color-on-primary); }
+.route .bead.done { background: var(--color-surface-container-lowest); border: 1px solid var(--color-outline); }
+.route .bead.done .ms-o { color: var(--color-outline); }
+.roster { background: transparent; border-top: 1px solid var(--color-outline-variant); }
+.roster .roster-row { background: transparent; }
+.roster .roster-row:hover { background: var(--color-surface-container-low); }
+.dark-frame .kpi-value { letter-spacing: -0.01em; }
+#dark-grid .pal-head { align-items: center; }
+/* the switch's dots stay brand-fixed, so the control never lies about which set is live */
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="pm" viewBox="0 0 28 28">
+    <rect width="28" height="28" rx="7" fill="var(--mark-tile)" stroke="var(--mark-edge)" stroke-width="1" />
+    <path d="M7 19h7.4a4.6 4.6 0 0 0 4.6-4.6V9" stroke="var(--mark-ink)" stroke-width="2" stroke-linecap="round" fill="none" />
+    <circle cx="7" cy="19" r="2.4" fill="var(--mark-accent)" />
+    <circle cx="19" cy="9" r="2.2" fill="var(--mark-ink)" />
+  </symbol>
+  <symbol id="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m6 9 6 6 6-6" />
+  </symbol>
+  <symbol id="cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <path d="M16 2v4M8 2v4M3 10h18" />
+    <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" />
+  </symbol>
+  <symbol id="find" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
+  </symbol>
+  <symbol id="cross" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 6 6 18M6 6l12 12" />
+  </symbol>
+</svg>
+
+<header class="top">
+  <div class="top-in">
+    <div class="top-id">
+      <p class="top-title">Colour preview — cyan-blue accent</p>
+      <p class="top-sub">School Bus Transit · same markup, two token sets</p>
+    </div>
+    <div class="switch" role="group" aria-label="Token set">
+      <button type="button" data-set="current" aria-pressed="true"><span class="switch-dot"></span>Current</button>
+      <button type="button" data-set="proposed" aria-pressed="false"><span class="switch-dot"></span>Proposed</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="intro">
+    <p class="kicker">Decision artifact · 3 September 2025 · director review</p>
+    <h1>A cyan-blue accent, on a cooler paper.</h1>
+    <p class="lede">
+      Today the app is a warm grey sheet, near-black ink, and route blue for everything that is data:
+      the ground is <code>#f3f4f1</code>, the accent <code>#0f5586</code>, and the one committing button is
+      simply ink. This page puts the same screens on a cooler, lighter ground and moves the single
+      accent into cyan-blue, so paper, ink and data read as three tiers instead of two.
+    </p>
+    <p class="lede" style="margin-top:10px">
+      Nothing in <code>src/**</code> is touched. The toggle in the bar above swaps the whole page's
+      <code>--color-*</code> values — the same markup, two token sets — so what you compare is exactly
+      what a one-file change would ship.
+    </p>
+    <div class="facts">
+      <span class="fact"><b>32</b> students on the roll</span>
+      <span class="fact">buses <b>01–04</b></span>
+      <span class="fact">grades <b>4</b> and <b>5</b></span>
+      <span class="fact">every pair measured, <b>WCAG AA</b></span>
+      <span class="fact">light + dark</span>
+    </div>
+  </section>
+
+  <section class="sec" id="palette">
+    <div class="sec-head">
+      <span class="idx">01</span>
+      <div>
+        <h2>Palette</h2>
+        <p class="cap">
+          The same token names the app already uses, with the proposed values beside the shipped ones.
+          Every ratio under a swatch is measured by the page's own contrast helper at load, and every
+          text pair shown clears 4.5:1; field and divider edges are measured against their 3:1 target.
+        </p>
+        <p class="flag">src/globals.css · :root · .dark · --color-* and --color-dash-*</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="pal-head">
+        <div class="pal-legend">
+          <span class="legend-item"><span class="legend-sw" style="background:#f3f4f1"></span>Current light</span>
+          <span class="legend-item"><span class="legend-sw" style="background:#f4f8fa"></span>Proposed light</span>
+          <span class="legend-item"><span class="legend-sw" style="background:#101413"></span>Current dark</span>
+          <span class="legend-item"><span class="legend-sw" style="background:#0d1519"></span>Proposed dark</span>
+        </div>
+        <p class="legend-item">measured in-page · WCAG 2.1 relative luminance</p>
+      </div>
+      <div class="pal-scroll">
+        <table class="tokens">
+          <thead>
+            <tr>
+              <th rowspan="2">Token</th>
+              <th colspan="2" class="group" style="border-inline-start:1px solid var(--pg-line)">Light</th>
+              <th colspan="2" class="group" style="border-inline-start:1px solid var(--pg-line)">Dark</th>
+            </tr>
+            <tr>
+              <th class="group-sep">Current</th>
+              <th>Proposed</th>
+              <th class="group-sep">Current</th>
+              <th>Proposed</th>
+            </tr>
+          </thead>
+          <tbody id="pal-body"></tbody>
+        </table>
+      </div>
+      <div class="foot-note">
+        <p>
+          <b>How to read it.</b> A filled square is the token's own colour; the two lines beside it are the
+          text pairs that token carries, with the measured ratio. <code>4.5</code> is the body-text floor,
+          <code>3.0</code> the floor for a field edge or a 1px control boundary. The quiet divider
+          (<code>--color-outline-variant</code>) is deliberately below 3:1 in both sets — it separates two
+          surfaces of the same card, it is not a control edge.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="shell">
+    <div class="sec-head">
+      <span class="idx">02</span>
+      <div>
+        <h2>App shell, rail and top bar</h2>
+        <p class="cap">
+          The rail and the canvas now share one cool paper instead of warm grey, and the active row takes a
+          pale cyan tint — still a tint, never a saturated brand pill. The committing action is cyan instead
+          of ink, and on a phone the same bar keeps its white surface while the ground behind it cools.
+        </p>
+        <p class="flag">--color-background · --color-secondary-container · --color-primary</p>
+      </div>
+    </div>
+
+    <div class="split">
+    <div class="canvas">
+      <div class="app">
+        <div class="shell">
+          <aside class="rail">
+            <div class="rail-brand">
+              <svg class="mk" aria-hidden="true"><use href="#pm"></use></svg>
+              <div>
+                <p class="brand-name">School Bus Transit</p>
+                <p class="brand-sub">Greenfield Primary</p>
+              </div>
+            </div>
+            <nav class="rail-nav" aria-label="Main">
+              <div class="nav-group">
+                <p class="nav-label">Operate</p>
+                <a class="nav-item" href="#shell" aria-current="page"><span class="ms-o" aria-hidden="true">map</span>Live monitor</a>
+                <a class="nav-item" href="#shell"><span class="ms-o" aria-hidden="true">groups</span>Students</a>
+                <a class="nav-item" href="#shell"><span class="ms-o" aria-hidden="true">assessment</span>Reports</a>
+              </div>
+              <div class="nav-group">
+                <p class="nav-label">Manage</p>
+                <a class="nav-item" href="#shell"><span class="ms-o" aria-hidden="true">assignment_ind</span>Assignments</a>
+                <a class="nav-item" href="#shell"><span class="ms-o" aria-hidden="true">badge</span>Drivers</a>
+              </div>
+            </nav>
+            <div class="rail-foot">
+              <button type="button" class="rail-row"><span class="ms-o" aria-hidden="true">help</span>Help</button>
+              <button type="button" class="rail-row"><span class="ms-o" aria-hidden="true">settings</span>Settings</button>
+              <div class="rail-utils">
+                <button type="button" class="btn btn-ghost icon sm" aria-label="Language"><span class="ms-o" aria-hidden="true">translate</span></button>
+                <button type="button" class="btn btn-ghost icon sm" aria-label="Theme"><span class="ms-o" aria-hidden="true">dark_mode</span></button>
+              </div>
+              <div class="rail-user">
+                <span class="avatar">AC</span>
+                <span>
+                  <span class="who">Avery Chen</span>
+                  <span class="role">Director</span>
+                </span>
+              </div>
+            </div>
+          </aside>
+          <div class="main-col">
+            <div class="pad">
+              <div class="a-head">
+                <div>
+                  <h1>Live monitor</h1>
+                  <p class="a-sub">Greenfield Primary · 3 Sep · Morning pickup</p>
+                  <p class="a-find"><span class="dot bg-primary"></span><span>Still to account for: 3 of 32 students.</span></p>
+                </div>
+                <div class="a-actions">
+                  <button type="button" class="btn btn-secondary"><span class="ms-o" aria-hidden="true">download</span>Export CSV</button>
+                  <button type="button" class="btn btn-primary"><span class="ms-o" aria-hidden="true">directions_bus</span>Dispatch vehicle</button>
+                </div>
+              </div>
+              <div class="scope" style="margin-top:20px">
+                <button type="button" class="date-trigger">
+                  <svg class="cal" width="16" height="16" aria-hidden="true"><use href="#cal"></use></svg>
+                  <span class="val">Wed, 3 Sep</span>
+                  <svg class="chev" width="16" height="16" aria-hidden="true"><use href="#chev"></use></svg>
+                </button>
+                <div class="seg" role="group" aria-label="Run type">
+                  <button type="button" aria-pressed="true">Morning pickup</button>
+                  <button type="button" aria-pressed="false">Afternoon drop-off</button>
+                </div>
+              </div>
+              <div class="card" style="margin-top:16px">
+                <div class="kpi-strip">
+                  <div class="kpi" style="padding:12px 16px">
+                    <p class="kpi-label">Assigned</p>
+                    <p class="kpi-value num" style="font-size:24px">32</p>
+                    <p class="kpi-foot">Across 4 routes</p>
+                  </div>
+                  <div class="kpi" style="padding:12px 16px">
+                    <p class="kpi-label">On board</p>
+                    <p class="kpi-value num" style="font-size:24px">18</p>
+                    <p class="kpi-foot">56% of assigned</p>
+                  </div>
+                  <div class="kpi" style="padding:12px 16px">
+                    <p class="kpi-label">Dropped off</p>
+                    <p class="kpi-value num" style="font-size:24px">11</p>
+                    <p class="kpi-foot">34% of assigned</p>
+                  </div>
+                  <div class="kpi" style="padding:12px 16px">
+                    <p class="kpi-label">Unaccounted</p>
+                    <p class="kpi-value num" style="font-size:24px">3</p>
+                    <p class="kpi-foot">2 absent · 1 no record</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phone-col" style="margin-top:14px">
+      <div class="canvas">
+        <div class="app">
+          <div class="topbar">
+            <div class="topbar-in">
+              <div class="topbar-id">
+                <button type="button" class="btn btn-ghost icon" aria-label="Open navigation"><span class="ms-o" aria-hidden="true">menu</span></button>
+                <svg class="mk" aria-hidden="true"><use href="#pm"></use></svg>
+                <div>
+                  <p class="topbar-title">Greenfield Primary</p>
+                  <p class="topbar-sub">Live monitor</p>
+                </div>
+              </div>
+              <div style="display:flex;gap:2px">
+                <button type="button" class="btn btn-ghost icon" aria-label="Theme"><span class="ms-o" aria-hidden="true">dark_mode</span></button>
+                <button type="button" class="btn btn-ghost icon" aria-label="Language"><span class="ms-o" aria-hidden="true">translate</span></button>
+              </div>
+            </div>
+          </div>
+          <div class="pad-sm">
+            <div class="a-head">
+              <div>
+                <h1 style="font-size:24px">Students</h1>
+                <p class="a-sub">Greenfield Primary · 32 on the roll · 2 classes</p>
+              </div>
+              <div class="a-actions" style="width:100%;margin-top:4px">
+                <button type="button" class="btn btn-secondary" style="flex:1 1 128px"><span class="ms-o" aria-hidden="true">download</span>Export CSV</button>
+                <button type="button" class="btn btn-primary" style="flex:1 1 128px"><span class="ms-o" aria-hidden="true">person_add</span>Add student</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="minicap">The same chrome below <b>lg</b>: the rail becomes this bar.</p>
+    </div>
+    </div>
+  </section>
+
+  <section class="sec" id="header">
+    <div class="sec-head">
+      <span class="idx">03</span>
+      <div>
+        <h2>Page header and scope bar</h2>
+        <p class="cap">
+          The calendar decides the view. With no date the scope bar offers the whole roll and the
+          run-segment control drops out, because presence is summarised across both runs; pick a day and
+          the Morning / Afternoon switch returns, its thumb the only white step on a pale cyan-grey track.
+        </p>
+        <p class="flag">--color-background · --color-selected-surface · --color-control-outline</p>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <div class="canvas">
+          <div class="app">
+            <div class="pad">
+              <div class="a-head">
+                <div>
+                  <h1>Students</h1>
+                  <p class="a-sub">Greenfield Primary · 32 on the roll · 2 classes</p>
+                </div>
+                <div class="a-actions">
+                  <button type="button" class="btn btn-secondary"><span class="ms-o" aria-hidden="true">download</span>Export CSV</button>
+                  <button type="button" class="btn btn-primary"><span class="ms-o" aria-hidden="true">person_add</span>Add student</button>
+                </div>
+              </div>
+              <div class="scope" style="margin-top:18px">
+                <button type="button" class="date-trigger">
+                  <svg class="cal" width="16" height="16" aria-hidden="true"><use href="#cal"></use></svg>
+                  <span class="val" style="color:var(--color-on-surface-variant)">All students</span>
+                  <svg class="chev" width="16" height="16" aria-hidden="true"><use href="#chev"></use></svg>
+                </button>
+                <p class="right" style="margin-inline-start:auto">Records are kept for 90 days</p>
+              </div>
+              <div class="sec-title-row" style="margin-top:16px">
+                <h2 class="sec-title">School roll</h2>
+                <p class="sec-meta">32 students · Name A–Z · Last 90 days</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="minicap"><b>No date</b> — the whole roll. No segment control, no Off column.</p>
+      </div>
+
+      <div>
+        <div class="canvas">
+          <div class="app">
+            <div class="pad">
+              <div class="a-head">
+                <div>
+                  <h1>Students</h1>
+                  <p class="a-sub">Greenfield Primary · 32 on the roll · 2 classes</p>
+                </div>
+                <div class="a-actions">
+                  <button type="button" class="btn btn-secondary"><span class="ms-o" aria-hidden="true">download</span>Export CSV</button>
+                  <button type="button" class="btn btn-primary"><span class="ms-o" aria-hidden="true">person_add</span>Add student</button>
+                </div>
+              </div>
+              <div class="scope" style="margin-top:18px">
+                <button type="button" class="date-trigger">
+                  <svg class="cal" width="16" height="16" aria-hidden="true"><use href="#cal"></use></svg>
+                  <span class="val">Wed, 3 Sep</span>
+                  <svg class="chev" width="16" height="16" aria-hidden="true"><use href="#chev"></use></svg>
+                </button>
+                <div class="seg" role="group" aria-label="Run type">
+                  <button type="button" aria-pressed="true">Morning pickup</button>
+                  <button type="button" aria-pressed="false">Afternoon drop-off</button>
+                </div>
+                <p class="right" style="margin-inline-start:auto">Records are kept for 90 days</p>
+              </div>
+              <div class="sec-title-row" style="margin-top:16px">
+                <h2 class="sec-title">School roll</h2>
+                <p class="sec-meta">32 students · Run order</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="minicap"><b>A date</b> — that day's runs, with the segment switch.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="kpi">
+    <div class="sec-head">
+      <span class="idx">04</span>
+      <div>
+        <h2>KPI strip</h2>
+        <p class="cap">
+          Figures stay ink at the same weight, so the accent never outranks a number; what changes is the
+          paper under them and the four status marks, which now sit on cooler tints. The strip is the
+          same four cells at 26px on the cards and 34px for the one ratio that matters.
+        </p>
+        <p class="flag">--color-surface-container-lowest · --color-success · --color-primary · --color-error</p>
+      </div>
+    </div>
+
+    <div class="canvas">
+      <div class="app">
+        <div class="pad" style="display:flex;flex-direction:column;gap:12px">
+          <div class="sec-title-row">
+            <h2 class="sec-title">Run totals</h2>
+            <p class="sec-meta">3 Sep · Morning pickup · 4 routes</p>
+          </div>
+
+          <div class="card">
+            <div class="sum-band">
+              <div class="sum-left">
+                <p class="sum-label">Accounted for</p>
+                <p class="sum-figure"><span class="big num">29</span><span class="of">/ 32</span></p>
+                <div class="sum-bar" aria-hidden="true">
+                  <span class="bg-success" style="flex:18 1 0"></span>
+                  <span class="bg-primary" style="flex:11 1 0"></span>
+                  <span class="bg-outline" style="flex:1 1 0"></span>
+                  <span class="bg-error" style="flex:2 1 0"></span>
+                </div>
+                <p class="sum-foot">Across 4 routes</p>
+              </div>
+              <div class="sum-cells">
+                <div class="kpi">
+                  <p class="kpi-label"><span class="dot bg-success"></span>On board</p>
+                  <p class="kpi-value num">18</p>
+                  <p class="kpi-foot">56% of assigned</p>
+                </div>
+                <div class="kpi">
+                  <p class="kpi-label"><span class="dot bg-primary"></span>Dropped off</p>
+                  <p class="kpi-value num">11</p>
+                  <p class="kpi-foot">34% of assigned</p>
+                </div>
+                <div class="kpi">
+                  <p class="kpi-label"><span class="dot bg-outline"></span>Unaccounted</p>
+                  <p class="kpi-value num">3</p>
+                  <p class="kpi-foot">2 absent · 1 with no record</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="kpi-strip">
+              <div class="kpi">
+                <p class="kpi-label">Assigned</p>
+                <p class="kpi-value num">32</p>
+                <p class="kpi-foot">Across 4 routes</p>
+              </div>
+              <div class="kpi">
+                <p class="kpi-label">On board</p>
+                <p class="kpi-value num">18</p>
+                <p class="kpi-foot">56% of assigned</p>
+              </div>
+              <div class="kpi">
+                <p class="kpi-label">Dropped off</p>
+                <p class="kpi-value num">11</p>
+                <p class="kpi-foot">34% of assigned</p>
+              </div>
+              <div class="kpi">
+                <p class="kpi-label">Unaccounted</p>
+                <p class="kpi-value num">3</p>
+                <p class="kpi-foot">2 absent · 1 with no record</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="roll">
+    <div class="sec-head">
+      <span class="idx">05</span>
+      <div>
+        <h2>The school roll — no date picked</h2>
+        <p class="cap">
+          This is the screen the calendar decides: with no date, each row is the whole 90-day window
+          instead of one run — present days, absent days, attendance, and the last thing recorded. The
+          accent carries the "Dropped off" state and the History action; the figures stay ink so a colour
+          never outranks a number, and an absence is the only figure that turns red.
+        </p>
+        <p class="flag">--color-primary-container · --color-primary · --color-error · --color-surface-container-low</p>
+      </div>
+    </div>
+
+    <div class="canvas">
+      <div class="app">
+        <div class="scope" style="border-top:0;padding:10px 20px">
+          <button type="button" class="date-trigger">
+            <svg class="cal" width="16" height="16" aria-hidden="true"><use href="#cal"></use></svg>
+            <span class="val" style="color:var(--color-on-surface-variant)">All students</span>
+            <svg class="chev" width="16" height="16" aria-hidden="true"><use href="#chev"></use></svg>
+          </button>
+          <p class="right">Records are kept for 90 days</p>
+        </div>
+
+        <div class="pad" style="display:flex;flex-direction:column;gap:14px">
+          <div class="sec-title-row">
+            <h2 class="sec-title">School roll</h2>
+            <p class="sec-meta">32 students · Name A–Z · Last 90 days</p>
+          </div>
+
+          <div class="toolbar">
+            <button type="button" class="btn btn-ghost icon" aria-label="Search students">
+              <svg width="20" height="20" aria-hidden="true"><use href="#find"></use></svg>
+            </button>
+            <button type="button" class="dd">Sort: Name A–Z
+              <svg class="chev" width="15" height="15" aria-hidden="true"><use href="#chev"></use></svg>
+            </button>
+            <button type="button" class="dd">All grades
+              <svg class="chev" width="15" height="15" aria-hidden="true"><use href="#chev"></use></svg>
+            </button>
+          </div>
+
+          <div class="card">
+            <div class="tbl-wrap">
+              <table class="tbl" style="min-width:960px">
+                <caption class="visually-hidden">Every student on the roll, with presence over the last 90 days</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Student</th>
+                    <th scope="col">Grade</th>
+                    <th scope="col">Bus</th>
+                    <th scope="col" class="end" title="Days with a recorded run in the last 90 days">Present</th>
+                    <th scope="col" class="end" title="Days marked absent in the last 90 days">Absent</th>
+                    <th scope="col" class="end" title="Present days out of the days with a record">Attendance</th>
+                    <th scope="col">Last record</th>
+                    <th scope="col" class="end">History</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row" class="name">Alan Turing</th>
+                    <td class="soft">Grade 4</td>
+                    <td class="soft num">Bus 01</td>
+                    <td class="end num">43</td>
+                    <td class="end num" style="color:var(--color-error)">2</td>
+                    <td class="end num pct">96%</td>
+                    <td><span class="rec"><span class="rec-date num">2 Sep</span><span class="chip chip-primary"><span class="dot bg-primary"></span>Dropped Off</span></span></td>
+                    <td class="end"><button type="button" class="rowbtn"><span class="ms-o" aria-hidden="true">history</span>History</button></td>
+                  </tr>
+                  <tr>
+                    <th scope="row" class="name">Grace Hopper</th>
+                    <td class="soft">Grade 5</td>
+                    <td class="soft num">Bus 02</td>
+                    <td class="end num">40</td>
+                    <td class="end num" style="color:var(--color-error)">4</td>
+                    <td class="end num pct">91%</td>
+                    <td><span class="rec"><span class="rec-date num">3 Sep</span><span class="chip chip-success"><span class="dot bg-success"></span>Boarded</span></span></td>
+                    <td class="end"><button type="button" class="rowbtn"><span class="ms-o" aria-hidden="true">history</span>History</button></td>
+                  </tr>
+                  <tr>
+                    <th scope="row" class="name">Ada Lovelace</th>
+                    <td class="soft">Grade 4</td>
+                    <td class="soft num">Bus 01</td>
+                    <td class="end num">43</td>
+                    <td class="end num" style="color:var(--color-error)">1</td>
+                    <td class="end num pct">98%</td>
+                    <td><span class="rec"><span class="rec-date num">3 Sep</span><span class="chip chip-primary"><span class="dot bg-primary"></span>Dropped Off</span></span></td>
+                    <td class="end"><button type="button" class="rowbtn"><span class="ms-o" aria-hidden="true">history</span>History</button></td>
+                  </tr>
+                  <tr>
+                    <th scope="row" class="name">Katherine Johnson</th>
+                    <td class="soft">Grade 5</td>
+                    <td class="soft num">Bus 03</td>
+                    <td class="end num">37</td>
+                    <td class="end num" style="color:var(--color-error)">7</td>
+                    <td class="end num pct">84%</td>
+                    <td><span class="rec"><span class="rec-date num">2 Sep</span><span class="chip chip-success"><span class="dot bg-success"></span>Boarded</span></span></td>
+                    <td class="end"><button type="button" class="rowbtn"><span class="ms-o" aria-hidden="true">history</span>History</button></td>
+                  </tr>
+                  <tr>
+                    <th scope="row" class="name">Margaret Hamilton</th>
+                    <td class="soft">Grade 4</td>
+                    <td class="soft num">Bus 02</td>
+                    <td class="end num">41</td>
+                    <td class="end num" style="color:var(--color-error)">3</td>
+                    <td class="end num pct">93%</td>
+                    <td><span class="rec"><span class="rec-date num">1 Sep</span><span class="chip chip-error"><span class="dot bg-error"></span>Absent</span></span></td>
+                    <td class="end"><button type="button" class="rowbtn"><span class="ms-o" aria-hidden="true">history</span>History</button></td>
+                  </tr>
+                  <tr>
+                    <th scope="row" class="name">Barbara Liskov</th>
+                    <td class="soft">Grade 5</td>
+                    <td class="soft num">Bus 04</td>
+                    <td class="end soft num">—</td>
+                    <td class="end soft num">—</td>
+                    <td class="end soft num">—</td>
+                    <td><span class="soft">No records</span></td>
+                    <td class="end"><button type="button" class="rowbtn"><span class="ms-o" aria-hidden="true">history</span>History</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="pager-row">
+            <p>Showing 1–6 of 32</p>
+            <div class="pager" aria-label="Pagination">
+              <button type="button" disabled aria-label="Previous page"><span class="ms-o" aria-hidden="true">chevron_left</span></button>
+              <button type="button" aria-current="page">1</button>
+              <button type="button">2</button>
+              <button type="button">3</button>
+              <button type="button">4</button>
+              <button type="button" aria-label="Next page"><span class="ms-o" aria-hidden="true">chevron_right</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="roll-day">
+    <div class="sec-head">
+      <span class="idx">06</span>
+      <div>
+        <h2>The same table with a date picked</h2>
+        <p class="cap">
+          Pick a day and the roll becomes that day's runs: the presence columns give way to the run's two
+          clocks and the live state, and the run-order column returns. Same card, same zebra, same chips —
+          only the columns describe a different fact.
+        </p>
+        <p class="flag">--color-primary-container · --color-success-container · --color-surface-container-low</p>
+      </div>
+    </div>
+
+    <div class="canvas">
+      <div class="app">
+        <div class="scope" style="border-top:0;padding:10px 20px">
+          <button type="button" class="date-trigger">
+            <svg class="cal" width="16" height="16" aria-hidden="true"><use href="#cal"></use></svg>
+            <span class="val">Wed, 3 Sep</span>
+            <svg class="chev" width="16" height="16" aria-hidden="true"><use href="#chev"></use></svg>
+          </button>
+          <div class="seg" role="group" aria-label="Run type">
+            <button type="button" aria-pressed="true">Morning pickup</button>
+            <button type="button" aria-pressed="false">Afternoon drop-off</button>
+          </div>
+          <p class="right">Records are kept for 90 days</p>
+        </div>
+
+        <div class="pad" style="display:flex;flex-direction:column;gap:14px">
+          <div class="sec-title-row">
+            <h2 class="sec-title">School roll</h2>
+            <p class="sec-meta">32 students · Run order</p>
+          </div>
+
+          <div class="toolbar">
+            <button type="button" class="btn btn-ghost icon" aria-label="Search students">
+              <svg width="20" height="20" aria-hidden="true"><use href="#find"></use></svg>
+            </button>
+            <button type="button" class="dd">Sort: Run order
+              <svg class="chev" width="15" height="15" aria-hidden="true"><use href="#chev"></use></svg>
+            </button>
+            <button type="button" class="dd">All
+              <svg class="chev" width="15" height="15" aria-hidden="true"><use href="#chev"></use></svg>
+            </button>
+            <button type="button" class="dd">All grades
+              <svg class="chev" width="15" height="15" aria-hidden="true"><use href="#chev"></use></svg>
+            </button>
+          </div>
+
+          <div class="card">
+            <div class="tbl-wrap">
+              <table class="tbl" style="min-width:960px">
+                <caption class="visually-hidden">Live student attendance</caption>
+                <thead>
+                  <tr>
+                    <th scope="col" title="Place in the drop-off run">Off</th>
+                    <th scope="col">Student</th>
+                    <th scope="col">Grade</th>
+                    <th scope="col">Bus</th>
+                    <th scope="col">Boarded at</th>
+                    <th scope="col">Dropped at</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="end">History</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="off num">1</td>
+                    <th scope="row" class="name">Alan Turing</th>
+                    <td class="soft">Grade 4</td>
+                    <td class="soft num">Bus 01</td>
+                    <td class="num">7:42 AM</td>
+                    <td class="num">8:06 AM</td>
+                    <td><span class="chip chip-primary"><span class="dot bg-primary"></span>Dropped Off</span></td>
+                    <td class="end"><button type="button" class="rowbtn"><span class="ms-o" aria-hidden="true">history</span>History</button></td>
+                  </tr>
+                  <tr>
+                    <td class="off num">2</td>
+                    <th scope="row" class="name">Ada Lovelace</th>
+                    <td class="soft">Grade 4</td>
+                    <td class="soft num">Bus 01</td>
+                    <td class="num">7:39 AM</td>
+                    <td class="num">8:04 AM</td>
+                    <td><span class="chip chip-primary"><span class="dot bg-primary"></span>Dropped Off</span></td>
+                    <td class="end"><button type="button" class="rowbtn"><span class="ms-o" aria-hidden="true">history</span>History</button></td>
+                  </tr>
+                  <tr>
+                    <td class="off num">3</td>
+                    <th scope="row" class="name">Grace Hopper</th>
+                    <td class="soft">Grade 5</td>
+                    <td class="soft num">Bus 02</td>
+                    <td class="num">7:51 AM</td>
+                    <td class="num">8:12 AM</td>
+                    <td><span class="chip chip-primary"><span class="dot bg-primary"></span>Dropped Off</span></td>
+                    <td class="end"><button type="button" class="rowbtn"><span class="ms-o" aria-hidden="true">history</span>History</button></td>
+                  </tr>
+                  <tr>
+                    <td class="soft">—</td>
+                    <th scope="row" class="name">Katherine Johnson</th>
+                    <td class="soft">Grade 5</td>
+                    <td class="soft num">Bus 03</td>
+                    <td class="num">7:48 AM</td>
+                    <td class="soft">—</td>
+                    <td><span class="chip chip-success"><span class="dot bg-success"></span>Boarded</span></td>
+                    <td class="end"><button type="button" class="rowbtn"><span class="ms-o" aria-hidden="true">history</span>History</button></td>
+                  </tr>
+                  <tr>
+                    <td class="soft">—</td>
+                    <th scope="row" class="name">Margaret Hamilton</th>
+                    <td class="soft">Grade 4</td>
+                    <td class="soft num">Bus 02</td>
+                    <td class="num">7:55 AM</td>
+                    <td class="soft">—</td>
+                    <td><span class="chip chip-success"><span class="dot bg-success"></span>Boarded</span></td>
+                    <td class="end"><button type="button" class="rowbtn"><span class="ms-o" aria-hidden="true">history</span>History</button></td>
+                  </tr>
+                  <tr>
+                    <td class="soft">—</td>
+                    <th scope="row" class="name">Barbara Liskov</th>
+                    <td class="soft">Grade 5</td>
+                    <td class="soft num">Bus 04</td>
+                    <td class="soft">—</td>
+                    <td class="soft">—</td>
+                    <td><span class="chip chip-error"><span class="dot bg-error"></span>Absent</span></td>
+                    <td class="end"><button type="button" class="rowbtn"><span class="ms-o" aria-hidden="true">history</span>History</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="pager-row">
+            <p>Showing 1–6 of 32</p>
+            <div class="pager" aria-label="Pagination">
+              <button type="button" disabled aria-label="Previous page"><span class="ms-o" aria-hidden="true">chevron_left</span></button>
+              <button type="button" aria-current="page">1</button>
+              <button type="button">2</button>
+              <button type="button">3</button>
+              <button type="button">4</button>
+              <button type="button" aria-label="Next page"><span class="ms-o" aria-hidden="true">chevron_right</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="fleet">
+    <div class="sec-head">
+      <span class="idx">07</span>
+      <div>
+        <h2>Fleet row and the bus overview dialog</h2>
+        <p class="cap">
+          The route line is the one place the accent is a filled shape: the travelled part of a live run is
+          cyan, a finished run rests in grey. Status pills keep the same grammar as the table chips, and the
+          sheet the row opens numbers the drop-off order in the accent — this bus's own sequence, first off
+          first.
+        </p>
+        <p class="flag">--color-primary · --color-primary-container · --color-outline</p>
+      </div>
+    </div>
+
+    <div class="canvas">
+      <div class="app">
+        <div class="pad" style="display:flex;flex-direction:column;gap:12px">
+          <div class="sec-title-row">
+            <h2 class="sec-title">Routes</h2>
+            <p class="sec-meta">3 of 4 en route</p>
+          </div>
+          <div class="card">
+            <div class="fleet">
+              <div class="fleet-row">
+                <div>
+                  <p class="bus-name">Bus 01</p>
+                  <p class="driver">Driver: Rosa Alvarez</p>
+                </div>
+                <div>
+                  <div class="run-label"><span>Route progress</span><span class="num">84% complete</span></div>
+                  <div class="route"><span class="fill live" style="width:84%"></span><span class="bead" style="inset-inline-start:84%"><span class="ms-o" aria-hidden="true">directions_bus</span></span></div>
+                </div>
+                <div class="fleet-counts">
+                  <div><p class="v num">18</p><p class="l">On board</p></div>
+                  <div><p class="v num">11</p><p class="l">Dropped</p></div>
+                  <div><p class="v num" style="color:var(--color-error)">2</p><p class="l">Absent</p></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="status-pill chip-primary"><span class="dot bg-primary"></span>In progress</span>
+                  <span class="ms-o chev" aria-hidden="true">chevron_right</span>
+                </div>
+              </div>
+              <div class="fleet-row">
+                <div>
+                  <p class="bus-name">Bus 04</p>
+                  <p class="driver">No driver assigned</p>
+                </div>
+                <div>
+                  <div class="run-label"><span>Route progress</span><span class="num">100% complete</span></div>
+                  <div class="route"><span class="fill" style="width:100%"></span><span class="bead done" style="inset-inline-start:calc(100% - 10px)"><span class="ms-o" aria-hidden="true">directions_bus</span></span></div>
+                </div>
+                <div class="fleet-counts">
+                  <div><p class="v num">12</p><p class="l">On board</p></div>
+                  <div><p class="v num">12</p><p class="l">Dropped</p></div>
+                  <div><p class="v num">0</p><p class="l">Absent</p></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="status-pill chip-neutral"><span class="dot bg-outline"></span>Completed</span>
+                  <span class="ms-o chev" aria-hidden="true">chevron_right</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="canvas">
+      <div class="app">
+        <div class="scrim">
+          <div class="dialog" role="dialog" aria-label="Bus 01 overview">
+            <div class="dialog-head">
+              <div>
+                <h2>Bus 01</h2>
+                <p class="hint">Rosa Alvarez · 12 students · 84% complete</p>
+              </div>
+              <button type="button" class="btn btn-ghost icon" aria-label="Close"><span class="ms-o" aria-hidden="true">close</span></button>
+            </div>
+            <div class="dialog-body">
+              <div class="dialog-figs">
+                <div><p class="l">On board</p><p class="v num">18</p></div>
+                <div><p class="l">Dropped off</p><p class="v num">11</p></div>
+                <div><p class="l">Absent</p><p class="v num">2</p></div>
+              </div>
+              <div class="tbl-wrap">
+                <table class="tbl dialog-tbl">
+                  <thead>
+                    <tr>
+                      <th scope="col" style="width:52px">Off</th>
+                      <th scope="col">Student</th>
+                      <th scope="col">Grade</th>
+                      <th scope="col">Boarded at</th>
+                      <th scope="col">Dropped at</th>
+                      <th scope="col" class="end">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="off num">1</td>
+                      <th scope="row" class="name">Alan Turing</th>
+                      <td class="soft">Grade 4</td>
+                      <td class="num">7:42 AM</td>
+                      <td class="num">8:06 AM</td>
+                      <td class="end"><span class="chip chip-primary"><span class="dot bg-primary"></span>Dropped Off</span></td>
+                    </tr>
+                    <tr>
+                      <td class="off num">2</td>
+                      <th scope="row" class="name">Ada Lovelace</th>
+                      <td class="soft">Grade 4</td>
+                      <td class="num">7:39 AM</td>
+                      <td class="num">8:04 AM</td>
+                      <td class="end"><span class="chip chip-primary"><span class="dot bg-primary"></span>Dropped Off</span></td>
+                    </tr>
+                    <tr>
+                      <td class="off num">3</td>
+                      <th scope="row" class="name">Hedy Lamarr</th>
+                      <td class="soft">Grade 4</td>
+                      <td class="num">7:44 AM</td>
+                      <td class="num">8:09 AM</td>
+                      <td class="end"><span class="chip chip-primary"><span class="dot bg-primary"></span>Dropped Off</span></td>
+                    </tr>
+                    <tr class="seq-end">
+                      <td class="off num">4</td>
+                      <th scope="row" class="name">Frances Allen</th>
+                      <td class="soft">Grade 5</td>
+                      <td class="num">7:47 AM</td>
+                      <td class="num">8:11 AM</td>
+                      <td class="end"><span class="chip chip-primary"><span class="dot bg-primary"></span>Dropped Off</span></td>
+                    </tr>
+                    <tr>
+                      <td class="soft">—</td>
+                      <th scope="row" class="name">Christopher Strachey</th>
+                      <td class="soft">Grade 5</td>
+                      <td class="num">7:52 AM</td>
+                      <td class="soft">—</td>
+                      <td class="end"><span class="chip chip-success"><span class="dot bg-success"></span>Boarded</span></td>
+                    </tr>
+                    <tr>
+                      <td class="soft">—</td>
+                      <th scope="row" class="name">Edsger Dijkstra</th>
+                      <td class="soft">Grade 4</td>
+                      <td class="soft">—</td>
+                      <td class="soft">—</td>
+                      <td class="end"><span class="chip chip-error"><span class="dot bg-error"></span>Absent</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="dialog-foot">
+              <p>11 of 12 off the bus · first off 8:04 AM</p>
+              <div class="acts">
+                <button type="button" class="btn btn-secondary sm">Open in Students</button>
+                <button type="button" class="btn btn-primary sm">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="roster">
+    <div class="sec-head">
+      <span class="idx">08</span>
+      <div>
+        <h2>The driver's roster, at phone width</h2>
+        <p class="cap">
+          The pill is still the only tinted thing in the row and still a 44px target: green for boarded,
+          the pale cyan tint for dropped off, red for absent, and neutral for a child nobody has recorded
+          yet — that one reads "Board", the action, because there is no state to name. The run strip's
+          dropped segment is the accent, and so is the one committing action at the foot.
+        </p>
+        <p class="flag">--color-primary · --color-primary-container · --color-success · --color-error</p>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="phone-col">
+        <div class="canvas">
+          <div class="app">
+            <div class="drvbar">
+              <div class="drvbar-in">
+                <div class="drvbar-id">
+                  <span class="bus-tile"><span class="ms" aria-hidden="true">directions_bus</span></span>
+                  <div>
+                    <h1>Bus 01</h1>
+                    <p class="stat"><span class="dot bg-primary"></span>In progress<span class="sep">·</span><span class="num">3 Sep</span></p>
+                  </div>
+                </div>
+                <div style="display:flex;gap:2px">
+                  <button type="button" class="btn btn-ghost icon" aria-label="Theme"><span class="ms-o" aria-hidden="true">dark_mode</span></button>
+                  <button type="button" class="btn btn-ghost icon" aria-label="More options"><span class="ms" aria-hidden="true">more_vert</span></button>
+                </div>
+              </div>
+              <div class="rail-ticks" aria-hidden="true">
+                <span class="bg-success"></span><span class="bg-success"></span><span class="bg-primary"></span><span class="bg-success"></span>
+                <span class="bg-primary"></span><span class="bg-error"></span><span class="bg-success"></span><span class="bg-primary"></span>
+                <span class="bg-success"></span><span class="bg-outline"></span><span class="bg-success"></span><span class="bg-primary"></span>
+              </div>
+            </div>
+            <div class="pad-sm">
+              <div class="card strip">
+                <div class="strip-cells">
+                  <div><p class="strip-value num">18</p><p class="strip-label"><span class="dot bg-success"></span>On board</p></div>
+                  <div><p class="strip-value num">11</p><p class="strip-label"><span class="dot bg-primary"></span>Dropped</p></div>
+                  <div><p class="strip-value num">2</p><p class="strip-label"><span class="dot bg-error"></span>Absent</p></div>
+                </div>
+                <div class="strip-bar" aria-hidden="true">
+                  <span class="bg-success" style="flex:18 1 0"></span><span class="bg-primary" style="flex:11 1 0"></span><span class="bg-error" style="flex:2 1 0"></span>
+                </div>
+              </div>
+            </div>
+            <div class="roster">
+              <div class="roster-row">
+                <div class="roster-who">
+                  <p class="roster-name">Alan Turing</p>
+                  <p class="roster-grade">Grade 4</p>
+                </div>
+                <button type="button" class="pill chip-primary"><span class="ms" aria-hidden="true">how_to_reg</span>Dropped Off</button>
+                <button type="button" class="btn btn-ghost icon" aria-label="More options for Alan Turing"><span class="ms" aria-hidden="true">more_vert</span></button>
+              </div>
+              <div class="roster-row">
+                <div class="roster-who">
+                  <p class="roster-name">Katherine Johnson</p>
+                  <p class="roster-grade">Grade 5</p>
+                </div>
+                <button type="button" class="pill chip-success"><span class="ms" aria-hidden="true">check_circle</span>Boarded</button>
+                <button type="button" class="btn btn-ghost icon" aria-label="More options for Katherine Johnson"><span class="ms" aria-hidden="true">more_vert</span></button>
+              </div>
+              <div class="roster-row">
+                <div class="roster-who">
+                  <p class="roster-name">Christopher Strachey</p>
+                  <p class="roster-grade">Grade 5</p>
+                </div>
+                <button type="button" class="pill chip-neutral"><span class="ms" aria-hidden="true">schedule</span>Board</button>
+                <button type="button" class="btn btn-ghost icon" aria-label="More options for Christopher Strachey"><span class="ms" aria-hidden="true">more_vert</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="minicap">The run's top: status bar, manifest rail, totals, three rows.</p>
+      </div>
+
+      <div class="phone-col">
+        <div class="canvas">
+          <div class="app">
+            <div class="pad-sm" style="padding-bottom:0">
+              <div class="roster" style="border-top:0;margin-inline:-16px">
+                  <div class="roster-row">
+                    <div class="roster-who">
+                      <p class="roster-name">Barbara Liskov</p>
+                      <p class="roster-grade">Grade 5</p>
+                    </div>
+                    <button type="button" class="pill chip-error"><span class="ms" aria-hidden="true">cancel</span>Absent</button>
+                    <button type="button" class="btn btn-ghost icon" aria-label="More options for Barbara Liskov"><span class="ms" aria-hidden="true">more_vert</span></button>
+                  </div>
+                  <div class="roster-row">
+                    <div class="roster-who">
+                      <p class="roster-name">Margaret Hamilton</p>
+                      <p class="roster-grade">Grade 4</p>
+                    </div>
+                    <button type="button" class="pill chip-success"><span class="ms" aria-hidden="true">check_circle</span>Boarded</button>
+                    <button type="button" class="btn btn-ghost icon" aria-label="More options for Margaret Hamilton"><span class="ms" aria-hidden="true">more_vert</span></button>
+                  </div>
+                  <div class="roster-row">
+                    <div class="roster-who">
+                      <p class="roster-name">Hedy Lamarr</p>
+                      <p class="roster-grade">Grade 4</p>
+                    </div>
+                    <button type="button" class="pill chip-primary"><span class="ms" aria-hidden="true">how_to_reg</span>Dropped Off</button>
+                    <button type="button" class="btn btn-ghost icon" aria-label="More options for Hedy Lamarr"><span class="ms" aria-hidden="true">more_vert</span></button>
+                  </div>
+                  <div class="roster-row">
+                    <div class="roster-who">
+                      <p class="roster-name">Frances Allen</p>
+                      <p class="roster-grade">Grade 5</p>
+                    </div>
+                    <button type="button" class="pill chip-primary"><span class="ms" aria-hidden="true">how_to_reg</span>Dropped Off</button>
+                    <button type="button" class="btn btn-ghost icon" aria-label="More options for Frances Allen"><span class="ms" aria-hidden="true">more_vert</span></button>
+                  </div>
+                </div>
+              <p class="a-sub" style="margin-top:12px;text-align:center;font-size:11.5px">Tap the status to update it</p>
+              <button type="button" class="btn btn-primary" style="width:100%;margin-top:10px">Complete run</button>
+            </div>
+          </div>
+        </div>
+        <p class="minicap">All four pill states, then the run's committing action.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="login">
+    <div class="sec-head">
+      <span class="idx">09</span>
+      <div>
+        <h2>Login card</h2>
+        <p class="cap">
+          The card is the only white surface on the cool ground. Fields keep the 3:1 control edge, a filled
+          code slot takes the accent tint, and in the proposal the one committing action on the director
+          form is cyan rather than ink.
+        </p>
+        <p class="flag">--color-background · --color-primary-container · --color-control-outline</p>
+      </div>
+    </div>
+
+    <div class="canvas">
+      <div class="app">
+        <div class="login-ground">
+          <div class="login-card">
+            <div class="login-brand">
+              <svg class="mk" aria-hidden="true"><use href="#pm"></use></svg>
+              <h1>School Bus Transit</h1>
+            </div>
+            <p class="login-sub">Attendance and route monitoring for school transport.</p>
+            <div class="seg pill" role="group" aria-label="Choose sign-in mode" style="margin-top:22px;width:100%">
+              <button type="button" aria-pressed="true">Driver code</button>
+              <button type="button" aria-pressed="false">Director</button>
+            </div>
+            <div class="login-form">
+              <div>
+                <span class="login-label">Access code</span>
+                <div class="otp">
+                  <span class="filled">4</span><span class="filled">8</span><span class="filled">2</span>
+                  <span class="caret"></span><span></span><span></span>
+                </div>
+                <p class="otp-hint">Ask your school director for your 6-digit access code.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="login-card">
+            <div class="login-brand">
+              <svg class="mk" aria-hidden="true"><use href="#pm"></use></svg>
+              <h1>School Bus Transit</h1>
+            </div>
+            <p class="login-sub">Attendance and route monitoring for school transport.</p>
+            <div class="seg pill" role="group" aria-label="Choose sign-in mode" style="margin-top:22px;width:100%">
+              <button type="button" aria-pressed="false">Driver code</button>
+              <button type="button" aria-pressed="true">Director</button>
+            </div>
+            <div class="login-form">
+              <div>
+                <span class="login-label">Email</span>
+                <input class="field" type="email" value="avery@greenfield.school" readonly />
+              </div>
+              <div>
+                <span class="login-label">Password</span>
+                <input class="field" type="password" value="••••••••" readonly />
+              </div>
+              <button type="button" class="btn btn-primary" style="width:100%"><span class="ms-o" aria-hidden="true">login</span>Sign in</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="controls">
+    <div class="sec-head">
+      <span class="idx">10</span>
+      <div>
+        <h2>Controls inventory</h2>
+        <p class="cap">
+          Every control in the app reads the same six tokens, so the change is visible in all of them at
+          once: the committing button, the two outlined tiers, the field edge, the filter rail and the pale
+          status chips. The strip at the bottom is the same button and the same chip in three cyan depths —
+          all three clear AA with a white label.
+        </p>
+        <p class="flag">--color-primary · --color-control-outline · --color-primary-container</p>
+      </div>
+    </div>
+
+    <div class="canvas">
+      <div class="app">
+        <div class="ctl">
+          <div class="ctl-row">
+            <span class="ctl-label">Buttons</span>
+            <button type="button" class="btn btn-primary"><span class="ms-o" aria-hidden="true">person_add</span>Add student</button>
+            <button type="button" class="btn btn-secondary"><span class="ms-o" aria-hidden="true">download</span>Export CSV</button>
+            <button type="button" class="btn btn-ghost"><span class="ms-o" aria-hidden="true">history</span>History</button>
+            <button type="button" class="btn btn-danger"><span class="ms-o" aria-hidden="true">logout</span>Sign out</button>
+            <button type="button" class="btn btn-primary sm">Save</button>
+            <button type="button" class="btn btn-secondary sm">Cancel</button>
+          </div>
+
+          <div class="ctl-row">
+            <span class="ctl-label">Fields and triggers</span>
+            <div style="width:236px">
+              <label class="field-label" for="ctl-email">Email</label>
+              <input id="ctl-email" class="field" type="email" value="avery@greenfield.school" readonly />
+            </div>
+            <button type="button" class="dd">All grades
+              <svg class="chev" width="15" height="15" aria-hidden="true"><use href="#chev"></use></svg>
+            </button>
+            <button type="button" class="date-trigger">
+              <svg class="cal" width="16" height="16" aria-hidden="true"><use href="#cal"></use></svg>
+              <span class="val">Wed, 3 Sep</span>
+              <svg class="chev" width="16" height="16" aria-hidden="true"><use href="#chev"></use></svg>
+            </button>
+            <button type="button" class="btn btn-ghost icon" aria-label="Search students">
+              <svg width="20" height="20" aria-hidden="true"><use href="#find"></use></svg>
+            </button>
+          </div>
+
+          <div class="ctl-row">
+            <span class="ctl-label">Status filter</span>
+            <div class="tabs-rail" role="group" aria-label="Filter by status">
+              <button type="button" aria-pressed="true">All <span class="count num">32</span></button>
+              <button type="button" aria-pressed="false">Boarded <span class="count num">18</span></button>
+              <button type="button" aria-pressed="false">Dropped Off <span class="count num">11</span></button>
+              <span class="underline" aria-hidden="true"></span>
+            </div>
+          </div>
+
+          <div class="ctl-row">
+            <span class="ctl-label">Status chips</span>
+            <span class="chip chip-success"><span class="dot bg-success"></span>Boarded</span>
+            <span class="chip chip-primary"><span class="dot bg-primary"></span>Dropped Off</span>
+            <span class="chip chip-error"><span class="dot bg-error"></span>Absent</span>
+            <span class="chip chip-neutral"><span class="dot bg-outline"></span>Unaccounted</span>
+            <span class="r r-lg" data-measure data-fg="--color-on-primary-container" data-bg="--color-primary-container" data-target="4.5"></span>
+            <span class="r r-lg" data-measure data-fg="--color-on-success-container" data-bg="--color-success-container" data-target="4.5"></span>
+            <span class="r r-lg" data-measure data-fg="--color-on-error-container" data-bg="--color-error-container" data-target="4.5"></span>
+            <span class="ctl-note">Measured on the chip tints, in order: boarded, dropped off, absent. The neutral chip is secondary ink on the control tint.</span>
+          </div>
+
+          <div class="ctl-row" style="display:block">
+            <span class="ctl-label" style="display:block;margin-bottom:12px">Three cyans, same button and same chip</span>
+            <div class="variants">
+              <div class="variant">
+                <div class="variant-top"><span class="variant-name">Lighter</span><span class="variant-hex">#0a7e99</span></div>
+                <span class="chip" style="background:#e2f1f5;color:var(--color-on-primary-container)"><span class="dot" style="background:#0a7e99"></span>Dropped Off</span>
+                <button type="button" class="btn btn-primary" style="background:#0a7e99;border-color:#0a7e99;color:#ffffff">Add student</button>
+                <span class="r r-lg" data-measure data-fg="#ffffff" data-bg="#0a7e99" data-target="4.5"></span>
+                <span style="font-size:11px;color:var(--color-on-surface-variant)">The lightest that still clears 4.5:1 with a white label.</span>
+              </div>
+              <div class="variant" style="border-color:var(--color-primary);border-width:2px">
+                <div class="variant-top"><span class="variant-name">Main direction</span><span class="variant-hex">#0e7490</span></div>
+                <span class="chip" style="background:var(--color-primary-container);color:var(--color-on-primary-container)"><span class="dot" style="background:#0e7490"></span>Dropped Off</span>
+                <button type="button" class="btn btn-primary" style="background:#0e7490;border-color:#0e7490;color:#ffffff">Add student</button>
+                <span class="r r-lg" data-measure data-fg="#ffffff" data-bg="#0e7490" data-target="4.5"></span>
+                <span style="font-size:11px;color:var(--color-on-surface-variant)">This page's proposed <code style="font-family:var(--mono);font-size:10.5px">--color-primary</code>.</span>
+              </div>
+              <div class="variant">
+                <div class="variant-top"><span class="variant-name">Deeper</span><span class="variant-hex">#155e75</span></div>
+                <span class="chip" style="background:#deedf1;color:var(--color-on-primary-container)"><span class="dot" style="background:#155e75"></span>Dropped Off</span>
+                <button type="button" class="btn btn-primary" style="background:#155e75;border-color:#155e75;color:#ffffff">Add student</button>
+                <span class="r r-lg" data-measure data-fg="#ffffff" data-bg="#155e75" data-target="4.5"></span>
+                <span style="font-size:11px;color:var(--color-on-surface-variant)">Closest to today's weight, one step bluer than teal.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="dark">
+    <div class="sec-head">
+      <span class="idx">11</span>
+      <div>
+        <h2>Dark theme</h2>
+        <p class="cap">
+          The dark ground keeps its depth but loses the green cast: from warm ink <code>#101413</code> to a
+          cool-neutral <code>#0d1519</code>, and the accent lifts from route blue to a brighter cyan so it
+          clears 8.8:1 as data and 8.6:1 as a label on the action. Status hues keep their meaning and their
+          containers cool down with the ground.
+        </p>
+        <p class="flag">.dark · --color-background · --color-primary · --color-primary-container</p>
+      </div>
+    </div>
+
+    <div class="dark-stack" id="dark-grid">
+      <div class="dark-frame" data-skin="cd">
+        <div class="dark-head"><span class="dark-name">Current dark</span><span class="dark-tag">#101413 · primary #63b3e8</span></div>
+        <div class="app">
+          <div class="dark-shell">
+            <div class="dark-rail">
+              <div class="rail-brand">
+                <svg class="mk" aria-hidden="true" style="width:24px;height:24px"><use href="#pm"></use></svg>
+                <div>
+                  <p class="brand-name">School Bus Transit</p>
+                  <p class="brand-sub">Greenfield Primary</p>
+                </div>
+              </div>
+              <div class="nav-group">
+                <p class="nav-label">Operate</p>
+                <a class="nav-item" href="#dark"><span class="ms-o" aria-hidden="true">map</span>Live monitor</a>
+                <a class="nav-item" aria-current="page" href="#dark"><span class="ms-o" aria-hidden="true">groups</span>Students</a>
+              </div>
+            </div>
+            <div class="dark-main">
+              <div class="pad-sm" style="display:flex;flex-direction:column;gap:10px">
+                <div class="card">
+                  <div class="kpi-strip">
+                    <div class="kpi" style="padding:10px 12px"><p class="kpi-label">Assigned</p><p class="kpi-value num" style="font-size:22px">32</p></div>
+                    <div class="kpi" style="padding:10px 12px"><p class="kpi-label">On board</p><p class="kpi-value num" style="font-size:22px">18</p></div>
+                    <div class="kpi" style="padding:10px 12px"><p class="kpi-label">Dropped off</p><p class="kpi-value num" style="font-size:22px">11</p></div>
+                    <div class="kpi" style="padding:10px 12px"><p class="kpi-label">Unaccounted</p><p class="kpi-value num" style="font-size:22px">3</p></div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="tbl-wrap">
+                    <table class="tbl" style="min-width:560px">
+                      <thead><tr><th scope="col">Student</th><th scope="col">Bus</th><th scope="col" class="end">Present</th><th scope="col" class="end">Att.</th><th scope="col">Last</th></tr></thead>
+                      <tbody>
+                        <tr><th scope="row" class="name">Alan Turing</th><td class="soft num">Bus 01</td><td class="end num">42</td><td class="end num">96%</td><td><span class="chip chip-primary"><span class="dot bg-primary"></span>Dropped</span></td></tr>
+                        <tr><th scope="row" class="name">Grace Hopper</th><td class="soft num">Bus 02</td><td class="end num">40</td><td class="end num">91%</td><td><span class="chip chip-success"><span class="dot bg-success"></span>Boarded</span></td></tr>
+                        <tr><th scope="row" class="name">Katherine Johnson</th><td class="soft num">Bus 03</td><td class="end num">37</td><td class="end num">84%</td><td><span class="chip chip-error"><span class="dot bg-error"></span>Absent</span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dark-frame" data-skin="pd">
+        <div class="dark-head"><span class="dark-name">Proposed dark</span><span class="dark-tag">#0d1519 · primary #47cbe2</span></div>
+        <div class="app">
+          <div class="dark-shell">
+            <div class="dark-rail">
+              <div class="rail-brand">
+                <svg class="mk" aria-hidden="true" style="width:24px;height:24px"><use href="#pm"></use></svg>
+                <div>
+                  <p class="brand-name">School Bus Transit</p>
+                  <p class="brand-sub">Greenfield Primary</p>
+                </div>
+              </div>
+              <div class="nav-group">
+                <p class="nav-label">Operate</p>
+                <a class="nav-item" href="#dark"><span class="ms-o" aria-hidden="true">map</span>Live monitor</a>
+                <a class="nav-item" aria-current="page" href="#dark"><span class="ms-o" aria-hidden="true">groups</span>Students</a>
+              </div>
+            </div>
+            <div class="dark-main">
+              <div class="pad-sm" style="display:flex;flex-direction:column;gap:10px">
+                <div class="card">
+                  <div class="kpi-strip">
+                    <div class="kpi" style="padding:10px 12px"><p class="kpi-label">Assigned</p><p class="kpi-value num" style="font-size:22px">32</p></div>
+                    <div class="kpi" style="padding:10px 12px"><p class="kpi-label">On board</p><p class="kpi-value num" style="font-size:22px">18</p></div>
+                    <div class="kpi" style="padding:10px 12px"><p class="kpi-label">Dropped off</p><p class="kpi-value num" style="font-size:22px">11</p></div>
+                    <div class="kpi" style="padding:10px 12px"><p class="kpi-label">Unaccounted</p><p class="kpi-value num" style="font-size:22px">3</p></div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="tbl-wrap">
+                    <table class="tbl" style="min-width:560px">
+                      <thead><tr><th scope="col">Student</th><th scope="col">Bus</th><th scope="col" class="end">Present</th><th scope="col" class="end">Att.</th><th scope="col">Last</th></tr></thead>
+                      <tbody>
+                        <tr><th scope="row" class="name">Alan Turing</th><td class="soft num">Bus 01</td><td class="end num">42</td><td class="end num">96%</td><td><span class="chip chip-primary"><span class="dot bg-primary"></span>Dropped</span></td></tr>
+                        <tr><th scope="row" class="name">Grace Hopper</th><td class="soft num">Bus 02</td><td class="end num">40</td><td class="end num">91%</td><td><span class="chip chip-success"><span class="dot bg-success"></span>Boarded</span></td></tr>
+                        <tr><th scope="row" class="name">Katherine Johnson</th><td class="soft num">Bus 03</td><td class="end num">37</td><td class="end num">84%</td><td><span class="chip chip-error"><span class="dot bg-error"></span>Absent</span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <div class="pal-head">
+        <p class="cap" style="margin:0;font-size:12.5px">Measured in the dark frames above, on the card <code style="font-family:var(--mono);font-size:11.5px">#1a1f1d</code> / <code style="font-family:var(--mono);font-size:11.5px">#141e23</code>:</p>
+        <div class="pal-legend">
+          <span class="legend-item">body ink <span class="r" data-measure data-skin="cd" data-fg="--color-on-surface" data-bg="--color-surface-container-lowest"></span>→<span class="r" data-measure data-skin="pd" data-fg="--color-on-surface" data-bg="--color-surface-container-lowest"></span></span>
+          <span class="legend-item">secondary <span class="r" data-measure data-skin="cd" data-fg="--color-on-surface-variant" data-bg="--color-surface-container-lowest"></span>→<span class="r" data-measure data-skin="pd" data-fg="--color-on-surface-variant" data-bg="--color-surface-container-lowest"></span></span>
+          <span class="legend-item">accent <span class="r" data-measure data-skin="cd" data-fg="--color-primary" data-bg="--color-surface-container-lowest"></span>→<span class="r" data-measure data-skin="pd" data-fg="--color-primary" data-bg="--color-surface-container-lowest"></span></span>
+          <span class="legend-item">label on accent <span class="r" data-measure data-skin="cd" data-fg="--color-on-primary" data-bg="--color-primary"></span>→<span class="r" data-measure data-skin="pd" data-fg="--color-on-primary" data-bg="--color-primary"></span></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="sec foot" id="paste">
+    <div class="sec-head">
+      <span class="idx">12</span>
+      <div>
+        <h2>Apply it</h2>
+        <p class="cap">
+          One file, value substitutions only: paste the light block into the <code>@theme</code> block in
+          <code>src/globals.css</code> (replacing the same names), and the dark block into the existing
+          <code>.dark</code> rule. Nothing else in the app reads a hex.
+        </p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="copybar">
+        <span class="t">src/globals.css — proposed tokens, light + dark</span>
+        <button type="button" class="copy" id="copy-css">Copy the block</button>
+      </div>
+<div class="paste-grid">
+<pre class="paste"><span class="c">/* ── Light: @theme { … } in src/globals.css ─────────────────────────── */</span>
+<span class="sel">:root</span> {
+  <span class="k">--color-surface</span>: <span class="v">#f4f8fa</span>;
+  <span class="k">--color-surface-dim</span>: <span class="v">#d7e3ea</span>;
+  <span class="k">--color-surface-bright</span>: <span class="v">#fbfdfe</span>;
+  <span class="k">--color-surface-container-lowest</span>: <span class="v">#ffffff</span>;
+  <span class="k">--color-surface-container-low</span>: <span class="v">#f0f7fa</span>;
+  <span class="k">--color-surface-container</span>: <span class="v">#e6eff4</span>;
+  <span class="k">--color-surface-container-high</span>: <span class="v">#dde9ef</span>;
+  <span class="k">--color-surface-container-highest</span>: <span class="v">#d3e2ea</span>;
+  <span class="k">--color-surface-variant</span>: <span class="v">#d9e6ed</span>;
+  <span class="k">--color-background</span>: <span class="v">#f4f8fa</span>;
+  <span class="k">--color-on-surface</span>: <span class="v">#0e1a20</span>;
+  <span class="k">--color-on-surface-variant</span>: <span class="v">#4a5a64</span>;
+  <span class="k">--color-on-background</span>: <span class="v">#0e1a20</span>;
+  <span class="k">--color-outline</span>: <span class="v">#5d6d77</span>;
+  <span class="k">--color-outline-variant</span>: <span class="v">#d3e1e8</span>;
+  <span class="k">--color-control-outline</span>: <span class="v">#6c7f8a</span>;
+  <span class="k">--color-selected-surface</span>: <span class="v">#ffffff</span>;
+  <span class="k">--color-primary</span>: <span class="v">#0e7490</span>;
+  <span class="k">--color-on-primary</span>: <span class="v">#ffffff</span>;
+  <span class="k">--color-primary-container</span>: <span class="v">#e0f2f7</span>;
+  <span class="k">--color-on-primary-container</span>: <span class="v">#083344</span>;
+  <span class="k">--color-secondary</span>: <span class="v">#0e7490</span>;
+  <span class="k">--color-on-secondary</span>: <span class="v">#ffffff</span>;
+  <span class="k">--color-secondary-container</span>: <span class="v">#e3f0f6</span>;
+  <span class="k">--color-on-secondary-container</span>: <span class="v">#123442</span>;
+  <span class="k">--color-error</span>: <span class="v">#b3261e</span>;
+  <span class="k">--color-on-error</span>: <span class="v">#ffffff</span>;
+  <span class="k">--color-error-container</span>: <span class="v">#fbebe9</span>;
+  <span class="k">--color-on-error-container</span>: <span class="v">#5f1512</span>;
+  <span class="k">--color-success</span>: <span class="v">#1b7448</span>;
+  <span class="k">--color-on-success</span>: <span class="v">#ffffff</span>;
+  <span class="k">--color-success-container</span>: <span class="v">#e2f2ea</span>;
+  <span class="k">--color-on-success-container</span>: <span class="v">#0a3d24</span>;
+  <span class="k">--color-waiting</span>: <span class="v">#8a5b00</span>;
+  <span class="k">--color-warning-container</span>: <span class="v">#f8f1de</span>;
+  <span class="k">--color-on-warning-container</span>: <span class="v">#4a3000</span>;
+
+  <span class="c">/* the --color-dash-* namespace mirrors these values */</span>
+  <span class="k">--color-dash-background</span>: <span class="v">#f4f8fa</span>;
+  <span class="k">--color-dash-surface</span>: <span class="v">#ffffff</span>;
+  <span class="k">--color-dash-on-surface</span>: <span class="v">#0e1a20</span>;
+  <span class="k">--color-dash-on-surface-variant</span>: <span class="v">#4a5a64</span>;
+  <span class="k">--color-dash-surface-container-low</span>: <span class="v">#f0f7fa</span>;
+  <span class="k">--color-dash-surface-container</span>: <span class="v">#e6eff4</span>;
+  <span class="k">--color-dash-surface-container-high</span>: <span class="v">#dde9ef</span>;
+  <span class="k">--color-dash-surface-container-highest</span>: <span class="v">#d3e2ea</span>;
+  <span class="k">--color-dash-primary</span>: <span class="v">#0e7490</span>;
+  <span class="k">--color-dash-on-primary</span>: <span class="v">#ffffff</span>;
+  <span class="k">--color-dash-primary-container</span>: <span class="v">#e0f2f7</span>;
+  <span class="k">--color-dash-on-primary-container</span>: <span class="v">#083344</span>;
+  <span class="k">--color-dash-secondary-container</span>: <span class="v">#e3f0f6</span>;
+  <span class="k">--color-dash-on-secondary-container</span>: <span class="v">#123442</span>;
+  <span class="k">--color-dash-success</span>: <span class="v">#1b7448</span>;
+  <span class="k">--color-dash-on-success</span>: <span class="v">#ffffff</span>;
+  <span class="k">--color-dash-success-container</span>: <span class="v">#e2f2ea</span>;
+  <span class="k">--color-dash-on-success-container</span>: <span class="v">#0a3d24</span>;
+  <span class="k">--color-dash-error</span>: <span class="v">#b3261e</span>;
+  <span class="k">--color-dash-on-error</span>: <span class="v">#ffffff</span>;
+  <span class="k">--color-dash-error-container</span>: <span class="v">#fbebe9</span>;
+  <span class="k">--color-dash-on-error-container</span>: <span class="v">#5f1512</span>;
+  <span class="k">--color-dash-warning</span>: <span class="v">#8a5b00</span>;
+  <span class="k">--color-dash-on-warning</span>: <span class="v">#ffffff</span>;
+  <span class="k">--color-dash-warning-container</span>: <span class="v">#f8f1de</span>;
+  <span class="k">--color-dash-on-warning-container</span>: <span class="v">#4a3000</span>;
+  <span class="k">--color-dash-outline</span>: <span class="v">#5d6d77</span>;
+  <span class="k">--color-dash-outline-variant</span>: <span class="v">#d3e1e8</span>;
+  <span class="k">--color-dash-control-outline</span>: <span class="v">#6c7f8a</span>;
+  <span class="k">--color-dash-selected-surface</span>: <span class="v">#ffffff</span>;
+
+  <span class="c">/* selection — cool, not blue-on-blue */</span>
+  <span class="k">--selection-bg</span>: <span class="v">#d3eaf1</span>;
+  <span class="k">--selection-ink</span>: <span class="v">#062a33</span>;
+}</pre>
+<pre class="paste"><span class="c">/* ── Dark: the .dark rule in src/globals.css ─────────────────────────── */</span>
+<span class="sel">.dark</span> {
+  <span class="k">--color-surface</span>: <span class="v">#0d1519</span>;
+  <span class="k">--color-surface-dim</span>: <span class="v">#080e11</span>;
+  <span class="k">--color-surface-bright</span>: <span class="v">#1a262c</span>;
+  <span class="k">--color-surface-container-lowest</span>: <span class="v">#141e23</span>;
+  <span class="k">--color-surface-container-low</span>: <span class="v">#18232a</span>;
+  <span class="k">--color-surface-container</span>: <span class="v">#1d2a31</span>;
+  <span class="k">--color-surface-container-high</span>: <span class="v">#23323a</span>;
+  <span class="k">--color-surface-container-highest</span>: <span class="v">#2a3b44</span>;
+  <span class="k">--color-surface-variant</span>: <span class="v">#26353d</span>;
+  <span class="k">--color-background</span>: <span class="v">#0d1519</span>;
+  <span class="k">--color-on-surface</span>: <span class="v">#ebf3f7</span>;
+  <span class="k">--color-on-surface-variant</span>: <span class="v">#a7b8c2</span>;
+  <span class="k">--color-on-background</span>: <span class="v">#ebf3f7</span>;
+  <span class="k">--color-outline</span>: <span class="v">#90a3ad</span>;
+  <span class="k">--color-outline-variant</span>: <span class="v">#2c3b43</span>;
+  <span class="k">--color-control-outline</span>: <span class="v">#71838d</span>;
+  <span class="k">--color-selected-surface</span>: <span class="v">#33454e</span>;
+  <span class="k">--color-primary</span>: <span class="v">#47cbe2</span>;
+  <span class="k">--color-on-primary</span>: <span class="v">#04222a</span>;
+  <span class="k">--color-primary-container</span>: <span class="v">#0b3a45</span>;
+  <span class="k">--color-on-primary-container</span>: <span class="v">#bdeef8</span>;
+  <span class="k">--color-secondary</span>: <span class="v">#47cbe2</span>;
+  <span class="k">--color-on-secondary</span>: <span class="v">#04222a</span>;
+  <span class="k">--color-secondary-container</span>: <span class="v">#22323a</span>;
+  <span class="k">--color-on-secondary-container</span>: <span class="v">#ebf3f7</span>;
+  <span class="k">--color-error</span>: <span class="v">#ff938a</span>;
+  <span class="k">--color-on-error</span>: <span class="v">#1d0806</span>;
+  <span class="k">--color-error-container</span>: <span class="v">#2e1718</span>;
+  <span class="k">--color-on-error-container</span>: <span class="v">#ffd2cc</span>;
+  <span class="k">--color-success</span>: <span class="v">#4ecf8b</span>;
+  <span class="k">--color-on-success</span>: <span class="v">#06130c</span>;
+  <span class="k">--color-success-container</span>: <span class="v">#102a1f</span>;
+  <span class="k">--color-on-success-container</span>: <span class="v">#9ff0c4</span>;
+  <span class="k">--color-waiting</span>: <span class="v">#f0c45c</span>;
+  <span class="k">--color-warning-container</span>: <span class="v">#2a2414</span>;
+  <span class="k">--color-on-warning-container</span>: <span class="v">#ffe4a6</span>;
+
+  <span class="c">/* dark mirrors of the dash namespace */</span>
+  <span class="k">--color-dash-background</span>: <span class="v">#0d1519</span>;
+  <span class="k">--color-dash-surface</span>: <span class="v">#141e23</span>;
+  <span class="k">--color-dash-on-surface</span>: <span class="v">#ebf3f7</span>;
+  <span class="k">--color-dash-on-surface-variant</span>: <span class="v">#a7b8c2</span>;
+  <span class="k">--color-dash-surface-container-low</span>: <span class="v">#18232a</span>;
+  <span class="k">--color-dash-surface-container</span>: <span class="v">#1d2a31</span>;
+  <span class="k">--color-dash-surface-container-high</span>: <span class="v">#23323a</span>;
+  <span class="k">--color-dash-surface-container-highest</span>: <span class="v">#2a3b44</span>;
+  <span class="k">--color-dash-primary</span>: <span class="v">#47cbe2</span>;
+  <span class="k">--color-dash-on-primary</span>: <span class="v">#04222a</span>;
+  <span class="k">--color-dash-primary-container</span>: <span class="v">#0b3a45</span>;
+  <span class="k">--color-dash-on-primary-container</span>: <span class="v">#bdeef8</span>;
+  <span class="k">--color-dash-secondary-container</span>: <span class="v">#22323a</span>;
+  <span class="k">--color-dash-on-secondary-container</span>: <span class="v">#ebf3f7</span>;
+  <span class="k">--color-dash-success</span>: <span class="v">#4ecf8b</span>;
+  <span class="k">--color-dash-on-success</span>: <span class="v">#06130c</span>;
+  <span class="k">--color-dash-success-container</span>: <span class="v">#102a1f</span>;
+  <span class="k">--color-dash-on-success-container</span>: <span class="v">#9ff0c4</span>;
+  <span class="k">--color-dash-error</span>: <span class="v">#ff938a</span>;
+  <span class="k">--color-dash-on-error</span>: <span class="v">#1d0806</span>;
+  <span class="k">--color-dash-error-container</span>: <span class="v">#2e1718</span>;
+  <span class="k">--color-dash-on-error-container</span>: <span class="v">#ffd2cc</span>;
+  <span class="k">--color-dash-warning</span>: <span class="v">#f0c45c</span>;
+  <span class="k">--color-dash-on-warning</span>: <span class="v">#1b1200</span>;
+  <span class="k">--color-dash-warning-container</span>: <span class="v">#2a2414</span>;
+  <span class="k">--color-dash-on-warning-container</span>: <span class="v">#ffe4a6</span>;
+  <span class="k">--color-dash-outline</span>: <span class="v">#90a3ad</span>;
+  <span class="k">--color-dash-outline-variant</span>: <span class="v">#2c3b43</span>;
+  <span class="k">--color-dash-control-outline</span>: <span class="v">#71838d</span>;
+  <span class="k">--color-dash-selected-surface</span>: <span class="v">#33454e</span>;
+
+  <span class="k">--selection-bg</span>: <span class="v">#1b4351</span>;
+  <span class="k">--selection-ink</span>: <span class="v">#e6f7fb</span>;
+  <span class="k">color-scheme</span>: <span class="v">dark</span>;
+}</pre>
+</div>
+      <div class="foot-note">
+        <p>
+          <b>One mapping note, outside the token block.</b> The Arc primary button fills from
+          <code>--foreground</code> (which maps to <code>--color-on-surface</code>), not from
+          <code>--color-primary</code> — that is why today's "Add student" is ink. Making the committing
+          button cyan is one line in <code>src/components/arc/arc-tokens.css</code> (point the Button's
+          primary fill at the accent); without it the accent still lands on every data hue, chip, route
+          line and focus ring, and the button stays ink.
+        </p>
+        <p>
+          <b>What this does not change:</b> no layout, type size, radius, spacing, motion, component API or
+          status meaning — only the values of the tokens above, plus the optional button mapping. Green,
+          amber and red stay reserved for attendance state.
+        </p>
+        <p>
+          <b>Remaining verification:</b> the screenshots for this artifact were taken in headless Chrome at
+          1440 and 390 CSS px; the Arabic (RTL) reading, the real Material Symbols subset, and a device
+          with the actual Android/iOS font rasterisation were not part of this pass.
+        </p>
+      </div>
+    </div>
+  </footer>
+</main>
+
+<script>
+/* ─────────────────────────────────────────────────────────────────────────
+   1. The comparison switch. Swaps one attribute on <html>; every skin lives
+      in CSS. `?theme=proposed` and `#proposed` open the proposed set.
+   2. A WCAG contrast helper. Every ratio printed on this page is computed
+      here from the values the browser resolved — none are typed by hand.
+   ───────────────────────────────────────────────────────────────────────── */
+(function () {
+  var html = document.documentElement;
+
+  /* ---- contrast maths ---------------------------------------------------- */
+  function parseColor(value) {
+    if (!value) return null;
+    value = value.trim();
+    if (value.charAt(0) === '#') {
+      var h = value.slice(1);
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      return [parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255, parseInt(h.slice(4, 6), 16) / 255];
+    }
+    var m = value.match(/-?\d*\.?\d+/g);
+    if (!m || m.length < 3) return null;
+    return [Number(m[0]) / 255, Number(m[1]) / 255, Number(m[2]) / 255];
+  }
+  function channel(c) { return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+  function luminance(rgb) { return 0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2]); }
+  function contrast(a, b) {
+    var x = luminance(a), y = luminance(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  }
+
+  /* ---- probes: one element per skin, so any token can be resolved and
+     measured without duplicating a single hex in this script ------------- */
+  var probes = {};
+  function probe(skin) {
+    if (!probes[skin]) {
+      var d = document.createElement('div');
+      d.setAttribute('data-skin', skin);
+      d.setAttribute('aria-hidden', 'true');
+      d.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;visibility:hidden;pointer-events:none';
+      document.body.appendChild(d);
+      probes[skin] = d;
+    }
+    return probes[skin];
+  }
+  function tokenValue(skin, token) {
+    return getComputedStyle(probe(skin)).getPropertyValue(token).trim();
+  }
+  function resolvedColor(skin, value) {
+    if (value.charAt(0) === '#') return parseColor(value);
+    var p = probe(skin);
+    p.style.color = 'var(' + value + ')';
+    return parseColor(getComputedStyle(p).color);
+  }
+  function ratioOf(skin, fg, bg) {
+    var a = resolvedColor(skin, fg), b = resolvedColor(skin, bg);
+    if (!a || !b) return 0;
+    return contrast(a, b);
+  }
+
+  /* ---- the palette table ------------------------------------------------- */
+  var ROWS = [
+    { t: '--color-background', role: 'Ground — the page paper', kind: 'bg',
+      pairs: [{ fg: '--color-on-surface', bg: '--color-background', label: 'ink on ground', target: 4.5 },
+              { fg: '--color-on-surface-variant', bg: '--color-background', label: 'secondary ink', target: 4.5 }] },
+    { t: '--color-surface-container-lowest', role: 'Surface — cards, tables', kind: 'bg',
+      pairs: [{ fg: '--color-on-surface', bg: '--color-surface-container-lowest', label: 'ink on card', target: 4.5 },
+              { fg: '--color-on-surface-variant', bg: '--color-surface-container-lowest', label: 'secondary ink', target: 4.5 }] },
+    { t: '--color-surface-container-low', role: 'Zebra row', kind: 'bg',
+      pairs: [{ fg: '--color-on-surface-variant', bg: '--color-surface-container-low', label: 'secondary ink', target: 4.5 }] },
+    { t: '--color-surface-container', role: 'Control / chip tint', kind: 'bg',
+      pairs: [{ fg: '--color-on-surface-variant', bg: '--color-surface-container', label: 'secondary ink', target: 4.5 }] },
+    { t: '--color-on-surface', role: 'Ink', kind: 'fg',
+      pairs: [{ fg: '--color-on-surface', bg: '--color-background', label: 'on ground', target: 4.5 },
+              { fg: '--color-on-surface', bg: '--color-surface-container-lowest', label: 'on card', target: 4.5 }] },
+    { t: '--color-on-surface-variant', role: 'Secondary ink', kind: 'fg',
+      pairs: [{ fg: '--color-on-surface-variant', bg: '--color-background', label: 'on ground', target: 4.5 },
+              { fg: '--color-on-surface-variant', bg: '--color-surface-container-low', label: 'on stripe', target: 4.5 }] },
+    { t: '--color-primary', role: 'Accent — action and data', kind: 'bg',
+      pairs: [{ fg: '--color-on-primary', bg: '--color-primary', label: 'label on fill', target: 4.5 },
+              { fg: '--color-primary', bg: '--color-surface-container-lowest', label: 'as text on card', target: 4.5 }] },
+    { t: '--color-on-primary', role: 'Label on the accent', kind: 'fg',
+      pairs: [{ fg: '--color-on-primary', bg: '--color-primary', label: 'label on fill', target: 4.5 }] },
+    { t: '--color-primary-container', role: 'Pale accent tint', kind: 'bg',
+      pairs: [{ fg: '--color-on-primary-container', bg: '--color-primary-container', label: 'chip label', target: 4.5 }] },
+    { t: '--color-on-primary-container', role: 'Label on the pale tint', kind: 'fg',
+      pairs: [{ fg: '--color-on-primary-container', bg: '--color-primary-container', label: 'chip label', target: 4.5 }] },
+    { t: '--color-success', role: 'Boarded', kind: 'fg',
+      pairs: [{ fg: '--color-success', bg: '--color-surface-container-lowest', label: 'status text on card', target: 4.5 },
+              { fg: '--color-success', bg: '--color-success-container', label: 'on its tint', target: 4.5 }] },
+    { t: '--color-success-container', role: 'Boarded tint', kind: 'bg',
+      pairs: [{ fg: '--color-on-success-container', bg: '--color-success-container', label: 'chip label', target: 4.5 }] },
+    { t: '--color-waiting', role: 'No record / warning ink', kind: 'fg',
+      pairs: [{ fg: '--color-waiting', bg: '--color-surface-container-lowest', label: 'status text on card', target: 4.5 },
+              { fg: '--color-waiting', bg: '--color-warning-container', label: 'on its tint', target: 4.5 }] },
+    { t: '--color-warning-container', role: 'Warning tint', kind: 'bg',
+      pairs: [{ fg: '--color-on-warning-container', bg: '--color-warning-container', label: 'chip label', target: 4.5 }] },
+    { t: '--color-error', role: 'Absent', kind: 'fg',
+      pairs: [{ fg: '--color-error', bg: '--color-surface-container-lowest', label: 'status text on card', target: 4.5 },
+              { fg: '--color-error', bg: '--color-error-container', label: 'on its tint', target: 4.5 }] },
+    { t: '--color-error-container', role: 'Absent tint', kind: 'bg',
+      pairs: [{ fg: '--color-on-error-container', bg: '--color-error-container', label: 'chip label', target: 4.5 }] },
+    { t: '--color-outline', role: 'Strong outline', kind: 'edge',
+      pairs: [{ fg: '--color-outline', bg: '--color-surface-container-lowest', label: 'edge on card', target: 3 }] },
+    { t: '--color-control-outline', role: 'Field edge', kind: 'edge',
+      pairs: [{ fg: '--color-control-outline', bg: '--color-surface-container-lowest', label: '3:1 control edge', target: 3 }] },
+    { t: '--color-outline-variant', role: 'Quiet divider', kind: 'edge',
+      pairs: [{ fg: '--color-outline-variant', bg: '--color-surface-container-lowest', label: 'separates two surfaces', target: 0 }] },
+    { t: '--color-selected-surface', role: 'Segment thumb', kind: 'bg',
+      pairs: [{ fg: '--color-on-surface', bg: '--color-selected-surface', label: 'segment label', target: 4.5 }] }
+  ];
+
+  function pairBadge(skin, p) {
+    var wrap = document.createElement('span');
+    wrap.className = 'pair';
+    var r = ratioOf(skin, p.fg, p.bg);
+    var badge = document.createElement('span');
+    badge.className = 'r' + (p.target === 0 ? ' quiet' : r >= p.target ? '' : ' bad');
+    badge.textContent = r.toFixed(2) + ':1';
+    badge.title = p.fg + ' on ' + p.bg;
+    var label = document.createElement('span');
+    label.textContent = p.label;
+    wrap.appendChild(badge);
+    wrap.appendChild(label);
+    return wrap;
+  }
+
+  function buildPalette() {
+    var body = document.getElementById('pal-body');
+    if (!body) return;
+    body.innerHTML = '';
+    ROWS.forEach(function (row) {
+      var tr = document.createElement('tr');
+      var name = document.createElement('td');
+      var tk = document.createElement('span');
+      tk.className = 'tk';
+      tk.textContent = row.t;
+      var role = document.createElement('span');
+      role.className = 'role';
+      role.textContent = row.role;
+      name.appendChild(tk);
+      name.appendChild(role);
+      tr.appendChild(name);
+      ['cl', 'pl', 'cd', 'pd'].forEach(function (skin, i) {
+        var td = document.createElement('td');
+        if (i === 2) td.className = 'group-sep';
+        var cell = document.createElement('div');
+        cell.className = 'cell';
+        var sw = document.createElement('span');
+        sw.className = 'sw';
+        sw.setAttribute('data-skin', skin);
+        if (row.kind === 'fg') {
+          sw.style.background = 'var(--color-surface-container-lowest)';
+          sw.style.color = 'var(' + row.t + ')';
+          sw.textContent = 'Aa';
+        } else if (row.kind === 'edge') {
+          sw.style.background = 'var(--color-surface-container-lowest)';
+          sw.style.border = '2px solid var(' + row.t + ')';
+        } else {
+          sw.style.background = 'var(' + row.t + ')';
+        }
+        var meta = document.createElement('div');
+        var hex = document.createElement('span');
+        hex.className = 'hex';
+        hex.textContent = tokenValue(skin, row.t);
+        var pairs = document.createElement('div');
+        pairs.className = 'pairs';
+        row.pairs.forEach(function (p) { pairs.appendChild(pairBadge(skin, p)); });
+        meta.appendChild(hex);
+        meta.appendChild(pairs);
+        cell.appendChild(sw);
+        cell.appendChild(meta);
+        td.appendChild(cell);
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+  }
+
+  /* ---- inline [data-measure] badges ------------------------------------- */
+  function fillMeasures() {
+    document.querySelectorAll('[data-measure]').forEach(function (el) {
+      var skin = el.getAttribute('data-skin') || html.getAttribute('data-skin') || 'cl';
+      var fg = el.getAttribute('data-fg');
+      var bg = el.getAttribute('data-bg');
+      if (!fg || !bg) return;
+      var r = ratioOf(skin, fg, bg);
+      var target = parseFloat(el.getAttribute('data-target') || '4.5');
+      el.textContent = r.toFixed(2) + ':1';
+      el.title = fg + ' on ' + bg;
+      el.classList.toggle('bad', r < target);
+      el.classList.toggle('mid', r >= 3 && r < target);
+    });
+  }
+
+  /* ---- the switch -------------------------------------------------------- */
+  function setSkin(skin) {
+    html.setAttribute('data-skin', skin);
+    var proposed = skin === 'pl';
+    document.querySelectorAll('.switch button').forEach(function (b) {
+      b.setAttribute('aria-pressed', String((b.getAttribute('data-set') === 'proposed') === proposed));
+    });
+    document.querySelectorAll('.dark-frame').forEach(function (f) {
+      var isProposed = f.getAttribute('data-skin') === 'pd';
+      f.classList.toggle('active', isProposed === proposed);
+    });
+    fillMeasures();
+  }
+
+  document.querySelectorAll('.switch button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var proposed = b.getAttribute('data-set') === 'proposed';
+      setSkin(proposed ? 'pl' : 'cl');
+      try {
+        history.replaceState(null, '', proposed ? '#proposed' : '#current');
+      } catch (e) { /* file:// */ }
+    });
+  });
+
+  var wantsProposed = /proposed/.test(location.hash) ||
+    new URLSearchParams(location.search).get('theme') === 'proposed';
+
+  buildPalette();
+  setSkin(wantsProposed ? 'pl' : 'cl');
+
+  /* ---- copy the CSS block ------------------------------------------------ */
+  var copyBtn = document.getElementById('copy-css');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', function () {
+      var blocks = document.querySelectorAll('.paste');
+      var text = Array.prototype.map.call(blocks, function (b) { return b.textContent; }).join('\n');
+      var done = function () {
+        copyBtn.textContent = 'Copied';
+        window.setTimeout(function () { copyBtn.textContent = 'Copy the block'; }, 1600);
+      };
+      var selectInstead = function () {
+        try {
+          var range = document.createRange();
+          range.selectNodeContents(document.querySelector('.paste-grid'));
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          copyBtn.textContent = 'Selected — press Ctrl/Cmd+C';
+        } catch (e) {
+          copyBtn.textContent = 'Select the block to copy';
+        }
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, selectInstead);
+      } else {
+        selectInstead();
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

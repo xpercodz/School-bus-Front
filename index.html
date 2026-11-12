@@ -8,10 +8,26 @@
     />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
-    <meta name="theme-color" content="#f3f4f1" />
+    <meta name="theme-color" content="#f4f8fa" />
     <!-- Title + description are set per-route and per-locale by App.tsx. -->
     <title>School Bus Transit</title>
     <meta name="description" content="School bus attendance and transit monitoring" />
+
+    <!-- First-paint ground. The CSS bundle (and its --color-background token)
+         has not loaded yet when this document paints, so mirror the app ground
+         here: the inline theme script below adds .dark before the first paint,
+         and this rule follows it. Keep both values in sync with THEME_COLORS in
+         src/lib/theme.ts and the --color-background values in src/globals.css.
+         Without this, a dark-mode cold boot flashes the UA's white canvas
+         before the bundle and the boot loader arrive. -->
+    <style>
+      html {
+        background: #f4f8fa;
+      }
+      html.dark {
+        background: #0d1519;
+      }
+    </style>
 
     <!-- Install-to-home-screen. The <link rel="manifest"> is injected at build
          time by vite-plugin-pwa (see vite.config.ts). These are the iOS-specific
@@ -52,7 +68,7 @@
           root.style.colorScheme = dark ? "dark" : "light";
           root.classList.add("js");
           var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.setAttribute("content", dark ? "#101413" : "#f3f4f1");
+          if (meta) meta.setAttribute("content", dark ? "#0d1519" : "#f4f8fa");
           var statusBar = document.querySelector(
             'meta[name="apple-mobile-web-app-status-bar-style"]',
           );

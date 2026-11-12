@@ -65,7 +65,7 @@ already dropped its route chunks.
   and `/manifest.webmanifest`. Don't remove those or deploys stop reaching
   clients that already have a worker.
 
-**Precache size — read this before "optimising" it.** It is ~1.99 MiB, and the
+**Precache size — read this before "optimising" it.** It is ~2.14 MiB, and the
 composition is not what the filenames suggest: the Firebase SDK + motion vendor
 chunk (~823 KiB, named after whichever module Vite happened to bundle with it —
 currently `createLucideIcon-*`, which is misleading and has been `motion-*` and
@@ -121,6 +121,58 @@ scripts/build-icon-font.mjs regenerates the icon subset (run when icons change)
 scripts/offline-smoke.mjs   headless-Chrome offline regression test
 ```
 
+## Who may open what (roles, screens, the main director)
+
+Three roles live on `users/{uid}`: `director`, `operator`, `staff` (the driver,
+code-only sign-in).
+
+- **operator** — office staff below the director. Signs in with email + password
+  on the same tab as the director, and may open only the screens listed in their
+  profile's `screens` array: `live`, `students`, `reports`, `assignments`,
+  `drivers`. Operators can never reach the Operators page, so they can never
+  hand out access.
+- **director** — every screen. Exactly one director also carries
+  `owner: true` — the **main director**, the only account that sees the Operators
+  page and may create, re-scope or remove operators. `owner` is a flag, not a
+  role, because a director already holds everything the rules grant.
+- **staff** — unchanged: a 6-digit code, writes only their own bus's
+  runs/attendance.
+
+**The three places that have to agree, or the permission is a hidden link:**
+
+1. `src/lib/permissions.ts` — `canOpenScreen` decides what is DRAWN (nav rows,
+   route guards). `RequireAccess` admits the management shell; `RequireScreen`
+   gates each route and redirects to the first screen the reader CAN use.
+2. `firebase/firestore.rules` — reads the same `screens` names off the caller's
+   profile and grants a collection to the union of screens that need it.
+   Writes are narrower: an operator granted Assignments may change a student's
+   `busId` and nothing else (`diff().affectedKeys().hasOnly([...])`).
+3. `School-bus-API` — `requireManager(screen)` for the privileged driver
+   endpoints, `requireOwner` for `/v1/operators*`. Accounts can only be created
+   there: Firebase Auth users and profiles are Admin-SDK-only.
+
+The main director is resolved in one place, `src/lib/main-director.tsx`
+(`MainDirectorProvider` in the shell), because the rail, the phone bar and every
+route guard must read the same answer. The rule has two steps:
+
+1. `owner: true` on a director's profile — set by the seed, or by
+   `npm run owner -- <director-email>` in the API repo (`scripts/set-owner.mjs`,
+   which also clears the flag from the school's other director profiles);
+2. **a school with exactly one director** — that director is the main one,
+   because there is no other account the flag could mean.
+
+Step 2 exists because gating on the flag alone made the feature ship dark on
+every existing deployment: the row was invisible, and a director reasonably
+concluded it had not been built. `requireOwner` in the API applies the same two
+steps, so the client and the server never disagree. Once a school has a second
+director, step 2 stops applying and the flag decides.
+
+**`assignmentMode` on `schools/{schoolId}`** (`"bus"` | `"driver"`, absent =
+`"bus"`) decides whether Assignments labels a student's assignment by the bus or
+by the driver. It is the school's value, not the device's, so two colleagues
+read the same column; a director or an operator granted Assignments may write
+that one field, and the rules refuse every other field on the document.
+
 ## Contract drift
 
 The HTTP contract is duplicated on purpose because the repos are independent:
@@ -139,8 +191,8 @@ private package instead of mirroring it.
 (https://uiarc.dev) with `npx shadcn@latest add @uiarc/<name>`. They are our own
 code now, not a dependency. Installed set: `button`, `dropdown-menu`,
 `date-picker` + `calendar`, `date-range-picker`, `expanding-search`,
-`pagination`, `theme-switch`, `icon-morph`, `otp-input`, `user-menu` and the
-`bar-chart` / `donut-chart` / `slope-chart` family:
+`pagination`, `theme-switch`, `icon-morph`, `otp-input`, `user-menu`,
+`file-dropzone` and the `bar-chart` / `donut-chart` / `slope-chart` family:
 
 - **Tokens.** They read a generic surface (`--foreground`, `--surface`,
   `--accent`, `--radius-control`, `--duration-*`) that this app does not have.
@@ -148,12 +200,20 @@ code now, not a dependency. Installed set: `button`, `dropdown-menu`,
   **by reference**, so a palette change or a `.dark` flip needs no edit there.
   Never restyle the vendored `.module.css` files to fix a colour — change the
   mapping, or pass a `color` prop where the API offers one.
+  One recorded exception (in `PATCHES.md`): `Button`'s `.primary` fills from
+  `--action-bg` / `--action-fg`, declared in `arc-tokens.css` as references to
+  `--color-primary` / `--color-on-primary`. The shipped rule filled the one
+  committing action with ink, so the app's only accent colour never appeared on
+  the control that means "do it". Keep those two tokens as references — the
+  palette stays in `globals.css`, and `.dark` flips them for free.
 - **Patches.** Edits to the vendored source are listed in
   `src/components/arc/PATCHES.md` with the reason. `shadcn add --overwrite`
   reverts them silently, so re-read that file after any re-install.
 - **Strings.** The components ship English defaults. Anything user-facing must
   come from `t()` in both dictionaries; where a string is not reachable as a
-  prop it is patched (see PATCHES.md), never left in English.
+  prop it is patched (see PATCHES.md), never left in English. `file-dropzone`
+  is the newest example: it grew a `labels` prop because its refusals, Retry /
+  Remove labels and list name were literal strings.
 - **RTL.** Arabic sets `dir="rtl"` on `<html>`. Components that position things
   with physical `left`/`right` are broken there — check the RTL column in
   PATCHES.md before adopting one.
@@ -179,6 +239,13 @@ code now, not a dependency. Installed set: `button`, `dropdown-menu`,
 - User-facing strings are **never** hardcoded — add a key to
   `src/lib/i18n/dictionaries/en.ts` (which defines the `Messages` type) and
   `ar.ts`, then resolve via `t()`. Both languages must stay complete.
+- A string that embeds a **count** uses `tp(key, count, vars)`, not `t`: the
+  dictionary keeps the plural on the base key and adds `<key>.one`, and
+  `tp` picks the CLDR category with `Intl.PluralRules` (falling back to
+  `.other`, then the base key). Base keys listed in `PluralKey`
+  (`src/lib/i18n/types.ts`) are the ones with plural forms. Without it a
+  school with one unrecorded child reads "1 students". Pass the raw number to
+  `tp` and the localized digits (`toLocaleDigits`) as the `{count}` var.
 - `src/data/` holds types and presentation config (statuses, KPI ids, nav items).
   No data lives there.
 - Material Symbols Rounded/Outlined is **self-hosted as a subset** in
@@ -187,8 +254,10 @@ code now, not a dependency. Installed set: `button`, `dropdown-menu`,
   for `<Icon name="…">` and for **any property ending in `Icon`** (`icon:`,
   `footerIcon:`, …), then asks the Google Fonts API for only those glyphs (~111 KiB
   for both families, versus **5.2 MiB per family** for the full font). **Re-run it
-  whenever an icon is added or removed** — a glyph missing from the subset renders
-  as its literal ligature name, which is exactly the bug this replaced.
+  whenever an icon is added or removed** — a missing glyph renders as its literal
+  ligature name (and an unknown name that starts with a real icon, such as
+  `directions_bus_off`, renders that glyph plus the leftover `_off`). Google
+  silently drops unknown names; verify a new one in a browser after building.
   Two traps, both of which have already bitten once:
   - Scanning only `icon:` missed `footerIcon: "warning"`, so the live dashboard
     rendered the literal word "WARNING". Keep the property match broad — a spare
@@ -263,16 +332,19 @@ The `press` utility is for the controls that stayed custom — an Arc Button pre
 itself.
 
 **Every search field is `@uiarc/expanding-search`** — an icon that unfolds into
-the field and folds back when emptied: the roster (`SearchBar`), the Reports
-roster toolbar, Assignments, the Drivers access-codes list and the bus overview
-modal. They use its *filter* form (controlled `value`/`onValueChange`, no
+the field and folds back when emptied: the phone roster (`SearchBar`), the
+Students roll toolbar, Assignments and the Drivers access-codes list. The bus
+sheet has no search field: it pages its students instead, and a search box in a
+twelve-row dialog was a second way to do the same thing. They use its *filter* form (controlled `value`/`onValueChange`, no
 `items`), because the page already renders the list the search narrows; passing
 `items` would turn filtering into a jump-to panel. Leave `anchor="start"` so the
 field grows from the leading edge in both directions, and keep the container's
 width (the field never grows past it). **Inside a `Dialog`, stop Escape from
 propagating out of the field** (see `BusOverviewModal`): the field collapses on
 Escape and the dialog's document listener would close the whole overlay on the
-same press. Filter local state, not the page's pagination or Firestore.
+same press. `Dialog` now also ignores an Escape it did not handle itself
+(`event.defaultPrevented`), so a menu or popover inside a dialog can close
+without taking the dialog with it. Filter local state, not the page's pagination or Firestore.
 
 **State-changing icons are `@uiarc/icon-morph`** where one of its families fits
 (`menu`, `play`, `plus`, `copy`, `theme`, `chevron`, `bell`, `heart`): drive it
@@ -312,6 +384,126 @@ do not hand-roll page buttons). Page size is 10.
   page, so there is no "Load more" button left anywhere.
 - The **driver's roster is deliberately not paged**: a driver has to see every
   child on the run, offline, without an extra tap between them and a student.
+- The **class cards on Reports page 8 at a time**, not 10: the grid is four
+  across, so eight is exactly two rows and every page closes its last row. Ten
+  would leave page 1 ending on a two-card row.
+
+**The roll is its own screen, and "no date" means the whole roll.**
+`/dashboard/students` (`StudentsPage`) has two views of the same rows, chosen by
+the calendar alone:
+
+- **No date picked → the roll.** Every child in `schools/{schoolId}/students`,
+  whatever happened today, with a summary instead of run columns: present days,
+  absent days, attendance % and the last recorded day + state, over the 90-day
+  retention window (`ROLL_SUMMARY_DAYS`). The add/remove day columns are not
+  "missing" — a run column over a list of every child would be a lie.
+- **A date picked → that day's runs**, exactly as before: run segment, Off
+  place, boarded/dropped times, status.
+
+Both views share one `AttendanceRow` shape, one `useStudentList` (search, sort,
+grade, status, pagination) and one table (`view="day" | "roll"`), so they can
+never diverge: `rollRow` fills the day-only fields with the app's own "no time"
+placeholder, which the roll view never renders. The roll reads
+`useSchoolRoll` + `useRollSummary`; the day reads `useDashboardData`, whose
+`enabled` flag is false in roll mode so the screen never pays for a read it is
+not showing. Two consequences worth keeping: the run-order sort collapses to
+name order on the roll (a place in a run is a fact about a day), and the status
+filter is hidden there and cleared on the flip, because an invisible filter
+would silently shorten the list.
+
+**Each day-scoped screen owns its own date.** Live monitor, Students and Reports
+call `useSelectedDate("live" | "students" | "reports")`
+(`src/lib/selected-date.ts`), which remembers that screen's choice in
+`sessionStorage` — so leaving Reports and coming back keeps the day, while
+picking a day on Reports never moves Students or the Live monitor. Sharing one
+value between them was tried and reverted: the three screens answer different
+questions, and a date is part of the question. `null` keeps each screen's
+existing meaning (the live day on the monitor and Reports, the whole roll on
+Students). Cleared on sign-out; the run segment is still per-page state.
+
+The presence counts are **days**, not runs: a morning + afternoon pair is one
+schoolday, so "42 present · 2 absent" reads as schooldays. `useRollSummary` is
+one newest-first paginated range read (500/page, 20,000 docs) rather than a
+query per student; the newest-first order means a truncated window keeps the
+most recent records. The Live monitor no longer lists students — it shows the
+day's totals and the routes, and a route opens that bus's sheet.
+
+**The Off column is the run's order, and it belongs to the bus sheet.** Inside
+`BusOverviewModal` the students are numbered 1, 2, 3 … in the order they came
+off that bus — the number restarts per bus, because the sheet is scoped to one
+bus, and "who came off first" is a question about that bus. The last numbered
+row carries a stronger rule so the sequence visibly ends; everyone after it is
+still on board, absent, or has no record.
+
+**"Waiting" is not a status any more — it is the absence of one.** A child on
+today's sheet that nobody has recorded anything about is still a `WAITING`
+document in Firestore (the value is kept so records written earlier stay
+readable), but the word never reaches a user:
+
+- the director sees those children only as the **unaccounted** count
+  (waiting + absent), and as a neutral chip reading `Unaccounted` where an
+  individual row must say something (`STATUS_META.WAITING` /
+  `DASH_STATUS_META.WAITING` are neutral — never the amber `--color-waiting`);
+- the driver's pill reads **"Board"** (`mobile.markBoarded`) — the action, not a
+  state — and carries a control edge (white fill, `--color-control-outline`
+  border) while the settled states stay flat and tinted, so weight alone says
+  "still needs a tap"; the tint stays neutral, never the amber
+  `--color-waiting`, and the manifest rail tick under `TopAppBar` is neutral too;
+- the pill guards a second press for 350 ms (`STATUS_TAP_GUARD_MS`): the cycle
+  is WAITING → BOARDED → DROPPED_OFF, so an accidental double tap would record
+  a child as off the bus;
+- no filter, tab, chip rail or KPI cell offers it. `TABS`, `CHIPS` and
+  `STUDENT_STATUS_FILTERS` are the states people act on.
+
+Do not re-introduce the word, and do not give the neutral state a status hue:
+the whole point is that a child with no record must not read as a warning next
+to a child who is actually absent.
+
+**Zebra tables are one utility.** Every table renders
+`className="table-zebra"` (`globals.css`): even rows take one tone step and the
+1px row rule is removed inside a striped table, because a stripe and a rule are
+two encodings of the same thing. Do not hand-roll stripes, and do not add zebra
+to the phone card lists (they are `divide-y` lists, not tables).
+
+**A sheet import is read, matched, then written — in that order.**
+`src/lib/sheet-import.ts` parses CSV and XLSX **without a dependency** (XLSX is
+a zip: `DecompressionStream("deflate-raw")` plus `DOMParser` over
+`xl/worksheets/sheet1.xml` and `sharedStrings.xml`), so the import adds nothing
+to the bundle and works offline. `guessColumns` matches the school's own
+headers to Student name / Grade / Bus, `buildAssignmentPlan` decides what moves
+(deduping by student id, so a duplicated sheet row cannot double-move a child,
+and counting unchanged rows instead of rewriting them), and only then does
+`applyAssignmentPlan` write `busId` in batches of ≤400. The dialog shows the
+mapping and a preview before anything is written; nothing is guessed at apply
+time — unmatched rows are reported, not dropped. The drop target itself is a
+**disclosure, closed by default, capped at `max-w-xl`** — the cap is on the
+**card**, so the summary row and the drop target share one width instead of a
+page-wide band with a small box inside: importing is a
+once-a-term job, and a page-wide drop zone pushed the roster (the screen's
+actual job) below the fold. Its summary row keeps the chosen file's name, so a
+read sheet is never hidden behind a collapsed panel.
+
+**A dropdown over data grows a search field.** `@uiarc/dropdown-menu` already
+renders a sticky filter field; pass
+`searchable={{ placeholder: t("dropdown.searchPlaceholder"), emptyLabel: t("dropdown.searchEmpty") }}`
+on every value selector whose options come from Firestore — grades, buses,
+drivers, classes — once it has **four or more** real options (a leading
+"all / no bus" reset row does not count). Below that, keep the plain menu: a
+field over three rows is noise. Sort and action menus never get it.
+
+**The Assignments student list is filtered, not just searched.** Bus and grade
+dropdowns sit beside the search field, both reset by one clear action, with a
+"X of Y students" line while narrowed; the page reset key includes the search
+and both filters so narrowing lands on page 1, while a live change to the rows
+alone does not.
+
+**A bus move shows its own answer, not a re-read.** `students` is a one-shot
+cursor page, so after `assignStudentToBus` the page keeps an override
+(`busOverrides[studentId]`) that both the trigger label and the `checked` flags
+read. An immediate `getDocs` can return the pre-write document, which is what
+made a saved move snap back to the old bus — so a single move never re-reads.
+The override is dropped when the list does re-read (a sheet import), and the
+per-bus counts keep their own `countsVersion` so the totals still refresh.
 
 **Looping decoration is a closed list.** One thing animates on a loop by
 design: the route sweep on the live monitor (`.route-flow` in `globals.css`).
@@ -325,6 +517,66 @@ series (`completedByBus`), switched by a `SlideSegments` labelled
 designs that show different numbers are a bug, not a feature. The donut's parts
 are buses, not statuses, so it takes a single-hue `color-mix` ramp rather than the
 status `--series-*` palette (where red means "absent").
+
+## The tour, the guidebook and the hover hints
+
+Three ways to answer "what is this?", sharing one rule: **content is derived from
+permissions, never written per role.**
+
+- **The tour** (`src/lib/tour.ts`, `components/dashboard/Tour.tsx`) walks a
+  director across the dashboard: Live monitor → Students → Reports →
+  Assignments → Drivers → Operators → the guidebook. One step lights one real
+  control — a 2px accent stroke on the control's own edge, plus a card beside
+  it. It is non-modal on purpose (`aria-modal="false"`, no focus trap, no
+  dimming): the page stays usable. A step declares its `path` and a
+  `[data-tour="…"]` selector; the tour navigates there, polls ~1.2s for the
+  control (route chunk + first snapshot), then places the ring. **The loaded
+  profile is passed into `Tour` from the host, never re-read with
+  `useUserProfile()` inside it** — a fresh hook mount starts at
+  `EMPTY_PROFILE`, so computing the steps on that first render dropped every
+  `screen`-gated step and left the tour two cards long. That shipped once. A control that
+  never appears (a screen with no data, a rail control behind a closed drawer on
+  a phone) centres the card rather than pointing at nothing. The list is frozen
+  when the tour opens and filtered by **capability**, not by what is in the DOM —
+  steps on other screens are not mounted yet. Tour-driven navigation is exempt
+  from the "navigating ends the tour" rule; a link the reader clicks still ends
+  it.
+- **Asked once, replayable for ever.** `src/lib/tour-seen.ts` keeps one
+  `localStorage` key per UID, versioned. The invitation (`TourInvite`) is shown
+  once on `/dashboard` and both answers set the flag; **Skip**, Escape, **Done**
+  and leaving the page all end it. Replay has three permanent doors: the rail
+  footer row **above Guidebook** (`data-tour="replay"`, which the closing card
+  points at), the Help dialog, and the guidebook's own button. Replay marks the
+  flag too, so the invitation never returns because the tour was replayed before
+  it was answered. Navigating YOURSELF while the tour is open closes it; the
+  tour's own moves between screens do not.
+- **The guidebook** (`src/lib/guide.ts`, `routes/GuidePage.tsx`,
+  `components/guide/GuideMap.tsx`) is `/dashboard/guide`, reached from the rail
+  footer. `guideContents(profile, mainDirector)` splits pages into `mine` and
+  `locked` with the same `canOpenScreen` the route guards use — a reader who
+  cannot open a screen still sees its page listed under "Not yours to open",
+  because "that is somebody else's screen" is half the answer a manual gives.
+  The section is `?s=<id>`, not a path segment: the shell keys `<main>` on
+  `pathname`, so a segment would remount and re-animate the rail on every click.
+- **Every miniature is drawn, never captured.** `GuideMap` is markup in the
+  dashboard's own tokens, so it follows `.dark` and `dir="rtl"` and cannot go
+  stale. Pins are rendered *inside* the control they name and the article's
+  numbered steps carry the same numbers; that is the contract between the
+  drawing and the copy. The stage is `aria-hidden` — the steps are the content.
+- **Hover hints** (`src/lib/hints.ts`, `components/HoverHint.tsx`) are the
+  three-second rest: `data-hint="<id>"` on a control, one title and one sentence
+  from the dictionaries. One document-level listener, innermost annotated
+  element wins, so a KPI cell inside the summary answers for itself. Mouse and
+  keyboard focus both arm the same timer; **touch never** (`(hover: hover) and
+  (pointer: fine)`). Any scroll, click or Escape dismisses it, and it is wired to
+  its control with `aria-describedby` while it is up.
+
+Adding a screen? Add one `GUIDE_SECTIONS` entry (`titleKey` reuses the nav key,
+plus a TL;DR, a caption, three steps and two words in **both** dictionaries), and
+a `GuideMap` case. Adding a control worth explaining? Add the attribute and, for
+a hint, an id in `HINT_IDS` plus its two keys. `data-tour` / `data-hint` are on
+real elements only — a hint whose id is unknown is ignored, and a tour step
+whose control never appears is shown centred instead of pointing at nothing.
 
 ## Deploying
 

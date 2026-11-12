@@ -571,16 +571,20 @@ changes, no third-party i18n library**, and no server pass at all in a SPA.
 
 ## UI system
 
-"Manifest paper, ink and route blue" for both sections. Tokens live in the
-`@theme` block of `src/globals.css`:
+"Cool paper, ink and cyan-blue" for both sections. Tokens live in the `@theme`
+block of `src/globals.css`:
 
-- **Ground and surfaces** — a slightly warm paper ground (`#f3f4f1`), white
+- **Ground and surfaces** — a cool, blue-tinted paper ground (`#f4f8fa`), white
   cards/panels, and one pair of 1px edges. Surfaces are separated by a tone step
   or a border, not a shadow.
-- **Ink and the one data hue** — primary text `#15181b`, secondary `#565d63`;
-  route blue `#0f5586` belongs to the data (the route line, the proportion bar)
-  and to focus/selection, never to chrome. Green, amber and red are reserved for
-  attendance state.
+- **Ink and the one data hue** — primary text `#0e1a20`, secondary `#4a5a64`;
+  cyan blue `#0e7490` belongs to the data (the route line, the proportion bar) and
+  to focus/selection, never to chrome. Green, amber and red are reserved for
+  attendance state. The accent is a deliberate product decision (approved from
+  `docs/color-preview.html`): the earlier route blue `#0f5586` on warm grey read
+  too dark and colourless.
+- **Dark** — the same palette at night: a cool ink ground (`#0d1519`) with the
+  accent lifted to `#47cbe2`, so the data hue still clears 9.5:1 as text.
 - **Type** — IBM Plex Sans at 24/15/13.5/11.5 across both sections, tabular
   numerals on every figure. The dashboard's `dash-*` scale is app type: the h1
   is 24px and no figure passes 34px.

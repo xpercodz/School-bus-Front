@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Button } from "@/components/arc/button/button";
 import { Icon } from "@/components/Icon";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
@@ -67,15 +68,14 @@ export function BottomBar({ completed, onComplete }: BottomBarProps) {
         )}
       </div>
 
-      <button
+      <Button
         type="button"
-        disabled={disabled}
         onClick={() => setConfirmOpen(true)}
-        className={`press mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg text-[14.5px] font-medium ${
-          completed
-            ? "cursor-default bg-surface-container text-on-surface-variant"
-            : "bg-on-surface text-surface hover:opacity-90 disabled:opacity-60"
-        }`}
+        variant={completed ? "secondary" : "primary"}
+        size="lg"
+        loading={busy}
+        disabled={disabled}
+        className={`mt-2 w-full ${completed ? "arc-field" : ""}`}
       >
         <span
           key={completed ? "done" : "open"}
@@ -88,7 +88,7 @@ export function BottomBar({ completed, onComplete }: BottomBarProps) {
           : busy
             ? t("mobile.completing")
             : t("mobile.completeRun")}
-      </button>
+      </Button>
 
       <ConfirmDialog
         open={confirmOpen}

@@ -43,8 +43,8 @@ export default defineConfig({
         display: "standalone",
         // No `orientation`: drivers use portrait phones, directors use desktop.
         // `lang`/`dir` are left to App.tsx, which sets them per-locale.
-        background_color: "#f3f4f1", // --color-background in globals.css
-        theme_color: "#f3f4f1", // --color-background; matches the meta tag in index.html
+        background_color: "#f4f8fa", // --color-background in globals.css
+        theme_color: "#f4f8fa", // --color-background; matches the meta tag in index.html
         icons: [
           {
             src: "/icons/pwa-192x192.png",
