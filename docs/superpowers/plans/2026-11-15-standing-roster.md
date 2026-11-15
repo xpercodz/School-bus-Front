@@ -389,7 +389,9 @@ The toggle renders as an Arc `Button` (`secondary`, `size="sm"`, `arc-field`), w
 
 - [ ] **Step 4: Dictionary keys**
 
-`import.archiveTitle`, `import.archiveBody` (count-bearing, `tp`), `import.archiveToggle`, `import.archiveOff`, `import.unassignToken`, `toast.archived` (count-bearing) — English first, then `ar` and `fr`.
+`import.archiveTitle`, `import.archiveBody` (count-bearing, `tp`), `import.archiveToggle`, `import.archiveOff`, `import.unassignToken`, `toast.archived` (count-bearing, `tp`) — English first, then `ar` and `fr`.
+
+**And one pre-existing bug this dialog owns (R17).** The import's success toast (`sheet.imported`) is count-bearing but is rendered with `t`, not `tp`, and has no `.one` form — so a one-child import says "Imported 1 students". Since this task already opens the dialog and the dictionaries, switch that toast to `tp` and add the singular form in all three languages. It is the same rule the rest of the app follows (`AGENTS.md`: a count-bearing string uses `tp`), and it is one line plus three keys.
 
 - [ ] **Step 5: Verify**
 
