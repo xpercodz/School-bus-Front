@@ -20,6 +20,7 @@ import {
 import { db } from "@/lib/firebase";
 import { fetchSchoolId } from "@/lib/school-id";
 import { logAudit } from "@/lib/audit";
+import { buildArchiveSet, type ArchiveCandidate } from "@/lib/sheet-archive";
 
 // ── types ────────────────────────────────────────────────────────────────────
 
@@ -73,6 +74,14 @@ export interface AssignmentPlan {
   classes: AssignmentPlanClass[];
   unchanged: number;
   unmatched: string[];
+  /**
+   * Children the sheet no longer names. Empty when the sheet could not be read
+   * as a roster — a sheet without a name column is not a statement that the
+   * school is empty.
+   */
+  archive: ArchiveCandidate[];
+  /** Ids of archived children the sheet names again, to be un-archived. */
+  restore: string[];
 }
 
 // ── CSV ──────────────────────────────────────────────────────────────────────
@@ -666,6 +675,7 @@ export function buildAssignmentPlan(plan: {
     name: string;
     grade?: string;
     busId?: string | null;
+    archived?: boolean;
   }[];
   buses: readonly { id: string; name: string }[];
 }): AssignmentPlan {
@@ -675,10 +685,12 @@ export function buildAssignmentPlan(plan: {
   const busIndex = columnFor(matches, "bus");
 
   // Every child carrying a name, so the class column can choose between two
-  // children who share one instead of always taking the first.
+  // children who share one instead of always taking the first. Archived
+  // children are in here too: a child the sheet names again is matched and
+  // restored, never re-created as a twin.
   const studentsByName = new Map<
     string,
-    { id: string; name: string; grade: string; busId: string | null }[]
+    { id: string; name: string; grade: string; busId: string | null; archived: boolean }[]
   >();
   /** The school's own spelling of each class, keyed by `classKey`. */
   const knownClassLabels = new Map<string, string>();
@@ -688,6 +700,7 @@ export function buildAssignmentPlan(plan: {
       name: student.name,
       grade: student.grade ?? "",
       busId: student.busId ?? null,
+      archived: student.archived === true,
     };
     const key = nameKey(student.name);
     if (key) {
@@ -718,7 +731,9 @@ export function buildAssignmentPlan(plan: {
   };
 
   if (nameIndex < 0) {
-    return { rows: [], creates: [], classes: [], unchanged: 0, unmatched };
+    // No name column: the file could not be read as a roster, so it archives
+    // nobody rather than reporting every child as gone.
+    return { rows: [], creates: [], classes: [], unchanged: 0, unmatched, archive: [], restore: [] };
   }
 
   // Keyed by `classKey` so "class a" and "Class A" are one entry, and the label
@@ -745,14 +760,39 @@ export function buildAssignmentPlan(plan: {
 
   const targets = new Map<string, AssignmentPlanRow>();
   const creates = new Map<string, AssignmentPlanCreate>();
+  /** Every child some row named — each of them is still on the sheet. */
+  const matchedIds = new Set<string>();
+  /** Archived children a row names again: they come back rather than duplicate. */
+  const restoreIds = new Set<string>();
+  /** Whether any row carried a name at all: without one the file is not a roster. */
+  let sawName = false;
   let unchanged = 0;
 
   for (const row of sheet.rows) {
     const name = (row[nameIndex] ?? "").trim();
     if (!name) continue;
+    sawName = true;
 
     const classValue = classIndex < 0 ? "" : (row[classIndex] ?? "").trim();
     const resolved = classValue === "" ? null : resolveClass(classValue);
+
+    // The match comes before anything that can give up on the row: a row that
+    // names a child protects him from archiving even when the row itself is
+    // reported, because the sheet never said he left.
+    const key = nameKey(name);
+    const candidates = studentsByName.get(key);
+    // Prefer the child already in the row's class — that is what keeps two
+    // children with one name apart — and otherwise take the first, so a move
+    // to a class nobody in that name is in still lands.
+    const classMatch = resolved === null ? "" : classKey(resolved.label);
+    const student = candidates?.length
+      ? (candidates.find((entry) => classMatch !== "" && classKey(entry.grade) === classMatch) ??
+        candidates[0])
+      : null;
+    if (student) {
+      matchedIds.add(student.id);
+      if (student.archived) restoreIds.add(student.id);
+    }
 
     const busName = busIndex < 0 ? "" : (row[busIndex] ?? "").trim();
     const busProvided = busName !== "";
@@ -764,18 +804,7 @@ export function buildAssignmentPlan(plan: {
       continue;
     }
 
-    const key = nameKey(name);
-    const candidates = studentsByName.get(key);
-
-    if (candidates && candidates.length > 0) {
-      // Prefer the child already in the row's class — that is what keeps two
-      // children with one name apart — and otherwise take the first, so a move
-      // to a class nobody in that name is in still lands.
-      const classMatch = resolved === null ? "" : classKey(resolved.label);
-      const student =
-        candidates.find((entry) => classMatch !== "" && classKey(entry.grade) === classMatch) ??
-        candidates[0];
-
+    if (student) {
       // The LAST row for a child wins, so compare against what the plan already
       // holds for them — not against the document. A later row that agrees with
       // the record and disagrees with an earlier row cancels that row out
@@ -815,12 +844,23 @@ export function buildAssignmentPlan(plan: {
     });
   }
 
+  // Only a child still on the roll can be archived, and a file with no named
+  // row was not read as a roster: `null` archives nobody.
+  const archive = buildArchiveSet(
+    plan.students
+      .filter((student) => student.archived !== true)
+      .map((student) => ({ id: student.id, name: student.name, grade: student.grade ?? "" })),
+    sawName ? matchedIds : null,
+  );
+
   return {
     rows: [...targets.values()],
     creates: [...creates.values()],
     classes: [...classes.values()],
     unchanged,
     unmatched,
+    archive,
+    restore: [...restoreIds],
   };
 }
 
