@@ -277,18 +277,23 @@ service cloud.firestore {
               .hasOnly(['grade', 'busId', 'archived', 'updatedBy', 'updatedAt']))
           // Archiving is one write: `archived: true` and `busId: null` land
           // together, so Students must be able to set that pair in one update.
-          // All three conditions are load-bearing: `hasOnly` bounds the fields,
+          // All four conditions are load-bearing: `hasOnly` bounds the fields;
           // `hasAll(['archived'])` forces the write to touch `archived` (so a
           // bus move alone, or a bus move on a child already archived, cannot
-          // ride this branch), and `archived == true` keeps it to archiving —
-          // a restore writes only `archived` and the stamps, and goes through
-          // the Students allowlist above, so it can never assign a bus.
+          // ride this branch); `archived == true` keeps it to archiving — a
+          // restore writes only `archived` and the stamps, and goes through the
+          // Students allowlist above; and `busId == null` makes it an archive
+          // and nothing else, because "archived and off the bus" is what keeps
+          // the per-bus counts and the driver's roster from including him, and
+          // an archive that assigned a bus would be a bus change — the
+          // Assignments grant — wearing this branch's clothes.
           || (can('students')
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['archived', 'busId', 'updatedBy', 'updatedAt'])
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasAll(['archived'])
-            && request.resource.data.archived == true)
+            && request.resource.data.archived == true
+            && request.resource.data.busId == null)
         ) && stamped();
       }
 
