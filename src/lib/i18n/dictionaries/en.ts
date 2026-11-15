@@ -540,6 +540,8 @@ export const messages = {
   "toast.runCompleted": "Run completed",
   "toast.signedOut": "Signed out",
   "toast.markedAbsent": "{name} marked absent",
+  "toast.archived": "Archived {count} students",
+  "toast.archived.one": "Archived {count} student",
   "toast.dispatchExists": "A run already exists for this bus, date and type",
   "toast.error": "Something went wrong. Please try again.",
 
@@ -806,6 +808,19 @@ export const messages = {
   "reports.classCountOne": "{count} student",
   "reports.classCompletion": "{percent}% of the run complete",
   "reports.classCaption": "{grade} students, in name order",
+  // ── The import preview's rollover: who leaves the roll, who returns ──────
+  "import.archiveTitle": "Leaving the roll",
+  "import.archiveBody":
+    "This sheet no longer names {count} students. Applying it removes them from the roll and clears their bus.",
+  "import.archiveBody.one":
+    "This sheet no longer names {count} student. Applying it removes them from the roll and clears their bus.",
+  "import.restoreTitle": "Returning to the roll",
+  "import.restoreBody": "{count} archived students are named again and come back to the roll.",
+  "import.restoreBody.one": "{count} archived student is named again and comes back to the roll.",
+  "import.archiveToggle": "The sheet is the whole roster",
+  "import.archiveOff":
+    "Off — the sheet is not the whole roster, so nobody is archived. Only the children it names change.",
+  "import.unassignToken": "—",
   "sheet.title": "Import a sheet",
   "sheet.template": "Download template",
   "sheet.import": "Import sheet",
@@ -846,6 +861,7 @@ export const messages = {
   "sheet.nothingWritten": "Nothing is written until you apply.",
   "sheet.back": "Back",
   "sheet.imported": "Imported {count} students",
+  "sheet.imported.one": "Imported {count} student",
   "sheet.unreadable": "That file could not be read. Save it as CSV or an Excel workbook.",
   "sheet.dz.files": "Files",
   "sheet.dz.remove": "Remove {name}",

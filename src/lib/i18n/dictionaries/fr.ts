@@ -403,6 +403,8 @@ export const messages: Messages = {
   "toast.runCompleted": "Trajet terminé",
   "toast.signedOut": "Déconnecté",
   "toast.markedAbsent": "{name} marqué absent",
+  "toast.archived": "{count} élèves archivés",
+  "toast.archived.one": "{count} élève archivé",
   "toast.dispatchExists": "Un trajet existe déjà pour ce bus, cette date et ce type",
   "toast.error": "Une erreur est survenue. Veuillez réessayer.",
   "analytics.title": "Analyse des présences",
@@ -634,6 +636,21 @@ export const messages: Messages = {
   "reports.classCountOne": "{count} élève",
   "reports.classCompletion": "{percent} % du trajet effectué",
   "reports.classCaption": "Élèves de {grade}, par ordre alphabétique",
+  // ── L'aperçu de l'import : qui quitte la liste, qui revient ─────────────
+  "import.archiveTitle": "Sortie de la liste",
+  "import.archiveBody":
+    "Ce fichier ne nomme plus {count} élèves. L'appliquer les retire de la liste et vide leur bus.",
+  "import.archiveBody.one":
+    "Ce fichier ne nomme plus {count} élève. L'appliquer le retire de la liste et vide son bus.",
+  "import.restoreTitle": "Retour dans la liste",
+  "import.restoreBody":
+    "{count} élèves archivés sont nommés de nouveau et reviennent dans la liste.",
+  "import.restoreBody.one":
+    "{count} élève archivé est nommé de nouveau et revient dans la liste.",
+  "import.archiveToggle": "Le fichier est la liste complète",
+  "import.archiveOff":
+    "Désactivé — le fichier n'est pas la liste complète, donc personne n'est archivé. Seuls les enfants qu'il nomme changent.",
+  "import.unassignToken": "—",
   "sheet.title": "Importer un fichier",
   "sheet.template": "Télécharger le modèle",
   "sheet.import": "Importer le fichier",
@@ -673,6 +690,7 @@ export const messages: Messages = {
   "sheet.nothingWritten": "Rien n'est écrit avant l'application.",
   "sheet.back": "Retour",
   "sheet.imported": "{count} élèves importés",
+  "sheet.imported.one": "{count} élève importé",
   "sheet.unreadable": "Ce fichier n'a pas pu être lu. Enregistrez-le au format CSV ou comme classeur Excel.",
   "sheet.dz.files": "Fichiers",
   "sheet.dz.remove": "Supprimer {name}",

@@ -533,6 +533,8 @@ export const messages: Messages = {
   "toast.runCompleted": "اكتملت الرحلة",
   "toast.signedOut": "تم تسجيل الخروج",
   "toast.markedAbsent": "تم وضع علامة غياب على {name}",
+  "toast.archived": "أُرشف {count} طالبًا",
+  "toast.archived.one": "أُرشف {count} طالب",
   "toast.dispatchExists": "توجد رحلة مسبقة لهذه الحافلة والتاريخ والنوع",
   "toast.error": "حدث خطأ ما. حاول مرة أخرى.",
 
@@ -796,6 +798,19 @@ export const messages: Messages = {
   "reports.classCountOne": "{count} طالب",
   "reports.classCompletion": "{percent}٪ من الرحلة مكتمل",
   "reports.classCaption": "طلاب {grade}، بترتيب الاسم",
+  // ── معاينة الاستيراد: من يغادر الكشف ومن يعود ───────────────────────────
+  "import.archiveTitle": "الخروج من الكشف",
+  "import.archiveBody":
+    "لم يعد هذا الملف يذكر {count} طالبًا. تطبيقه يزيلهم من الكشف ويمسح حافلتهم.",
+  "import.archiveBody.one":
+    "لم يعد هذا الملف يذكر {count} طالب. تطبيقه يزيله من الكشف ويمسح حافلته.",
+  "import.restoreTitle": "العودة إلى الكشف",
+  "import.restoreBody": "يعود {count} طالبًا مؤرشفًا إلى الكشف بعد أن يذكرهم الملف مجددًا.",
+  "import.restoreBody.one": "يعود {count} طالب مؤرشف إلى الكشف بعد أن يذكره الملف مجددًا.",
+  "import.archiveToggle": "الورقة هي الكشف كاملًا",
+  "import.archiveOff":
+    "متوقف — الورقة ليست الكشف كاملًا، لذا لن يُؤرشف أحد. يتغيّر فقط الطلاب الذين تذكرهم.",
+  "import.unassignToken": "—",
   "sheet.title": "استيراد ورقة",
   "sheet.template": "تنزيل القالب",
   "sheet.import": "استيراد ورقة",
@@ -832,6 +847,7 @@ export const messages: Messages = {
   "sheet.nothingWritten": "لا يُكتب شيء قبل التطبيق.",
   "sheet.back": "رجوع",
   "sheet.imported": "تم استيراد {count} طالبًا",
+  "sheet.imported.one": "تم استيراد {count} طالب",
   "sheet.unreadable": "تعذّرت قراءة الملف. احفظه بصيغة CSV أو مصنّف Excel.",
   "sheet.dz.files": "الملفات",
   "sheet.dz.remove": "إزالة {name}",

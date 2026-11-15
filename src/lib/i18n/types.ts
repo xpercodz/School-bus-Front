@@ -31,7 +31,11 @@ export type PluralKey =
   | "activity.event.runCompleted"
   | "activity.event.runDispatched"
   | "activity.event.imported"
-  | "activity.preset.days";
+  | "activity.preset.days"
+  | "import.archiveBody"
+  | "import.restoreBody"
+  | "sheet.imported"
+  | "toast.archived";
 
 /** The translation function signature shared by the context and helpers. */
 export type TFunction = (key: MessageKey, vars?: TVars) => string;

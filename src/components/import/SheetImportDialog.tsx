@@ -13,6 +13,7 @@ import {
   applyAssignmentPlan,
   buildAssignmentPlan,
   guessColumns,
+  type AssignmentPlan,
   type ColumnMatch,
   type ImportField,
   type ParsedSheet,
@@ -151,7 +152,7 @@ function SheetImportBody({
   onApplied: (written: number) => void;
   onClose: () => void;
 }) {
-  const { t, locale, dir } = useLocale();
+  const { t, tp, locale, dir } = useLocale();
   const { user } = useAuth();
   const uid = user?.uid;
   const { showToast } = useToast();
@@ -159,6 +160,9 @@ function SheetImportBody({
 
   const [matches, setMatches] = useState<ColumnMatch[]>(() => matchColumns(sheet));
   const [applying, setApplying] = useState(false);
+  // "The sheet is the whole roster": on by default, because a re-uploaded
+  // roster is how a child leaves. Off is the safe state — nobody is archived.
+  const [archiveMissing, setArchiveMissing] = useState(true);
 
   // The plan is the single source of truth for all four numbers on this
   // screen: it is rebuilt on every mapping change, never mirrored in state.
@@ -167,28 +171,49 @@ function SheetImportBody({
     [sheet, matches, students, buses],
   );
 
-  // What will actually be written: without the Students grant, creations and
-  // class writes are dropped here rather than refused by the server halfway
-  // through a batch.
-  const writable = useMemo(() => {
-    if (canWriteStudents) return plan;
+  // What will actually be written: without the Students grant, creations, class
+  // writes and both directions of the rollover (archiving and restoring) are
+  // dropped here rather than refused by the server halfway through a batch.
+  // With the toggle off nobody is archived — but a child the sheet names again
+  // still comes back, because the toggle is about leaving, not returning.
+  const writable = useMemo<AssignmentPlan>(() => {
+    if (canWriteStudents) {
+      return archiveMissing ? plan : { ...plan, archive: [] };
+    }
     return {
       ...plan,
       creates: [],
       rows: plan.rows
         .map((row) => ({ ...row, toClass: null }))
         .filter((row) => row.toBusId !== null),
+      archive: [],
+      restore: [],
     };
-  }, [plan, canWriteStudents]);
-  const writeCount = writable.rows.length + writable.creates.length;
+  }, [plan, canWriteStudents, archiveMissing]);
+  // Children, not writes: a child restored and corrected in the same import is
+  // one change, which is also what `applyAssignmentPlan` counts. The archived
+  // and restored children count here, or a sheet that only removes children
+  // would report "Apply 0 changes" and write nothing (R12).
+  const writeCount =
+    new Set([
+      ...writable.rows.map((row) => row.studentId),
+      ...writable.archive.map((child) => child.id),
+      ...writable.restore,
+    ]).size + writable.creates.length;
   /**
    * The sheet asks for something this reader may not write. Silent omission
    * would be worse than an outright failure: the same file would appear to
-   * "work" while quietly leaving every class alone.
+   * "work" while quietly leaving every class alone. Turning archiving off
+   * takes the archive half out of the question — nothing of it will be written.
    */
   const blocked =
     !canWriteStudents &&
-    (plan.creates.length > 0 || plan.rows.some((row) => row.toClass !== null));
+    (plan.creates.length > 0 ||
+      plan.rows.some((row) => row.toClass !== null) ||
+      (archiveMissing && plan.archive.length > 0) ||
+      plan.restore.length > 0);
+  /** The plan has something to say about who leaves or returns. */
+  const hasRollover = plan.archive.length > 0 || plan.restore.length > 0;
 
   // Index of the first column mapped to each field — the preview shows one
   // column per field even if the sheet repeats one.
@@ -202,6 +227,23 @@ function SheetImportBody({
   const previewFields = PREVIEW_FIELDS.filter((field) => columnOf.has(field));
   const previewRows = sheet.rows.slice(0, 3);
   const matched = matches.filter((match) => match.field !== "ignore").length;
+
+  /** The list a restore resolves its ids against — already in props, not re-read. */
+  const studentsById = useMemo(
+    () => new Map(students.map((student) => [student.id, student] as const)),
+    [students],
+  );
+
+  /**
+   * One child of the rollover preview, as `name · class`. A child with no name
+   * prints his document id instead: he can never match a sheet row, so any
+   * readable sheet archives him, and the id is then the only thing that names
+   * him (R13). A missing class prints the unassigned token, so a line never
+   * ends on a bare separator.
+   */
+  function childLine(id: string, name: string, grade: string): string {
+    return `${name.trim() || id} · ${grade.trim() || t("import.unassignToken")}`;
+  }
 
   function setField(index: number, field: ImportField) {
     setMatches((current) =>
@@ -220,7 +262,13 @@ function SheetImportBody({
     setApplying(true);
     try {
       const moved = await applyAssignmentPlan(uid, writable);
-      showToast(t("sheet.imported", { count: digits(moved) }));
+      showToast(tp("sheet.imported", moved, { count: digits(moved) }));
+      // The import's own count includes the children it archived, and leaving
+      // the roll is the half nobody expects to have happened.
+      const archived = writable.archive.length;
+      if (archived > 0) {
+        showToast(tp("toast.archived", archived, { count: digits(archived) }));
+      }
       onApplied(moved);
       onClose();
     } catch {
@@ -422,6 +470,72 @@ function SheetImportBody({
             <p className="text-[11.5px] leading-4 text-dash-on-surface-variant">
               {t("sheet.classesNote")}
             </p>
+          </section>
+        )}
+
+        {/* The rollover, both directions: one sheet can archive the active twin
+            and bring the archived one back in the same import, and printing
+            both is the only thing that makes that visible before Apply (R11).
+            Without the Students grant the dialog writes neither half, so the
+            section is not drawn and `sheet.needsStudents` says why. */}
+        {canWriteStudents && hasRollover && (
+          <section className="flex flex-col gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="arc-field self-start"
+              aria-pressed={archiveMissing}
+              onClick={() => setArchiveMissing((current) => !current)}
+            >
+              {t("import.archiveToggle")}
+            </Button>
+            {!archiveMissing && (
+              <p className="text-[12px] leading-5 text-dash-on-surface-variant">
+                {t("import.archiveOff")}
+              </p>
+            )}
+            {archiveMissing && plan.archive.length > 0 && (
+              <div className="flex flex-col gap-1">
+                <h3 className="text-[13px] font-semibold text-dash-on-surface">
+                  {t("import.archiveTitle")}
+                </h3>
+                <p className="text-[12.5px] leading-5 text-dash-on-surface-variant">
+                  {tp("import.archiveBody", plan.archive.length, {
+                    count: digits(plan.archive.length),
+                  })}
+                </p>
+                <ul className="flex flex-col text-[12px] leading-5 text-dash-on-surface">
+                  {plan.archive.map((child) => (
+                    <li key={child.id} className="break-words">
+                      {childLine(child.id, child.name, child.grade)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {plan.restore.length > 0 && (
+              <div className="flex flex-col gap-1">
+                <h3 className="text-[13px] font-semibold text-dash-on-surface">
+                  {t("import.restoreTitle")}
+                </h3>
+                <p className="text-[12.5px] leading-5 text-dash-on-surface-variant">
+                  {tp("import.restoreBody", plan.restore.length, {
+                    count: digits(plan.restore.length),
+                  })}
+                </p>
+                <ul className="flex flex-col text-[12px] leading-5 text-dash-on-surface">
+                  {plan.restore.map((id) => {
+                    const student = studentsById.get(id);
+                    return (
+                      <li key={id} className="break-words">
+                        {student ? childLine(student.id, student.name, student.grade) : id}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
           </section>
         )}
 
