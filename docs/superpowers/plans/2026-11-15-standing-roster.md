@@ -682,7 +682,58 @@ git commit -m "feat(dashboard): dispatch is the afternoon's, and its hint says s
 
 ---
 
-### Task 13: Whole-branch gate
+### Task 13: The mapping list shows only the columns that matter
+
+**Files:**
+- Modify: `src/components/import/SheetImportDialog.tsx` (the mapping list, not the preview)
+- Modify: `src/lib/sheet-import.ts` (`FIELD_ALIASES` only)
+- Modify: `src/lib/i18n/dictionaries/en.ts`, `ar.ts`, `fr.ts`
+
+**Interfaces:**
+- Consumes: `ColumnMatch`, `ImportField`, `matchColumns` (unchanged).
+- Produces: nothing later tasks read.
+
+A file exported from this app carries `Boarded at`, `Dropped at` and `Status`. They are correctly ignored, but each one currently costs a row in the mapping list, so a three-decision import looks like a six-decision one. The owner's words: "have them removed, it's extra for nothing."
+
+**Do not delete the rows outright.** An unrecognised header (`Élève`, `Ramassage`, a school's own word) is mapable today and would become unmappable — and this app ships in French and Arabic. So the rows leave the list and stay reachable behind one line, and the matcher learns the headers that were making the manual step necessary.
+
+- [ ] **Step 1: Teach the matcher the French and Arabic headers**
+
+`normalizeHeader` (`.normalize("NFKC").toLowerCase()`, punctuation to spaces) does **not** strip accents, so list accented and unaccented spellings. Add to `FIELD_ALIASES`:
+
+- `studentName`: `"élève"`, `"eleve"`, `"nom"`, `"nom complet"`, `"طالب"`, `"الطالب"`, `"اسم الطالب"`
+- `grade`: `"classe"`, `"niveau"`, `"قسم"`, `"الصف"`, `"الفصل"`
+- `bus`: `"car"`, `"véhicule"`, `"vehicule"`, `"حافلة"`, `"الباص"`, `"باص"`
+
+This can only turn an ignored column into a match. It cannot change a header that already matches something else: a new alias is only tried when the field is still unclaimed (`sheet-import.ts:576-597`), and none of these words is already an alias of a different field.
+
+- [ ] **Step 2: Show the matched columns; collapse the rest**
+
+The mapping list renders only `matches.filter((m) => m.field !== "ignore")`. Below it, one line — `tp("sheet.ignoredCount", n, …)` with the count and the ignored headers' names — that expands **in place** to the same dropdown rows as today, so an unrecognised header can still be mapped. Expanded state is local `useState(false)`; it resets when the sheet changes.
+
+The line renders nothing when no column is ignored.
+
+- [ ] **Step 3: Dictionary keys**
+
+`sheet.ignoredCount` (count-bearing, `tp`), `sheet.showIgnored`, `sheet.hideIgnored` — `en`, `ar`, `fr`.
+
+- [ ] **Step 4: Verify**
+
+Run: `npm run typecheck && npm run lint && npm run build`
+Expected: exit 0.
+
+Observe with a sheet exported from the app (name, class, bus, then `Boarded at`, `Dropped at`, `Status`): the list shows three rows, and one line below says three columns are ignored. Expand it, map one of them to a field, and the list grows by that row. Then a French sheet with `Élève`, `Classe`, `Bus` imports with no manual mapping at all.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/components/import/SheetImportDialog.tsx src/lib/sheet-import.ts src/lib/i18n/dictionaries
+git commit -m "feat(import): only the columns that mean something, and a matcher that knows French and Arabic headers"
+```
+
+---
+
+### Task 14: Whole-branch gate
 
 - [ ] **Step 1: Full gate**
 
