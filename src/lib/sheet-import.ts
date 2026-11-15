@@ -880,7 +880,8 @@ const APPLY_CHUNK_SIZE = 400;
  * grant `grade` and `busId` to different screens — a caller holding both may
  * send both in one write, a caller holding one may send that one.
  *
- * Returns the number of documents written (0 when signed out or unresolved).
+ * Returns the number of children the import touched — one each, however many
+ * writes that took (0 when signed out or unresolved).
  */
 export async function applyAssignmentPlan(uid: string, plan: AssignmentPlan): Promise<number> {
   const firestore = db;
@@ -932,13 +933,20 @@ export async function applyAssignmentPlan(uid: string, plan: AssignmentPlan): Pr
     writes.push({ ref: doc(students, id), data: { archived: false, ...stamp } });
   }
 
-  let written = 0;
+  // The count is children, not writes: a child corrected and restored is one
+  // child, and retiring a child is not moving him. A create has no id yet, so
+  // each creation counts once.
+  const touched = new Set<string>();
+  for (const row of plan.rows) touched.add(row.studentId);
+  for (const child of plan.archive) touched.add(child.id);
+  for (const id of plan.restore) touched.add(id);
+  const touchedChildren = touched.size + plan.creates.length;
+
   for (let offset = 0; offset < writes.length; offset += APPLY_CHUNK_SIZE) {
     const chunk = writes.slice(offset, offset + APPLY_CHUNK_SIZE);
     const batch = writeBatch(firestore);
     for (const write of chunk) batch.set(write.ref, write.data, { merge: true });
     await batch.commit();
-    written += chunk.length;
   }
 
   // One entry for the whole import, written after every chunk lands: a sheet is
@@ -947,7 +955,7 @@ export async function applyAssignmentPlan(uid: string, plan: AssignmentPlan): Pr
     event: "students.imported",
     targetType: "school",
     targetId: schoolId,
-    meta: { count: written },
+    meta: { count: touchedChildren },
     occurredAt: new Date(),
   }).catch(() => {
     // Best-effort by design: a log write must never fail an import that
@@ -955,23 +963,22 @@ export async function applyAssignmentPlan(uid: string, plan: AssignmentPlan): Pr
   });
 
   // Retiring a child is a decision about that child, not a count of the sheet,
-  // so each archived child and each returning one gets its own entry.
-  for (const child of plan.archive) {
-    await logAudit(firestore, schoolId, {
-      event: "student.archived",
-      targetType: "student",
-      targetId: child.id,
-      occurredAt: new Date(),
-    }).catch(() => {});
-  }
-  for (const id of plan.restore) {
-    await logAudit(firestore, schoolId, {
-      event: "student.restored",
-      targetType: "student",
-      targetId: id,
-      occurredAt: new Date(),
-    }).catch(() => {});
-  }
+  // so each archived child and each returning one gets its own entry. They go
+  // together, so a hundred-child rollover is one wait rather than a hundred.
+  const childEntries: { event: "student.archived" | "student.restored"; id: string }[] = [
+    ...plan.archive.map((child) => ({ event: "student.archived" as const, id: child.id })),
+    ...plan.restore.map((id) => ({ event: "student.restored" as const, id })),
+  ];
+  await Promise.all(
+    childEntries.map((entry) =>
+      logAudit(firestore, schoolId, {
+        event: entry.event,
+        targetType: "student",
+        targetId: entry.id,
+        occurredAt: new Date(),
+      }).catch(() => {}),
+    ),
+  );
 
-  return written;
+  return touchedChildren;
 }

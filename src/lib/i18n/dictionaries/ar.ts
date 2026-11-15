@@ -976,8 +976,8 @@ export const messages: Messages = {
     "أنهى {actor} رحلة {bus}؛ سُجّل طالب واحد غير محسوب كغائب",
   "activity.event.runDispatched": "أطلق {actor} رحلة {bus} لـ {count} طالبًا",
   "activity.event.runDispatched.one": "أطلق {actor} رحلة {bus} لطالب واحد",
-  "activity.event.imported": "استورد {actor} جدولًا ونقل {count} طالبًا",
-  "activity.event.imported.one": "استورد {actor} جدولًا ونقل طالبًا واحدًا",
+  "activity.event.imported": "استورد {actor} جدولًا وحدّث بيانات {count} طالبًا",
+  "activity.event.imported.one": "استورد {actor} جدولًا وحدّث بيانات طالب واحد",
   "activity.event.assignmentModeChanged": "غيّر {actor} عمود التعيينات إلى {to}",
   "activity.event.exported": "صدّر {actor} هذا السجل",
 };

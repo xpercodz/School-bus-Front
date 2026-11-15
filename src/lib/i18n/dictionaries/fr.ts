@@ -796,8 +796,8 @@ export const messages: Messages = {
   "activity.event.runCompleted.one": "{actor} a terminé le trajet de {bus} ; {count} élève non enregistré a été marqué absent",
   "activity.event.runDispatched": "{actor} a lancé le trajet de {bus} pour {count} élèves",
   "activity.event.runDispatched.one": "{actor} a lancé le trajet de {bus} pour {count} élève",
-  "activity.event.imported": "{actor} a importé un fichier et déplacé {count} élèves",
-  "activity.event.imported.one": "{actor} a importé un fichier et déplacé {count} élève",
+  "activity.event.imported": "{actor} a importé un fichier et mis à jour {count} élèves",
+  "activity.event.imported.one": "{actor} a importé un fichier et mis à jour {count} élève",
   "activity.event.assignmentModeChanged": "{actor} a basculé la colonne Affectations en mode {to}",
   "activity.event.exported": "{actor} a exporté ce journal",
 };

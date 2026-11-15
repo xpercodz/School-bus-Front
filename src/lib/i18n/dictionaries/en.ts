@@ -990,8 +990,8 @@ export const messages = {
     "{actor} completed {bus}'s run; {count} unrecorded student was marked absent",
   "activity.event.runDispatched": "{actor} dispatched {bus} to {count} students",
   "activity.event.runDispatched.one": "{actor} dispatched {bus} to {count} student",
-  "activity.event.imported": "{actor} imported a sheet and moved {count} students",
-  "activity.event.imported.one": "{actor} imported a sheet and moved {count} student",
+  "activity.event.imported": "{actor} imported a sheet and updated {count} students",
+  "activity.event.imported.one": "{actor} imported a sheet and updated {count} student",
   "activity.event.assignmentModeChanged": "{actor} switched the Assignments column to {to}",
   "activity.event.exported": "{actor} exported this log",
 };
