@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "build:icons": "node scripts/build-icon-font.mjs",
+    "test:unit": "node --test tests/*.test.ts",
     "test:offline": "node scripts/offline-smoke.mjs",
     "deploy": "npm run build && npx --yes firebase-tools@latest deploy --only hosting",
     "deploy:rules": "npx --yes firebase-tools@latest deploy --only firestore:rules",

@@ -340,6 +340,8 @@ export interface AdminStudent {
   name: string;
   grade: string;
   busId: string | null;
+  /** Removed from the year's roster; still holds attendance history. */
+  archived?: boolean;
 }
 
 export interface StudentsState {
@@ -361,6 +363,9 @@ function toAdminStudent(d: DocumentSnapshot): AdminStudent {
     name: (data.name as string) ?? "",
     grade: (data.grade as string) ?? "",
     busId: (data.busId as string | null) ?? null,
+    // Absent means active; only an explicit `true` archives. The importer reads
+    // this to tell the roll from the sheet's view of it.
+    archived: data.archived === true,
   };
 }
 
