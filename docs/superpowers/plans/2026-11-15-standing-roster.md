@@ -88,10 +88,21 @@ Then add one **separate branch** beside the existing ones, because an archive wr
 ```
 || (can('students')
   && request.resource.data.diff(resource.data).affectedKeys()
-    .hasOnly(['archived', 'busId', 'updatedBy', 'updatedAt']))
+    .hasOnly(['archived', 'busId', 'updatedBy', 'updatedAt'])
+  && request.resource.data.diff(resource.data).affectedKeys()
+    .hasAll(['archived'])
+  && request.resource.data.archived == true
+  && request.resource.data.busId == null)
 ```
 
-The pair travels together or not at all, so this branch cannot be used to move a child between buses without also setting `archived`.
+All four conditions are load-bearing:
+
+- `hasOnly` bounds the fields;
+- `hasAll(['archived'])` forces the write to *touch* `archived`, so a bus move alone — or a bus move on a child who is already archived — cannot ride this branch;
+- `archived == true` keeps the branch to archiving, so restoring a child cannot also assign him a bus;
+- `busId == null` means the branch admits exactly one shape: archived **and off the bus**. `{archived: true, busId: 'busY'}` is an archive plus an assignment, and an assignment is the Assignments grant.
+
+A restore is not an archive: `setStudentArchived(…, false)` writes only `archived` + stamps and is admitted by the Students allowlist, which cannot carry `busId`.
 
 - [ ] **Step 4: Allow the two new audit events**
 
