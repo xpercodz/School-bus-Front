@@ -219,7 +219,7 @@ Expected: FAIL — `Cannot find module '../src/lib/sheet-archive.ts'`.
 
 - [ ] **Step 3: Implement `src/lib/sheet-archive.ts`**
 
-Two exported types plus the function. `null` returns `[]`. Otherwise return every candidate whose `id` is not in `matchedIds`, preserving the input order. No imports — this module must stay loadable by `node --test`.
+One exported type — `ArchiveCandidate`, as the Interfaces block names it — plus the function. `null` returns `[]`. Otherwise return every candidate whose `id` is not in `matchedIds`, preserving the input order. No imports — this module must stay loadable by `node --test`.
 
 - [ ] **Step 4: Run it to verify it passes**
 
@@ -228,8 +228,9 @@ Expected: 4 passing, 0 failing.
 
 - [ ] **Step 5: Add the script and the field**
 
-`package.json` scripts: `"test:unit": "node --test tests/"`.
-`AdminStudent` in `src/lib/school-admin.ts`: add `/** Removed from the year's roster; still holds attendance history. */ archived?: boolean;`
+`package.json` scripts: `"test:unit": "node --test tests/*.test.ts"`. **Not `node --test tests/`**: on Node 22 a positional argument is an entry point, not a discovery root, so the directory form exits 1 with MODULE_NOT_FOUND. The shell glob matches one level, which is all this plan needs, and it fails loudly when it matches nothing — so there is no configuration in which the script is green having run no tests.
+
+`AdminStudent` in `src/lib/school-admin.ts`: add `/** Removed from the year's roster; still holds attendance history. */ archived?: boolean;` **and carry it through the mapper** (`toAdminStudent` or its equivalent): `archived: data.archived === true`. A type-only change is inert — the import reads students through that mapper, so without the line the archive set and the restore branch would compile and never fire. Reading is safe: absent means active.
 
 - [ ] **Step 6: Verify**
 
