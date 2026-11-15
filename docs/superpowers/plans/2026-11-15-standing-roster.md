@@ -83,6 +83,16 @@ and add, beside the existing `status in [...]` check:
 
 In the `/students` update rule, add `'archived'` to the Students allowlist (`['name','grade','archived','updatedBy','updatedAt']`) and to the Students+Assignments union allowlist. The Assignments-only allowlist (`busId` only) stays without it. `delete` stays `isDirector()`.
 
+Then add one **separate branch** beside the existing ones, because an archive write sets `archived` and clears the bus in the same update and the Students allowlist cannot carry `busId`:
+
+```
+|| (can('students')
+  && request.resource.data.diff(resource.data).affectedKeys()
+    .hasOnly(['archived', 'busId', 'updatedBy', 'updatedAt']))
+```
+
+The pair travels together or not at all, so this branch cannot be used to move a child between buses without also setting `archived`.
+
 - [ ] **Step 4: Allow the two new audit events**
 
 In `auditEventAllowed()`, add `student.archived` and `student.restored` to the branch that admits a caller with `can('students')`.
