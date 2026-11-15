@@ -267,9 +267,13 @@ class) above the existing tallies, and Apply writes, in batches of ≤400:
   `students.imported` summary entry.
 
 **What a blank cell means.** Blank keeps meaning *no opinion*, everywhere
-(`sheet-import.ts:758`, `799`). Unassigning a bus needs an explicit token in the
-cell (`none`, `no bus`, `aucun`, `بدون`), because a half-filled column that
-silently unassigned every blank would empty the buses. A blank class on an
+(`sheet-import.ts:758`, `799`). A sheet never unassigns a bus: an earlier draft
+promised an explicit token (`none`) for that, and it was dropped during
+implementation — a token in a column otherwise full of bus names reads as a bus
+name, and unassigning a child who still rides to school is a per-child decision,
+not a column-wide one. Unassigning stays an Assignments-screen action, where the
+row already offers "no bus". Writing `none` in a bus cell therefore reports the
+row as an unknown bus, which is the honest outcome. A blank class on an
 existing child is no opinion; on a new child it is still reported, not created.
 
 **Archiving also clears the bus.** The archive write is
