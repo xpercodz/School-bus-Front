@@ -934,10 +934,6 @@ export function useDashboardData(
 
       const unsubAtt = onSnapshot(
         query(collection(firestore, base, "attendance"), where("date", "==", dateStr)),
-        // See settlesLoading: a warm empty cache emits `fromCache: true` only,
-        // and without metadata changes the later server confirmation is
-        // suppressed — which is what pinned the skeleton to the 10s ceiling.
-        { includeMetadataChanges: true },
         (snap) => {
           setAttendance(
             snap.docs.map((d) => {
