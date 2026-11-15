@@ -54,6 +54,8 @@ export type AuditEvent =
   | "owner.changed"
   | "student.bus_changed"
   | "student.updated"
+  | "student.archived"
+  | "student.restored"
   | "bus.driver_changed"
   | "attendance.changed"
   | "run.completed"
@@ -82,6 +84,8 @@ export const EVENT_FAMILY: Record<AuditEvent, AuditFamily> = {
   "owner.changed": "access",
   "student.bus_changed": "student",
   "student.updated": "student",
+  "student.archived": "roll",
+  "student.restored": "roll",
   "bus.driver_changed": "student",
   "attendance.changed": "roll",
   "run.completed": "roll",
@@ -113,6 +117,8 @@ export const EVENT_LABEL_KEY: Record<AuditEvent, MessageKey> = {
   "owner.changed": "activity.event.ownerChanged",
   "student.bus_changed": "activity.event.busChanged",
   "student.updated": "activity.event.studentUpdated",
+  "student.archived": "activity.event.studentArchived",
+  "student.restored": "activity.event.studentRestored",
   "bus.driver_changed": "activity.event.driverChanged",
   "attendance.changed": "activity.event.attendanceChanged",
   "run.completed": "activity.event.runCompleted",

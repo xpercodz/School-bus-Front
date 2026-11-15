@@ -555,6 +555,45 @@ export async function assignStudentToBus(
 }
 
 /**
+ * Take a child off the roll, or put him back.
+ *
+ * Archiving is a flag plus a cleared bus, never a delete: the record, his
+ * attendance and whatever the log says about him all stay, so the decision is
+ * reversible. The bus goes in the same write because the rules refuse an
+ * archive that keeps one — and it is the cleared bus that takes him off the
+ * per-bus counts and the driver's roster.
+ *
+ * Restoring sets the flag back and nothing else: `busId` is absent from that
+ * write, because the rules forbid a restore that carries a bus. He returns
+ * unassigned, and the sheet import is what gives him a new one.
+ */
+export async function setStudentArchived(
+  uid: string,
+  studentId: string,
+  archived: boolean,
+): Promise<void> {
+  if (!db || !uid) return;
+  const schoolId = await fetchSchoolId(uid);
+  if (!schoolId) return;
+  const firestore = db;
+  const batch = writeBatch(firestore);
+  batch.set(
+    doc(firestore, "schools", schoolId, "students", studentId),
+    archived
+      ? { archived: true, busId: null, updatedBy: uid, updatedAt: serverTimestamp() }
+      : { archived: false, updatedBy: uid, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
+  queueAudit(batch, firestore, schoolId, {
+    event: archived ? "student.archived" : "student.restored",
+    targetType: "student",
+    targetId: studentId,
+    occurredAt: new Date(),
+  });
+  await batch.commit();
+}
+
+/**
  * Driver account creation and code rotation are privileged: Firebase Auth users
  * and `users` profiles are Admin-SDK-only, and global code uniqueness is
  * enforced server-side. Both therefore live in the School-bus-API and are

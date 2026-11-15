@@ -777,6 +777,8 @@ export const messages: Messages = {
   "activity.mode.bus": "bus",
   "activity.mode.driver": "conducteur",
   "activity.event.studentUpdated": "{actor} a modifié les informations de {target}",
+  "activity.event.studentArchived": "{actor} a archivé {student}",
+  "activity.event.studentRestored": "{actor} a réintégré {student}",
   "activity.event.signIn": "{actor} a ouvert une session",
   "activity.event.signInFailed": "Une tentative de connexion a échoué pour {actor}",
   "activity.event.codeSignIn": "{actor} a ouvert une session avec un code d'accès",

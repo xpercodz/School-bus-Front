@@ -955,6 +955,8 @@ export const messages: Messages = {
   "activity.mode.driver": "السائق",
 
   "activity.event.studentUpdated": "غيّر {actor} بيانات {target}",
+  "activity.event.studentArchived": "أرشف {actor} {student}",
+  "activity.event.studentRestored": "أعاد {actor} {student} إلى الكشف",
   "activity.event.signIn": "سجّل {actor} الدخول",
   "activity.event.signInFailed": "فشلت محاولة دخول باسم {actor}",
   "activity.event.codeSignIn": "سجّل {actor} الدخول برمز وصول",

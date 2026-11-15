@@ -819,7 +819,9 @@ export function buildAssignmentPlan(plan: {
       const touchesClass = nextClass !== student.grade;
       if (!touchesBus && !touchesClass) {
         targets.delete(student.id);
-        unchanged += 1;
+        // A child the sheet brings back is not unchanged: the restore is the
+        // change, and it is written from `plan.restore` rather than from a row.
+        if (!student.archived) unchanged += 1;
         continue;
       }
       targets.set(student.id, {
@@ -870,8 +872,9 @@ export function buildAssignmentPlan(plan: {
 const APPLY_CHUNK_SIZE = 400;
 
 /**
- * Write the plan: corrections to existing children, then new ones, in
- * batch-sized chunks.
+ * Write the plan: corrections to existing children, new ones, then the children
+ * the sheet left out (archived) and the archived children it names again
+ * (restored), in batch-sized chunks.
  *
  * A correction only carries the fields it actually changes, because the rules
  * grant `grade` and `busId` to different screens — a caller holding both may
@@ -882,7 +885,14 @@ const APPLY_CHUNK_SIZE = 400;
 export async function applyAssignmentPlan(uid: string, plan: AssignmentPlan): Promise<number> {
   const firestore = db;
   if (!firestore || !uid) return 0;
-  if (plan.rows.length === 0 && plan.creates.length === 0) return 0;
+  if (
+    plan.rows.length === 0 &&
+    plan.creates.length === 0 &&
+    plan.archive.length === 0 &&
+    plan.restore.length === 0
+  ) {
+    return 0;
+  }
   const schoolId = await fetchSchoolId(uid);
   if (!schoolId) return 0;
 
@@ -908,6 +918,19 @@ export async function applyAssignmentPlan(uid: string, plan: AssignmentPlan): Pr
       },
     });
   }
+  // Retiring is a flag plus a cleared bus, never a delete — and the two land in
+  // one write, because the rules refuse an archive that keeps a bus.
+  for (const child of plan.archive) {
+    writes.push({
+      ref: doc(students, child.id),
+      data: { archived: true, busId: null, ...stamp },
+    });
+  }
+  // A returning child carries no bus: the row's bus correction, if any, is in
+  // `plan.rows` and merges onto the same document.
+  for (const id of plan.restore) {
+    writes.push({ ref: doc(students, id), data: { archived: false, ...stamp } });
+  }
 
   let written = 0;
   for (let offset = 0; offset < writes.length; offset += APPLY_CHUNK_SIZE) {
@@ -930,6 +953,25 @@ export async function applyAssignmentPlan(uid: string, plan: AssignmentPlan): Pr
     // Best-effort by design: a log write must never fail an import that
     // otherwise succeeded.
   });
+
+  // Retiring a child is a decision about that child, not a count of the sheet,
+  // so each archived child and each returning one gets its own entry.
+  for (const child of plan.archive) {
+    await logAudit(firestore, schoolId, {
+      event: "student.archived",
+      targetType: "student",
+      targetId: child.id,
+      occurredAt: new Date(),
+    }).catch(() => {});
+  }
+  for (const id of plan.restore) {
+    await logAudit(firestore, schoolId, {
+      event: "student.restored",
+      targetType: "student",
+      targetId: id,
+      occurredAt: new Date(),
+    }).catch(() => {});
+  }
 
   return written;
 }

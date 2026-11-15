@@ -145,6 +145,12 @@ export default function ActivityPage() {
       case "student.updated":
         vars.target = studentLabel(row.targetId);
         break;
+      case "student.archived":
+      case "student.restored":
+        // The entry stores the id, never a child's name: resolve it here, like
+        // every other student-scoped event.
+        vars.student = studentLabel(row.targetId);
+        break;
       case "bus.driver_changed":
         vars.bus = busLabel(row.targetId);
         vars.driver = (changes.driver?.to as string | null) || t("activity.noDriver");

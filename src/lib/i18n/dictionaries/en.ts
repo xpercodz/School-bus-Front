@@ -969,6 +969,8 @@ export const messages = {
   "activity.mode.driver": "driver",
 
   "activity.event.studentUpdated": "{actor} changed the details of {target}",
+  "activity.event.studentArchived": "{actor} archived {student}",
+  "activity.event.studentRestored": "{actor} restored {student}",
   "activity.event.signIn": "{actor} signed in",
   "activity.event.signInFailed": "A sign-in attempt failed for {actor}",
   "activity.event.codeSignIn": "{actor} signed in with an access code",
