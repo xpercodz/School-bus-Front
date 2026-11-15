@@ -299,9 +299,10 @@ git commit -m "feat(import): the plan knows which children the sheet leaves out"
 ### Task 5: Applying the plan archives, restores, and records both
 
 **Files:**
-- Modify: `src/lib/sheet-import.ts` (`applyAssignmentPlan`)
+- Modify: `src/lib/sheet-import.ts` (`applyAssignmentPlan`, and one condition in `buildAssignmentPlan`'s `unchanged` counter)
 - Modify: `src/lib/school-admin.ts` (new `setStudentArchived`)
 - Modify: `src/lib/audit.ts` (`AuditEvent`, `EVENT_FAMILY`, `EVENT_LABEL_KEY`)
+- Modify: `src/routes/ActivityPage.tsx` (two `sentence()` cases — see Step 4)
 - Modify: `src/lib/i18n/dictionaries/en.ts`, `ar.ts`, `fr.ts`
 - Modify: `firebase/firestore.rules` — already covered by Task 1 Step 4
 
@@ -333,6 +334,8 @@ In `applyAssignmentPlan`:
 `en.ts` (then `ar.ts` and `fr.ts` as `Messages`, complete):
 - `activity.event.studentArchived`: `"{actor} archived {student}"`
 - `activity.event.studentRestored`: `"{actor} restored {student}"`
+
+**And the sentence needs its `{student}`.** `ActivityPage`'s `sentence()` switch (`src/routes/ActivityPage.tsx:126-180`) sets each event's variables; without a case for these two, `interpolate` leaves the placeholder literal and the log reads "X archived {student}". Add two cases that set `vars.student` from `row.targetId` through the same helper the existing student-scoped events use — the entry stores the id, the page resolves the name (`AGENTS.md`: never store a child's name). That is the only change in that file.
 
 - [ ] **Step 5: Verify**
 
