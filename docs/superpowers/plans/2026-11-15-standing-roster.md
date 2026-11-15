@@ -92,12 +92,12 @@ In `auditEventAllowed()`, add `student.archived` and `student.restored` to the b
 Deploy nothing. Open the Firebase console → Firestore → Rules, paste the file, then use the Simulator with an authenticated `staff` user whose profile has `role: 'staff'` and a `schoolId`, and run these five simulations. Expected:
 
 1. `get` `schools/{id}/buses/{busOfThatDriver}` → **allowed**.
-2. `list` `schools/{id}/attendance` where `runId == 'busX-2026-11-15-morning'` → **allowed**, and every returned row is that driver's bus.
+2. `list` `schools/{id}/attendance` where `busId == 'busX'` **and** `runId == 'busX-2026-11-15-morning'` → **allowed**, and every returned row is that driver's bus.
 3. `get` `schools/{id}/runs/{runOfThatBus}` → **allowed**.
 4. `list` `schools/{id}/students` where `busId == 'busX'` → **allowed**.
 5. same list without the `busId` filter → **denied**.
 
-If simulation 2 is denied, the query cannot be authorised by a `busId` rule. Do not weaken the rule; take the second shape from the spec (rule resolves the run's `busId` via `get()` on `runs/{resource.data.runId}`) and re-run 1-5.
+**Ruled after Task 1 (R5):** the rule stays as written — `resource.data.busId` with `staffsOwnBus` — and the **query** gains the matching `busId` filter in Task 8, with a composite index. Do not switch to a `get()`-on-runs rule: whether Firestore proves a `get()` inside a list query is the one thing here nobody can verify without an emulator, and a missing index fails loudly at the query while a denied list fails silently in the driver's hands.
 
 - [ ] **Step 6: Commit**
 
@@ -429,7 +429,8 @@ git commit -m "feat(students): archived children leave the lists and return from
 ### Task 8: The driver's roster is the standing one
 
 **Files:**
-- Modify: `src/lib/school-data.ts` (`useRunRoster`, ~lines 220-481)
+- Modify: `src/lib/school-data.ts` (`useRunRoster`, ~lines 220-481; also `useDriverBus` — see R4 in the ledger)
+- Modify: `firebase/firestore.indexes.json` (composite index for `attendance`: `busId` + `runId`)
 
 **Interfaces:**
 - Consumes: the rules from Task 1; `buildRunId`, `todayDateStr`, `ROSTER_RUN_TYPE`.
@@ -440,7 +441,7 @@ git commit -m "feat(students): archived children leave the lists and return from
 Replace the attendance-only listener with two listeners once `busId` resolves:
 
 - `query(collection(firestore, "schools", schoolId, "students"), where("busId", "==", busId))` — map to `{ id, name, grade, archived }`, drop `archived === true`, sort by name;
-- the existing `attendance where runId == today's morning run` listener, mapping to a `Map<studentId, status>`.
+- the attendance listener, filtered **both** ways: `where("busId","==",busId).where("runId","==",today's morning run)`, mapping to a `Map<studentId, status>`. Both filters are required: the rules authorise a staff list on `resource.data.busId` (Task 1, R5), and Firestore will not prove that from a `runId` filter alone. Add the matching composite index (`firestore.indexes.json`: `attendance`, `busId` ASC + `runId` ASC, query scope `COLLECTION`).
 
 Merge in the memo: the roster is the students list in name order; each entry's status is the map's value or `"WAITING"`. `loading` settles when **both** listeners have delivered or errored, using the same `settlesLoading` rule and the same ceiling timer. Keep the `includeMetadataChanges: true` option and the `settleTimer`.
 
@@ -652,7 +653,7 @@ Expected: all exit 0; `test:offline` either passes or reports skipped (no Chrome
 
 - [ ] **Step 2: Deploy note**
 
-`firebase/firestore.rules` and `firebase/firestore.indexes.json` changed. Deployment is a human decision: `npm run deploy:rules` (and `deploy:indexes` only if Task 1 Step 5 chose the index shape). State in the handover whether the rules were deployed, and to which project.
+`firebase/firestore.rules` and `firebase/firestore.indexes.json` changed. **Both must be deployed, in this order: indexes first, then rules** — the new rules admit a query the index has to serve, so deploying the rules alone leaves the driver's roster failing on a missing index. Deployment is a human decision: `npm run deploy:indexes`, then `npm run deploy:rules`. State in the handover whether each was deployed, and to which project.
 
 - [ ] **Step 3: No commit**
 
