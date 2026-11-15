@@ -955,10 +955,12 @@ export function useDashboardData(
               };
             }),
           );
-          // Not on an empty cache read — see settlesLoading.
-          if (settlesLoading(snap.metadata.fromCache, snap.size > 0)) {
-            setLoadedKey(`${uid}|${effectiveDate}`);
-          }
+          // The first snapshot is the answer, empty included: a school with no
+          // attendance on this day should show its zeros now rather than a
+          // skeleton held up for a server round-trip it does not need. Later
+          // snapshots still land on this listener. The settle timer still
+          // guards a query that never lands at all.
+          setLoadedKey(`${uid}|${effectiveDate}`);
         },
         () => setLoadedKey(`${uid}|${effectiveDate}`),
       );
