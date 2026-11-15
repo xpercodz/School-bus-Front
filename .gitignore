@@ -44,3 +44,6 @@ firebase-debug.log
 
 # local design-review harness (screenshots, preview)
 /.taste-skill
+
+# isolated worktrees (see using-git-worktrees)
+/.worktrees
