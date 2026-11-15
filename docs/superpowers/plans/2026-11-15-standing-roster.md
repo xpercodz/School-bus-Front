@@ -366,15 +366,26 @@ git commit -m "feat(import): archiving and restoring write through the plan, wit
 
 Add `const [archiveMissing, setArchiveMissing] = useState(true)`. When it is `false`, the applied plan carries `archive: []` (an override object, exactly like the existing `writable` memo builds one). Do not mutate `plan`.
 
-- [ ] **Step 2: The preview section**
+- [ ] **Step 2: The preview section — both directions (R11)**
 
-Above the existing tallies, a section that appears only when `archiveMissing && plan.archive.length > 0`: a title, a sentence with the count (`tp`), and the children listed as `name · class`, each on its own line. When the list is empty and the sheet was readable, the section shows nothing (not an empty box).
+Above the existing tallies, one section that renders when `archiveMissing` and the plan has anything to say in either direction:
+
+- **leaving:** a title, a count-bearing sentence (`tp`), and each child as `name · class` on his own line;
+- **returning:** the same for `plan.restore` (ids). Resolve each id through the `students` array the dialog already holds — do **not** widen `AssignmentPlan.restore` to objects for this; a lookup is one line and the array is already in props.
+- **R13 — a child with an empty `name`** prints his document id instead, and never an empty row. An unnamed student can never match a sheet row, so he is archived by any readable sheet; that is exactly when the id matters.
+- When there is nothing in either list and the sheet was readable, the section renders nothing — not an empty box.
+
+Why both directions in one place: with two children who share a name, a sheet can archive the active twin and restore the archived one in the same import, and only a preview that prints both makes that visible before Apply.
 
 The toggle renders as an Arc `Button` (`secondary`, `size="sm"`, `arc-field`), with `aria-pressed`, labelled from the dictionary; its "off" state must read as the safe one.
 
-- [ ] **Step 3: Permissions**
+- [ ] **Step 3: Permissions and the three gates (R12)**
 
-`!canWriteStudents` ⇒ `archive: []` and `restore: []` in the applied plan, and the archive section is replaced by the existing "what this reader cannot write" wording. The `blocked` computation gains `|| plan.archive.length > 0`.
+- `!canWriteStudents` ⇒ `archive: []` **and** `restore: []` in the applied plan (the memo already spreads `...plan`, so both would otherwise leak through), and the section is replaced by the existing "what this reader cannot write" wording. `blocked` gains `|| plan.archive.length > 0 || plan.restore.length > 0`.
+- `writeCount` gains both counts — otherwise a sheet that only removes children disables Apply.
+- The apply guard (`writeCount === 0`) then needs no change, but read it and say so in the report.
+
+**Until this lands, the branch is unsafe for an Assignments-only operator:** Task 5's apply already attempts the archive write and the rules refuse it. This task is what closes that window.
 
 - [ ] **Step 4: Dictionary keys**
 
