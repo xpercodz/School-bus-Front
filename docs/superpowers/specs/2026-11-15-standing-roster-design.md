@@ -80,12 +80,21 @@ Three things follow, and they are three independent slices:
 
 ## What exists today (the constraints this design is built on)
 
-- **Rules.** `canSeeStudents()` excludes staff (`firestore.rules:95-97`), so a
-  driver cannot read `students`. A driver-created `attendance` document may
-  carry only `busId, status, boardedAt, droppedOffAt` + stamps
-  (`firestore.rules:345-347`) — not `runId`, `date`, `studentName`, `grade`. A
-  driver **may** create a `runs` document with `busId, runType, date, status` +
-  stamps (`firestore.rules:319-321`), bounded by `staffsOwnBus`.
+- **Rules — staff hold no read grant at all.** `students` is gated on
+  `canSeeStudents()`, `buses` on `canSeeBuses()`, `runs` and `attendance` on
+  `canSeeRuns()` (`firestore.rules:95-118`, `257`, `278`, `307`, `335`), and none
+  of those helpers admits `isStaff()`: the only staff branches in the whole file
+  are the two write branches (`311`, `339`). Against this ruleset the driver's
+  **current** screen cannot resolve its own bus (`useDriverBus`), read its run
+  document, or read today's sheet — so either the deployed ruleset predates
+  `57cc61a` (which added `canSeeRuns`), or the driver screen is dead in
+  production right now. Only the deployment can answer that; Slice 0 settles the
+  code either way.
+- A driver-created `attendance` document may carry only
+  `busId, status, boardedAt, droppedOffAt` + stamps (`firestore.rules:345-347`) —
+  not `runId`, `date`, `studentName`, `grade`. A driver **may** create a `runs`
+  document with `busId, runType, date, status` + stamps (`firestore.rules:319-321`),
+  bounded by `staffsOwnBus`.
 - **Provenance is mandatory.** Every write to `students`, `attendance`, `runs`
   must set `updatedBy == request.auth.uid` and `updatedAt == request.time`
   (`firestore.rules:145-148`).
@@ -160,10 +169,14 @@ att    = { runId, date, busId, busName, studentName, grade,
            status, boardedAt, droppedOffAt, ...stamp }
 ```
 
-`completeRun` needs no change: it already writes the full run document before
-completing and already marks every still-unrecorded child ABSENT
-(`school-data.ts:395-416`) — with a standing roster, "every unrecorded child" is
-the roster minus the recorded rows, which is the right set.
+`completeRun` needs one change it did not need before. It already writes the full
+run document before completing and already marks every still-unrecorded child
+ABSENT (`school-data.ts:395-416`), but that ABSENT write carries only
+`{ status, updatedBy, updatedAt }` with `merge: true`. On a child with no row
+that is a **create**, which the new allowlist would refuse — and under a standing
+roster that is now the common case, not the edge. Each ABSENT write must carry
+the full row shape the create branch expects (`runId`, `date`, `busId`,
+`busName`, `studentName`, `grade`).
 
 Creating the run document on first tap is deliberate: it preserves the existing
 invariant that **a run document means "this bus is running today"**, which the
@@ -174,6 +187,26 @@ a bus whose driver started recording would be missing from the monitor.
 `runExists` (`MobilePage.tsx:126`, `165-170`), and `TopAppBar` loses the prop. A
 bus with no children on it gets its own empty state (new keys, below), because
 "no children assigned" and "not dispatched yet" are no longer the same thing.
+
+**"Roster, but no run yet" is the normal morning**, and the design has to say what
+it looks like rather than leave it to the builder:
+
+- the app bar shows the bus and its children. There is no run status and no
+  manifest rail tick until the first write creates the run document, because
+  "In progress" over a run nobody started is a claim about a day that has not
+  begun;
+- the **Complete run** bar stays available whenever the roster has somebody on
+  it, not gated on `runExists`. It is the only way to sign off a day on which
+  nobody was recorded, and `completeRun` creates the run document itself;
+- a run that exists and is `COMPLETED` keeps today's behaviour: the roster is
+  read-only.
+
+**Dispatch survives for the afternoon only.** The modal's run-type control is
+pinned to `afternoon` (the morning is now the standing roster), and
+`hint.dispatch.body`, which promises that dispatching "pre-registers that bus's
+students", is rewritten — it would otherwise describe a step the product no
+longer has. A morning dispatch left available would let a director recreate the
+per-child copy this design exists to delete.
 
 **A child moved away mid-day** disappears from the driver's list immediately
 (the query is bus-scoped) but his record, if he was recorded, stays in that run's
@@ -192,11 +225,19 @@ summary, `dashboard.noRoutes` in the fleet list, and the empty finding. A
 sub-second flash of zeros before a warm cache lands is possible and accepted; the
 guard existed to prevent it, and it was preventing the honest empty state too.
 
-**The summary also counts the roster.** `useDashboardData` gains a `students`
-listener (already permitted for anyone who can open Live) and, for a segment
-whose run exists, adds each roster child with no record to `total` and
+**The summary also counts the roster**, behind an explicit opt-in. The hook serves
+Live *and* Reports (`DashboardPage.tsx:28`, `ReportsPage.tsx:53`), so an
+unconditional union would silently turn Reports into a roster view. Live passes
+the flag; Reports does not. With the flag on, each active child who is on a bus
+with a run of the selected segment and has no record is added to `total` and
 `waiting`:
 
+- **only the live day** — the flag is passed only when the selected date is
+  today (`date === null || date === todayDateStr()`). A past date stays
+  record-based: reviewing last Monday must not show today's roster as
+  unaccounted for that day;
+- **only children with a `busId`** — a child on no bus rides no run, so counting
+  him would make `total` exceed the sum of the per-bus totals;
 - a child with no record counts as **unaccounted**, which is the app's existing
   meaning for "waiting is the absence of a status";
 - `waiting` is never displayed as a word — it feeds `unaccounted` and the KPI
@@ -231,22 +272,89 @@ cell (`none`, `no bus`, `aucun`, `بدون`), because a half-filled column that
 silently unassigned every blank would empty the buses. A blank class on an
 existing child is no opinion; on a new child it is still reported, not created.
 
-**Archived children are invisible to lists, not to the director.** Every reader
-of `students` filters `archived != true`: the roll (`useSchoolRoll`), the
-Assignments page (`useStudentsPaginated`, `fetchAllStudents`), the per-bus counts,
-the dashboard union, and the driver's roster. The roll toolbar gains one toggle
-— **Show archived (N)** — and archived rows render with an `Archived` chip and a
-**Restore** action. Without that toggle, archiving would be a one-way door that
-only another sheet import could open.
+**Archiving also clears the bus.** The archive write is
+`{ archived: true, busId: null, ...stamp }`. That is not tidiness: it makes the
+two paths that *cannot* express "absent means active" correct by construction —
+the driver's roster query (`where busId == my bus`) never matches him, and the
+per-bus counts, which are `getCountFromServer` queries and cannot filter a
+missing field (`school-admin.ts:435-474`), stop counting him without pretending
+`archived == false` exists on every document.
+
+**Hooks stay complete; screens filter.** `useSchoolRoll` also supplies the names
+the Activity log resolves student ids against (`ActivityPage.tsx:60`,
+`103-106`), and `fetchAllStudents` is the list the import matches a returning
+child against (`AssignmentsPage.tsx:166-177`). Filtering inside either would
+render an `student.archived` entry as "Removed student" and would create a
+returning child a second time. Both hooks return every child, and the **screens**
+apply `archived != true`: the roll, the Assignments list, the dashboard union and
+the driver's roster.
+
+**One toggle, one Restore.** The roll toolbar gains **Show archived (N)**;
+archived rows render with an `Archived` chip and a **Restore** action, which
+writes `archived: false` and leaves `busId` alone — the next sheet, or the
+Assignments screen, puts him back on a bus. Without that toggle, archiving is a
+one-way door only another sheet import could open.
+
+**Who can run rollover.** The import lives on the Assignments screen, so reaching
+it needs that grant; the archive half needs Students. An operator holding one
+grant gets exactly that half — the dialog already states which writes it cannot
+make and omits that half (`SheetImportDialog.tsx`) — so rollover is a two-grant
+job by design, not by accident.
 
 **History is untouched.** Archive writes no attendance document and deletes
 nothing, so every past day still resolves by id. Names are still the only key in
 a sheet, so a corrected spelling remains a manual Students-screen edit.
 
-## Rules changes (both repos' models, one file each)
+## Rules changes (all in `firebase/firestore.rules`)
 
-1. `firestore.rules`, `students` read: allow staff to list their **own** bus's
-   children.
+Slice 0 comes first: **the driver's own reads**, which the file does not grant at
+all today. Then the two write shapes this design needs.
+
+**Slice 0 — the driver may read his own bus, its runs and its rows.**
+
+1. `buses`:
+
+   ```
+   allow read: if isMySchool(schoolId) && (
+     canSeeBuses()
+     || (isStaff() && resource.data.driverUid == request.auth.uid))
+   ```
+
+   `useDriverBus` already queries `buses where driverUid == uid`, so the rule's
+   field is the queried field and no `get()` is involved.
+
+2. `runs`:
+
+   ```
+   allow read: if isMySchool(schoolId) && (
+     canSeeRuns()
+     || (isStaff() && staffsOwnBus(resource.data.busId)))
+   ```
+
+   The driver reads exactly one run document by id (`school-data.ts:302`), so this
+   is a single-document evaluation.
+
+3. `attendance` — and this one may change the driver's **query**, because rules
+   are not filters: a rule that constrains `busId` cannot authorise a query that
+   only compares `runId`. Two shapes work; the emulator decides which ships:
+
+   - **by bus:** rule
+     `isStaff() && resource.data.busId != null && staffsOwnBus(resource.data.busId)`
+     with the query `where("busId","==",busId).where("runId","==",runId)`. Two
+     equality filters need a **composite index**, so this adds an entry to
+     `firebase/firestore.indexes.json` and a `deploy:indexes` step.
+   - **by run, checking the run:** rule
+     `isStaff() && staffsOwnBus(get(/databases/$(database)/documents/schools/$(schoolId())/runs/$(resource.data.runId)).data.busId)`
+     with today's query unchanged. One cached `get()` per evaluation, no index
+     change.
+
+   Prefer the second if the emulator proves it: the query and the indexes stay as
+   they are. Whichever ships, add an emulator test (`firebase emulators:exec`)
+   that signs in as a driver and runs that exact query. This is the one change
+   here that fails in a way a typecheck and a build never see, and the last rules
+   bug of this shape took the dashboard down in production.
+
+4. `students`:
 
    ```
    allow read: if isMySchool(schoolId) && (
@@ -254,14 +362,15 @@ a sheet, so a corrected spelling remains a manual Students-screen edit.
      || (isStaff() && staffsOwnBus(resource.data.busId)))
    ```
 
-   `staffsOwnBus` resolves the same `buses/{busId}` path for every document in
-   one query, and rules cache a `get()` for the duration of an evaluation, so
-   this costs one read per snapshot, not one per child. The driver's query is
-   `where("busId","==",busId)`, which is the constrained shape the rule
-   requires.
+   `staffsOwnBus` resolves the same `buses/{busId}` path for every document in one
+   query and rules cache a `get()` for the evaluation, so this costs one read per
+   snapshot, not one per child. An archived child has no `busId`, so the rule
+   keeps him off the driver's list without a filter.
 
-2. `firestore.rules`, `attendance` create by staff: widen the allowlist to the
-   fields a lazily created row carries, and pin the copy to the child's run.
+**Then the write shapes this design needs.**
+
+5. `attendance` create by staff: widen the allowlist to the fields a lazily
+   created row carries, and pin the copy to the child's run.
 
    ```
    : request.resource.data.keys().hasOnly([
@@ -278,13 +387,13 @@ a sheet, so a corrected spelling remains a manual Students-screen edit.
    The update branch is unchanged: once the row exists, a driver may still only
    move the status and its two timestamps.
 
-3. `firestore.rules`, `students` update: add `archived` to the operator-with-
-   Students allowlist (and to the union allowlist held by Students+Assignments),
-   so a secretary can run rollover without the directorship. `delete` stays
-   director-only.
+6. `students` update: add `archived` (and the `busId: null` that archiving
+   carries) to the operator-with-Students allowlist and to the union allowlist
+   held by Students+Assignments, so a secretary can run rollover without the
+   directorship. `delete` stays director-only.
 
-4. `firestore.rules`, `auditEventAllowed()`: add `student.archived` and
-   `student.restored` for a caller holding Students.
+7. `auditEventAllowed()`: add `student.archived` and `student.restored` for a
+   caller holding Students.
 
 **Accepted residue.** Rules cannot split a document id, so they cannot prove
 that `{runId}__{studentId}` names a child who is on that bus: a driver could
@@ -311,6 +420,13 @@ Audit vocabulary: `student.archived` and `student.restored` in `AuditEvent`,
 
 ## Slices, each independently shippable
 
+0. **The driver's read grants.** Rules 1–4 above, plus an emulator test that signs
+   in as a driver and runs the roster, run-document and bus queries. Verify:
+   `firebase emulators:exec` matrix passes; a driver on the deployed ruleset can
+   read own bus, run and rows. **Ship this even if nothing else ships** — if the
+   committed ruleset is what production runs, the driver screen is broken today
+   and this is the fix.
+
 1. **The dashboard renders empty immediately.**
    Drop the guard at `school-data.ts:958-961`; keep the error path and the
    ceiling. Verify: `npm run typecheck && npm run lint`, then a date with no data
@@ -318,23 +434,25 @@ Audit vocabulary: `student.archived` and `student.restored` in `AuditEvent`,
    content.
 
 2. **Archiving and the truth-shaped import.**
-   `archived` in the type, the rules (3 and 4 above), the archive set and preview
-   in `sheet-import.ts` + `SheetImportDialog`, the audit entries, the reader
-   filters, the roll's toggle and Restore. Verify: `npm run typecheck`,
-   `npm run lint`, `npm run build`, and a re-upload with one child removed
-   archives exactly that child and names him in the preview.
+   `archived` in the type, rules 6 and 7, the archive set and preview in
+   `sheet-import.ts` + `SheetImportDialog`, the audit entries, the screen filters,
+   the roll's toggle and Restore. Verify: `npm run typecheck`, `npm run lint`,
+   `npm run build`, and a re-upload with one child removed archives exactly that
+   child, names him in the preview, and leaves the Activity log's names intact.
 
 3. **The standing roster.**
-   Rules 1 and 2; `useRunRoster` rewritten onto `students` + today's records with
-   the lazy run create; `MobilePage` loses the dispatch empty state;
-   `TopAppBar` loses `runExists`; the dashboard union from Decision B. Verify:
+   Rules 5; `useRunRoster` rewritten onto `students` + today's records with the
+   lazy run create; `completeRun` writing the full row shape; `MobilePage` losing
+   the dispatch empty state, the app bar and Complete-bar rules above;
+   `TopAppBar` losing `runExists`; the dashboard union from Decision B; the
+   dispatch modal pinned to the afternoon and its hint rewritten. Verify:
    typecheck, lint, build, `npm run test:offline`, plus a manual pass — a driver
    with a warm cache and no signal sees the roster and can record; a child moved
-   in Assignments appears on the driver's bus immediately; `completeRun` still
-   marks unrecorded children absent.
+   in Assignments appears on the driver's bus immediately; `completeRun` on a day
+   nobody touched marks every child absent and creates the run.
 
-Slices 1 and 2 do not touch the driver's path; slice 3 depends on 2 only for the
-`archived` filter, which it filters for from the start.
+Slices 1 and 2 do not touch the driver's path; slice 3 needs 0 to work at all and
+2 only for the `archived` filter, which it filters for from the start.
 
 ## Call made on your behalf, and checkable
 
@@ -342,10 +460,17 @@ Slices 1 and 2 do not touch the driver's path; slice 3 depends on 2 only for the
   all three columns and the roster is non-empty. The preview is the guard: it
   names every child to be archived, by name and class, before Apply. If you would
   rather the toggle start off, that is one line — say so.
-- **Archived children are hidden from every list, including the driver's.** The
-  year's roster is the active roster; a child who left in November should not
-  still be on a bus's list in December.
-- **`runExists` disappears.** Nothing else reads it once the roster stands.
+- **Archiving also clears the bus.** Leaving `busId` on an archived child would
+  make the per-bus counts and the driver's roster wrong in a way no filter can
+  fix cheaply. Restoring leaves the bus empty; the next sheet assigns it.
+- **Archived children are hidden from every screen list, including the driver's**,
+  but not from the hooks — the Activity log still resolves their names and the
+  import still recognises a returning child.
+- **`runExists` disappears**, and with it "No run dispatched". The Complete bar
+  is available as soon as the roster has somebody on it, because signing off a
+  day nobody was recorded on is the one thing it can still do.
+- **Dispatch is pinned to the afternoon.** Its hint currently promises that
+  dispatching pre-registers the bus's students; it is rewritten.
 
 ## Left to the builder
 
@@ -355,4 +480,14 @@ Slices 1 and 2 do not touch the driver's path; slice 3 depends on 2 only for the
   toolbar already carries search, class and a clear action).
 - Whether the bus sheet's numbered "Off" column needs an unrecorded child row at
   all — today it lists only existing records.
-- The copy for every new key, in three languages.
+- The copy for every new key, in three languages, and the English currently in
+  `hint.dispatch.body` in all three.
+
+## Open question for the product owner
+
+**Is the deployed ruleset the one in this repo?** The committed file grants staff
+no read at all (see "What exists today"), so a driver signing in against it can
+resolve neither their bus nor their sheet. Either the deployment predates
+`57cc61a`, or the driver screen is broken in production now. The code path is the
+same either way — Slice 0 grants what the screen needs — but knowing which it is
+tells us whether to treat Slice 0 as a fix that ships this week.
