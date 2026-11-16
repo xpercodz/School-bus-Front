@@ -167,6 +167,14 @@ export function AttendanceTable({
               const recorded = present + absent;
               const percent = recorded === 0 ? 0 : Math.round((present / recorded) * 100);
               const archived = archivedIds?.has(row.id) === true;
+              // An archived child has no bus, and a separator with nothing after
+              // it reads as a missing value rather than an absent one.
+              const identity = [
+                translateDataLabel(row.grade, locale, t),
+                digits(row.bus),
+              ]
+                .filter(Boolean)
+                .join(" · ");
 
               return (
                 <div
@@ -185,7 +193,7 @@ export function AttendanceTable({
                         {archived && <ArchivedChip />}
                       </div>
                       <p className="mt-0.5 truncate text-[12px] text-dash-on-surface-variant">
-                        {translateDataLabel(row.grade, locale, t)} · {digits(row.bus)}
+                        {identity}
                       </p>
                     </div>
                     <div className="flex flex-none items-center gap-1">
@@ -246,6 +254,7 @@ export function AttendanceTable({
                     <Button
                       type="button"
                       onClick={() => onRestore(row)}
+                      aria-label={t("studentList.restoreAria", { name: row.name })}
                       variant="secondary"
                       size="md"
                       className="arc-field mt-2"
@@ -397,6 +406,7 @@ export function AttendanceTable({
                           <Button
                             type="button"
                             onClick={() => onRestore(row)}
+                            aria-label={t("studentList.restoreAria", { name: row.name })}
                             variant="ghost"
                             size="sm"
                             disabled={restoringId != null}
