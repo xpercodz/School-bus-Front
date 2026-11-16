@@ -402,13 +402,15 @@ handler on the `<article>`, and never other controls inside it. The trailing
 chevron is that button's visible affordance.
 
 **A student's name lives in two places, and an edit must fix both.** `students`
-is the record; `attendance` documents snapshot `studentName`/`grade` at dispatch
-time, and the driver's sheet and the day view read the copies while the roll
-reads the record. `updateStudent` (`school-admin.ts`) therefore corrects today's
-attendance copies in the same batch — except for a run that is already
+is the record; `attendance` documents snapshot `studentName`/`grade` **when the
+row is created** — on the driver's first tap, or when the afternoon is
+dispatched — and the driver's sheet and the day view read the copies while the
+roll reads the record. `updateStudent` (`school-admin.ts`) therefore corrects
+today's attendance copies in the same batch — except for a run that is already
 `COMPLETED`, whose record of the day stands — and never touches past days. When
 you add another screen that edits a student, do the same or the two screens will
-disagree until the next dispatch.
+disagree until that day's rows are next written. A **sheet import** writes
+`students` only and does not correct today's copies.
 
 **Every director list is paged, and pages are one component.** `PaginationBar`
 takes any `Pagination` (from `usePageSlice`, or the roster's `useStudentList`)
@@ -429,14 +431,58 @@ do not hand-roll page buttons). Page size is 10.
   across, so eight is exactly two rows and every page closes its last row. Ten
   would leave page 1 ending on a two-card row.
 
+**The driver's roster is the standing one.** A staff account's screen is
+`students where busId == my bus`, merged with today's `attendance` rows for
+`{busId}-{date}-morning`; a child with no row renders as the neutral **Board**
+pill, and the **first tap** creates the run document and that child's row in one
+batch. There is no "dispatch the morning" step and no "No run dispatched" state
+any more: a bus with children always has a roster, and a bus with none gets its
+own empty state, gated on being online so a cold offline cache cannot tell a
+driver his bus is empty.
+
+- The run document is written **once**, when `runStatus` is null;
+  `completeRun` is the only writer of its status. A tap on a child who already
+  has a row sends only `status`, its two times and the stamps — the rules allow
+  nothing else on an existing document.
+- **The identity fields ride a create only** (`runId`, `date`, `busId`,
+  `busName`, `studentName`, `grade`). That is what stops a bus rename or a
+  mid-day class correction — both of which change what those fields would say —
+  from making the tap, or the whole sign-off batch, refused.
+- The status map carries its `runId`; a map from an earlier run (page open
+  across midnight, a bus change) makes every child unrecorded, so the write is a
+  create for the run being written.
+- `completeRun` resolves every child the run has no **settled** record of to
+  `ABSENT` — creating the row when there is none, updating it when it reads
+  `WAITING`, and never overwriting a `BOARDED`/`DROPPED_OFF`/`ABSENT` answer that
+  may be another device's.
+
+**The monitor counts the roster on the live day.** `useDashboardData` takes a
+fourth argument (`includeRoster`, default off, passed only by the Live monitor
+and only for today) and counts children with no record as **unaccounted**, per
+bus and in total. Past days and Reports stay record-based, and the bus sheet
+lists those unrecorded children too — otherwise a fleet row saying "12
+unaccounted" would open an empty table. The attendance CSV export stays
+records-only.
+
 **The roll is the whole of `/dashboard/students`, and it has no date.**
 `StudentsPage` answers one question — who is on the roll, and how is each child
 doing — so it reads `useSchoolRoll` + `useRollSummary` and nothing else: every
-child in `schools/{schoolId}/students`, whatever happened today, with present
-days, absent days, attendance % and the last recorded day + state over the
+**active** child in `schools/{schoolId}/students`, whatever happened today, with
+present days, absent days, attendance % and the last recorded day + state over the
 90-day retention window (`ROLL_SUMMARY_DAYS`). `rollRow` fills the day-only
 fields of `AttendanceRow` with the app's own "no time" placeholder, which the
 table never renders.
+
+**Archived children leave every list, but the hooks still return them.** A child
+the year's sheet no longer names is archived — `archived: true` and a cleared
+`busId` — never deleted, so his attendance history still resolves and the
+Activity log still prints his name. `useSchoolRoll` and `fetchAllStudents`
+therefore return everybody and the **screens** filter (`archived != true`): the
+roll's one toolbar toggle ("Show archived (N)") reveals them with a Restore
+action. Filter inside a hook and an audit entry renders "Removed student" while
+the import creates a returning child a second time. `useBusStudentCounts` needs
+no filter: an archived child has no bus, so a bus-scoped count excludes him by
+construction.
 
 - **A date picker here was removed, deliberately. Don't put it back.** It
   switched the page into a per-day run view (segment, Off place, boarded /
@@ -542,6 +588,22 @@ batches of ≤400, each correction carrying only the fields it actually changes.
 - **Creating needs `can('students')`**, not the directorship: a secretary runs
   the roster. An operator holding Assignments but not Students still imports bus
   moves; the dialog says what it cannot write and omits exactly that half.
+- **The sheet is the year's truth, and removal is archived.** A child no row
+  names is archived — `archived: true` and `busId: null` in one write — never
+  deleted; a child the sheet names again is restored (`archived: false`, bus
+  untouched). The preview prints **both** directions by name before Apply, and
+  its toggle can withhold the leaving half (a restore survives it: a returning
+  child is not a departure). The rules admit exactly one archive shape — the key
+  touched, ending `true`, bus cleared — so the pair cannot be used to move a
+  child between buses. Withhold the archive half from a reader without
+  Students; without Assignments they simply cannot reach the screen.
+- **A sheet never unassigns a bus.** Blank means *no opinion*; the bus-cell
+  token an earlier draft promised was dropped, because a token in a column of bus
+  names reads as a bus name. Unassigning is an Assignments action.
+- **The dialog opens only on a complete roll.** `fetchAllStudents` **throws**
+  when the school cannot be resolved, and the dialog is not mounted until it
+  returns: a partial cursor page would create a twin for every child past the
+  first 50 and compute the archive set against a roster nobody was shown.
 
 The dialog shows the mapping and a preview before anything is written; nothing
 is guessed at apply time — unmatched rows are reported, not dropped. The drop target itself is a
@@ -688,6 +750,12 @@ npm run deploy:indexes  # firestore indexes
 
 Project is pinned by the committed `.firebaserc` (`school-bus-a4f23`). The Firebase
 CLI is not a dependency — run it with `npx firebase-tools@latest …`.
+
+**Indexes before rules.** The driver's roster reads `attendance` filtered by
+`busId` **and** `runId`, which needs the composite index in
+`firebase/firestore.indexes.json`; the rules admit that query. Deploy the rules alone and
+the roster fails on a missing index — the one order that produces a driver screen
+that loads nothing. `npm run deploy:indexes`, then `npm run deploy:rules`.
 
 ### Hosting is live; the API is not
 
