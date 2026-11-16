@@ -1369,9 +1369,14 @@ export function useDashboardData(
     // page applies one uniform segment+search filter).
     const segAtt = attendance.filter((a) => runTypeFromRunId(a.runId) === segment);
 
-    // A bus with no run of the selected segment is not on this segment at all.
-    const hasSegmentRun = (busId: string) =>
-      runs.some((r) => r.busId === busId && runTypeFromRunId(r.id) === segment);
+    // A bus is on this segment when it has a run of it **or** rows of it. The
+    // rows count on their own: a driver whose first tap lands before the run
+    // listener resolves (an offline cold start) writes the row and not the run
+    // document, and a bus with children recorded on it must not vanish from the
+    // monitor because the document that merely announces the run is missing.
+    const busOnSegment = (busId: string) =>
+      runs.some((r) => r.busId === busId && runTypeFromRunId(r.id) === segment) ||
+      segAtt.some((a) => a.busId === busId);
 
     // The roster's side of the union: a child standing on a bus with a run of
     // this segment whom nobody has recorded yet is on that run, so he is
@@ -1394,16 +1399,18 @@ export function useDashboardData(
       // total larger than the number of children in it.
       const recorded = new Set(segAtt.map((a) => a.id.split("__").at(-1) ?? a.id));
       for (const child of roster) {
+        // A bus with no run and no rows of this segment is not on it at all.
+        if (!busOnSegment(child.busId) || recorded.has(child.id)) continue;
         const run = runs.find(
           (r) => r.busId === child.busId && runTypeFromRunId(r.id) === segment,
         );
-        // A bus with no run of this segment is not on it at all.
-        if (!run || recorded.has(child.id)) continue;
         const bus = buses.find((b) => b.id === child.busId);
         unrecordedByBus.set(child.busId, (unrecordedByBus.get(child.busId) ?? 0) + 1);
         unrecorded += 1;
         unrecordedRows.push({
-          id: `${run.id}__${child.id}`,
+          // The row this child would get: its run id when a run exists, and the
+          // id the first tap would build when only rows exist.
+          id: `${run?.id ?? buildRunId(child.busId, effectiveDate, segment)}__${child.id}`,
           name: child.name,
           grade: child.grade,
           bus: bus?.name ?? "",
@@ -1426,10 +1433,10 @@ export function useDashboardData(
     const unaccounted = waiting + absent;
     const accounted = onboard + dropped;
 
-    // Only fleet buses with a run of the selected segment are "active" — a bus
-    // with no run shouldn't claim IN_PROGRESS with 0% stats.
+    // Only buses on the selected segment are listed — a bus with no run and no
+    // rows has not started, and must not claim IN_PROGRESS with 0% stats.
     const busList: Bus[] = buses
-      .filter((bus) => hasSegmentRun(bus.id))
+      .filter((bus) => busOnSegment(bus.id))
       .map((bus) => {
         const busAtt = segAtt.filter((a) => a.busId === bus.id);
         const run = runs.find(
