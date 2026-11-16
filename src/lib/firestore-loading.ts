@@ -15,12 +15,15 @@
  * - an *empty* cache read settles only when we are offline, where there is
  *   genuinely nothing left to wait for (otherwise the skeleton would never end).
  *
- * This assumes every gating listener passes `{ includeMetadataChanges: true }`.
- * Firestore suppresses metadata-only snapshots by default, so on a warm cache
- * that already holds a result the server's confirmation (same documents,
- * `fromCache: false`) is never delivered — and the skeleton then waits out the
- * full ceiling below instead of the ~300ms trip. (It did exactly that: a reload
- * with a warm cache showed the skeleton for 10.6s and looked "forced".)
+ * This assumes the listener that gates a hook's `loading` passes
+ * `{ includeMetadataChanges: true }`. Firestore suppresses metadata-only
+ * snapshots by default, so on a warm cache that already holds a result the
+ * server's confirmation (same documents, `fromCache: false`) is never delivered
+ * — and the skeleton then waits out the full ceiling below instead of the ~300ms
+ * trip. (It did exactly that: a reload with a warm cache showed the skeleton for
+ * 10.6s and looked "forced".) It is the gating listener that matters, not every
+ * listener of the hook: `useDashboardData`'s attendance listener settles on its
+ * first snapshot, empty included, so it passes no options at all.
  */
 export function settlesLoading(fromCache: boolean, hasData: boolean): boolean {
   if (!fromCache) return true;
