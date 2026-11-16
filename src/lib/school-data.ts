@@ -237,9 +237,23 @@ interface RosterDoc {
   grade: string;
 }
 
+/**
+ * Today's records for one run, keyed by student — and the run they belong to.
+ *
+ * The run id is carried because the writers rebuild it at press time: after
+ * local midnight, or after the bus changed, the listener still speaks for the
+ * previous run, and its rows are not the rows a press would touch. Deciding
+ * create-vs-update from the id alone would then send an update to a document
+ * that does not exist, which the rules refuse.
+ */
+interface RunStatuses {
+  runId: string;
+  byStudentId: ReadonlyMap<string, StudentStatus>;
+}
+
 const EMPTY_ROSTER_DOCS: readonly RosterDoc[] = [];
 const EMPTY_ROSTER: readonly Student[] = [];
-const EMPTY_STATUSES: ReadonlyMap<string, StudentStatus> = new Map();
+const EMPTY_STATUSES: RunStatuses = { runId: "", byStudentId: new Map() };
 
 export function useRunRoster(): RunRoster {
   const live = useLiveFlag();
@@ -248,8 +262,7 @@ export function useRunRoster(): RunRoster {
   const { busId, busName, loading: busLoading } = useDriverBus();
 
   const [docs, setDocs] = useState<readonly RosterDoc[]>(EMPTY_ROSTER_DOCS);
-  const [statuses, setStatuses] =
-    useState<ReadonlyMap<string, StudentStatus>>(EMPTY_STATUSES);
+  const [statuses, setStatuses] = useState<RunStatuses>(EMPTY_STATUSES);
   const [runStatus, setRunStatus] = useState<RunDoc["status"] | null>(null);
   /**
    * True when a tap could not be recorded. Both writes are now `await`ed
@@ -362,8 +375,11 @@ export function useRunRoster(): RunRoster {
           { includeMetadataChanges: true },
           (snap) => {
             if (cancelled) return;
-            setStatuses(
-              new Map(
+            setStatuses({
+              // The rows and the run they belong to are one value, so a press
+              // can never mistake yesterday's rows for today's.
+              runId,
+              byStudentId: new Map(
                 snap.docs.map((d) => [
                   // Doc id is `${runId}__${studentId}` — keep only the student
                   // id so the merge below matches the roster entry and the
@@ -372,7 +388,7 @@ export function useRunRoster(): RunRoster {
                   (d.data().status as StudentStatus) ?? "WAITING",
                 ]),
               ),
-            );
+            });
             // Not on an empty cache read — see settlesLoading.
             if (settlesLoading(snap.metadata.fromCache, snap.size > 0)) {
               settle("attendance");
@@ -414,7 +430,7 @@ export function useRunRoster(): RunRoster {
   const roster = useMemo<readonly Student[]>(() => {
     if (!live) return EMPTY_ROSTER;
     return docs
-      .map((d) => ({ ...d, status: statuses.get(d.id) ?? "WAITING" }))
+      .map((d) => ({ ...d, status: statuses.byStudentId.get(d.id) ?? "WAITING" }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [live, docs, statuses]);
 
@@ -465,7 +481,11 @@ export function useRunRoster(): RunRoster {
       //
       // Provenance is mandatory either way: `firestore.rules` refuses a roster
       // write that does not carry who made it and the server's clock.
-      const hasRecord = statuses.has(id);
+      // Unrecorded unless the map is the run this press writes to and holds
+      // this child. A stale map (a rollover before the listener re-opened, a
+      // bus change) means every child is unrecorded, which is also what the
+      // rules see for a document that does not exist yet.
+      const hasRecord = statuses.runId === runId && statuses.byStudentId.has(id);
       const row = hasRecord
         ? { status: next, ...times, updatedBy: uid, updatedAt: serverTimestamp() }
         : {
@@ -542,6 +562,8 @@ export function useRunRoster(): RunRoster {
       },
       { merge: true },
     );
+    // Same rule as a tap: the map only answers for the run it was read for.
+    const mapIsThisRun = statuses.runId === runId;
     let markedAbsent = 0;
     for (const student of roster) {
       if (student.status === "WAITING") {
@@ -551,7 +573,7 @@ export function useRunRoster(): RunRoster {
         // update may change nothing else, and a diverged `grade` or `busName`
         // would otherwise refuse the whole batch and leave the day signed off as
         // nothing.
-        const row = statuses.has(student.id)
+        const row = mapIsThisRun && statuses.byStudentId.has(student.id)
           ? { status: "ABSENT", boardedAt: null, droppedOffAt: null, ...stamp }
           : {
               runId,
@@ -619,7 +641,7 @@ export function useRunRoster(): RunRoster {
       // time behind either: the roster and the dashboard columns would
       // contradict it.
       const absentTimes = { boardedAt: null, droppedOffAt: null };
-      const row = statuses.has(id)
+      const row = statuses.runId === runId && statuses.byStudentId.has(id)
         ? {
             status: "ABSENT",
             ...absentTimes,
