@@ -215,7 +215,6 @@ export const messages = {
   "studentList.showArchived": "Show archived ({count})",
   "studentList.archivedChip": "Archived",
   "studentList.restore": "Restore",
-  "studentList.restored": "Restored",
   // Inside a dropdown menu whose list is long enough to scan for a value.
   "dropdown.searchPlaceholder": "Search…",
   "dropdown.searchEmpty": "No matches",
@@ -298,7 +297,7 @@ export const messages = {
   // Help dialog
   "help.title": "Help",
   "help.content":
-    "The dashboard shows live bus status, the runs and the day\u2019s totals.\nUse the run-type control to switch Morning Pickup / Afternoon Drop-off.\nSet a date to view a past day.\nDispatch creates a new run and pre-registers the students on it.\nStudents holds the school roll and each child\u2019s history.\nExport downloads the current filtered rows as CSV.",
+    "The dashboard shows live bus status, the runs and the day\u2019s totals.\nUse the run-type control to switch Morning Pickup / Afternoon Drop-off.\nSet a date to view a past day.\nDispatch creates the afternoon\u2019s run and pre-registers the students on it.\nStudents holds the school roll and each child\u2019s history.\nExport downloads the current filtered rows as CSV.",
 
   // Guidebook — the manual behind the tour. One page per screen, filtered by
   // what the reader can open (see src/lib/guide.ts).
@@ -480,7 +479,7 @@ export const messages = {
     "A route row opens that bus: its progress, who is on board, and every child in the order they came off.",
   "tour.step.actions.title": "Dispatch or export",
   "tour.step.actions.body":
-    "Dispatch creates a run and pre-registers its students. Export writes the day's rows as a CSV.",
+    "Dispatch creates the afternoon's run and pre-registers its students. Export writes the day's rows as a CSV.",
   "tour.step.guide.title": "The guidebook and this tour",
   "tour.step.guide.body":
     "The guidebook explains every screen, Help holds both doors, and this row replays the tour whenever you want it.",
@@ -751,6 +750,7 @@ export const messages = {
   // ── Students: the school roll, its own section ────────────────────────────
   "students.title": "Students",
   "students.subtitle": "{school} · {count} on the roll · {classes} classes",
+  "students.subtitle.one": "{school} · {count} on the roll · {classes} class",
   "students.roll": "School roll",
   "students.edit.title": "Edit student",
   "students.edit.aria": "Edit {name}",
@@ -799,7 +799,8 @@ export const messages = {
   "busDetail.hint": "{driver} · {count} students · {percent}% complete",
   "busDetail.hint.one": "{driver} · {count} student · {percent}% complete",
   "busDetail.offColumn": "Off",
-  "busDetail.caption": "{bus}: students in the order they came off the bus",
+  "busDetail.caption":
+    "{bus}: students in the order they came off the bus, then the rest of the run",
   "busDetail.foot": "{off} of {total} off the bus · first off {time}",
   "busDetail.openInStudents": "Open in Students",
   "busDetail.unaccounted": "Unaccounted",
@@ -832,7 +833,7 @@ export const messages = {
   "import.archiveToggle": "The sheet is the whole roster",
   "import.archiveOff":
     "Off — the sheet is not the whole roster, so nobody is archived. Only the children it names change.",
-  "import.unassignToken": "—",
+  "import.noClassToken": "—",
   "sheet.title": "Import a sheet",
   "sheet.template": "Download template",
   "sheet.import": "Import sheet",
@@ -861,19 +862,28 @@ export const messages = {
   "sheet.previewNote":
     "The classes and the new students are listed before you apply — nothing is guessed.",
   "sheet.resultNew": "{count} new students",
+  "sheet.resultNew.one": "{count} new student",
   "sheet.resultUpdate": "{count} students updated",
+  "sheet.resultUpdate.one": "{count} student updated",
   "sheet.resultUnchanged": "{count} already match",
+  "sheet.resultUnchanged.one": "{count} already matches",
   "sheet.resultUnmatched": "{count} rows not applied",
+  "sheet.resultUnmatched.one": "{count} row not applied",
   "sheet.classesTitle": "Classes in this file",
   "sheet.classNew": "new",
   "sheet.classesNote":
     "Spellings that differ only in capitals, spacing or the word Class/Grade count as one class.",
   "sheet.newChildrenLabel": "New students:",
   "sheet.notAppliedLabel": "Not applied:",
-  "sheet.moreNames": "+{count} more",
+  // The name list's continuation, not a second statement of the count: it stays
+  // unpluralised on purpose (the sentence around it already counts the columns),
+  // so French says "+1 de plus" rather than "+1 autres", and it is not a
+  // `PluralKey`.
+  "sheet.namesRest": "+{count} more",
   "sheet.needsStudents":
-    "Creating a student or setting a class needs the Students permission. Moving a child between buses alone does not.",
+    "Creating a student, setting a class or archiving a child needs the Students permission. Moving a child between buses alone does not.",
   "sheet.apply": "Apply {count} changes",
+  "sheet.apply.one": "Apply {count} change",
   "sheet.nothingWritten": "Nothing is written until you apply.",
   "sheet.back": "Back",
   "sheet.imported": "Imported {count} students",

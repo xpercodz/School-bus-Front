@@ -7,7 +7,7 @@ import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { useAuth } from "@/lib/auth";
 import { useLocale } from "@/lib/i18n/context";
 import { localeCode, toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
-import type { MessageKey } from "@/lib/i18n/types";
+import type { MessageKey, PluralKey } from "@/lib/i18n/types";
 import type { AdminBus, AdminStudent } from "@/lib/school-admin";
 import {
   applyAssignmentPlan,
@@ -249,22 +249,29 @@ function SheetImportBody({
    * One child of the rollover preview, as `name · class`. A child with no name
    * prints his document id instead: he can never match a sheet row, so any
    * readable sheet archives him, and the id is then the only thing that names
-   * him (R13). A missing class prints the unassigned token, so a line never
-   * ends on a bare separator.
+   * him (R13). A missing class prints the no-class token, so a line never ends
+   * on a bare separator.
    */
   function childLine(id: string, name: string, grade: string): string {
-    return `${name.trim() || id} · ${grade.trim() || t("import.unassignToken")}`;
+    return `${name.trim() || id} · ${grade.trim() || t("import.noClassToken")}`;
   }
 
   function setField(index: number, field: ImportField) {
     setMatches((current) =>
-      current.map((match) =>
-        // A manual choice is the director's own match, so an old alias hint no
-        // longer describes it; re-picking the same field keeps the hint.
-        match.index === index && match.field !== field
-          ? { ...match, field, via: null }
-          : match,
-      ),
+      current.map((match) => {
+        if (match.index === index) {
+          // A manual choice is the director's own match, so an old alias hint no
+          // longer describes it; re-picking the same field keeps the hint.
+          return match.field === field ? match : { ...match, field, via: null };
+        }
+        // Choosing a column for a field takes it. `columnFor` reads the first
+        // column holding a field, so leaving the old one in place would make
+        // the new choice do nothing while its row says it matched.
+        if (field !== "ignore" && match.field === field) {
+          return { ...match, field: "ignore" as const, via: null };
+        }
+        return match;
+      }),
     );
   }
 
@@ -352,9 +359,11 @@ function SheetImportBody({
 
   // The dictionary strings carry the figure as `{count}`; reading the raw
   // template lets the number keep its own weight without rebuilding the
-  // sentence in code (which would break word order in Arabic).
-  const figure = (key: MessageKey, count: number) => {
-    const [before, after] = t(key).split("{count}");
+  // sentence in code (which would break word order in Arabic). `tp` picks the
+  // singular form from the same count, and the literal `{count}` handed to it
+  // keeps the placeholder for the split below.
+  const figure = (key: PluralKey, count: number) => {
+    const [before, after] = tp(key, count, { count: "{count}" }).split("{count}");
     return (
       <>
         {before}
@@ -410,12 +419,16 @@ function SheetImportBody({
             {matchedColumns.map(mappingRow)}
             {ignoredColumns.length > 0 && (
               <>
+                {/* 761px is where the mapping rows go two-column; the
+                    disclosure shares it, or its height would drop under the
+                    44px thumb floor while the rows beside it are still
+                    stacked. */}
                 <button
                   type="button"
                   aria-expanded={ignoredOpen}
                   aria-controls="sheet-ignored-columns"
                   onClick={() => setIgnoredOpen((open) => !open)}
-                  className="press flex min-h-11 w-full items-center gap-2 py-2 text-start sm:min-h-9"
+                  className="press flex min-h-11 w-full items-center gap-2 py-2 text-start min-[761px]:min-h-9"
                 >
                   <span className="min-w-0 flex-1 break-words text-[12.5px] leading-4 text-dash-on-surface-variant">
                     {tp("sheet.ignoredCount", ignoredColumns.length, {
@@ -427,7 +440,7 @@ function SheetImportBody({
                             t("sheet.columnLetter", { letter: columnLetter(match.index) }),
                         ),
                         localeCode(locale),
-                        (rest) => t("sheet.moreNames", { count: digits(Number(rest)) }),
+                        (rest) => t("sheet.namesRest", { count: digits(Number(rest)) }),
                       ),
                     })}
                   </span>
@@ -643,7 +656,7 @@ function SheetImportBody({
                 {nameList(
                   plan.creates.map((create) => create.name),
                   localeCode(locale),
-                  (rest) => t("sheet.moreNames", { count: digits(Number(rest)) }),
+                  (rest) => t("sheet.namesRest", { count: digits(Number(rest)) }),
                 )}
               </p>
             )}
@@ -653,7 +666,7 @@ function SheetImportBody({
                   {t("sheet.notAppliedLabel")}
                 </span>{" "}
                 {nameList(plan.unmatched, localeCode(locale), (rest) =>
-                  t("sheet.moreNames", { count: digits(Number(rest)) }),
+                  t("sheet.namesRest", { count: digits(Number(rest)) }),
                 )}
               </p>
             )}
@@ -694,7 +707,7 @@ function SheetImportBody({
             disabled={writeCount === 0}
             loading={applying}
           >
-            {t("sheet.apply", { count: digits(writeCount) })}
+            {tp("sheet.apply", writeCount, { count: digits(writeCount) })}
           </Button>
         </div>
       </footer>

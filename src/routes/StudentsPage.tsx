@@ -120,8 +120,10 @@ export default function StudentsPage() {
   );
 
   // The header describes the roll, so it counts the children who are on it —
-  // the toggle adds archived rows to the table below, not to this figure.
-  const subtitle = t("students.subtitle", {
+  // the toggle adds archived rows to the table below, not to this figure. The
+  // class figure is the plural-bearing one: a one-class school must not read
+  // "1 classes".
+  const subtitle = tp("students.subtitle", classes, {
     school: schoolName ?? t("dashboard.loading"),
     count: digits(activeStudents.length),
     classes: digits(classes),

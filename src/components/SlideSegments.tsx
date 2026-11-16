@@ -6,7 +6,7 @@ export interface SlideSegmentOption<T extends string> {
   label: string;
 }
 
-type Variant = "pill" | "box" | "dash-box";
+type Variant = "pill" | "dash-box";
 
 interface SlideSegmentsProps<T extends string> {
   options: readonly SlideSegmentOption<T>[];
@@ -14,15 +14,13 @@ interface SlideSegmentsProps<T extends string> {
   onChange: (id: T) => void;
   /** Screen-reader name for the group (e.g. "choose sign-in mode"). */
   ariaLabel: string;
-  /** pill = mobile rounded-full track (login mode); box = mobile rectangular
-   *  with border (dispatch run type); dash-box = dashboard palette rectangular
-   *  (run-segment filter). */
+  /** pill = mobile rounded-full track (login mode); dash-box = dashboard
+   *  palette rectangular (run-segment filter). */
   variant?: Variant;
 }
 
 const TRACK_CLASS: Record<Variant, string> = {
   pill: "h-11 overflow-hidden rounded-md border border-outline-variant bg-surface-container-high p-0.5",
-  box: "h-11 overflow-hidden rounded-md border border-outline-variant bg-surface p-0.5",
   "dash-box":
     "h-11 overflow-hidden rounded-lg border border-dash-outline-variant bg-dash-surface-container-low p-0.5 sm:h-9",
 };
@@ -32,31 +30,26 @@ const THUMB_CLASS: Record<Variant, string> = {
   // token named "lowest" is white in light mode but darkest on dark, so the
   // dedicated selected-surface token carries the step in both directions.
   pill: "rounded border border-outline-variant bg-selected-surface",
-  box: "rounded border border-outline-variant bg-selected-surface",
   "dash-box": "rounded border border-dash-outline-variant bg-dash-selected-surface",
 };
 
 const LABEL_CLASS: Record<Variant, string> = {
   pill: "text-[13.5px]",
-  box: "text-label-lg",
   "dash-box": "text-[12.5px]",
 };
 
 const ACTIVE_CLASS: Record<Variant, string> = {
   pill: "text-on-surface font-medium",
-  box: "text-on-surface font-medium",
   "dash-box": "text-dash-on-surface font-medium",
 };
 
 const IDLE_CLASS: Record<Variant, string> = {
   pill: "text-on-surface-variant hover:text-on-surface",
-  box: "text-on-surface-variant hover:text-on-surface",
   "dash-box": "text-dash-on-surface-variant hover:text-dash-on-surface",
 };
 
 const RING_CLASS: Record<Variant, string> = {
   pill: "focus-visible:ring-primary",
-  box: "focus-visible:ring-primary",
   "dash-box": "focus-visible:ring-dash-primary",
 };
 

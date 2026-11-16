@@ -215,7 +215,6 @@ export const messages: Messages = {
   "studentList.showArchived": "عرض المؤرشفين ({count})",
   "studentList.archivedChip": "مؤرشف",
   "studentList.restore": "استعادة",
-  "studentList.restored": "تمت الاستعادة",
   // داخل قائمة منسدلة طويلة بما يكفي للبحث عن قيمة.
   "dropdown.searchPlaceholder": "ابحث…",
   "dropdown.searchEmpty": "لا توجد نتائج",
@@ -298,7 +297,7 @@ export const messages: Messages = {
   // Help dialog
   "help.title": "المساعدة",
   "help.content":
-    "تعرض لوحة التحكم حالة الحافلات الحية والرحلات وإجماليات اليوم.\nاستخدم عنصر التحكم في نوع الرحلة للتبديل بين الاستلام الصباحي والتوصيل المسائي.\nاختر تاريخاً لعرض يوم سابق.\nالإرسال ينشئ رحلة جديدة ويسجل طلابها.\nقسم الطلاب يعرض سجل المدرسة وسجل كل طالب.\nالتصدير ينزّل الصفوف المفلترة الحالية كملف CSV.",
+    "تعرض لوحة التحكم حالة الحافلات الحية والرحلات وإجماليات اليوم.\nاستخدم عنصر التحكم في نوع الرحلة للتبديل بين الاستلام الصباحي والتوصيل المسائي.\nاختر تاريخاً لعرض يوم سابق.\nالإرسال ينشئ رحلة التوصيل المسائي ويسجل طلابها.\nقسم الطلاب يعرض سجل المدرسة وسجل كل طالب.\nالتصدير ينزّل الصفوف المفلترة الحالية كملف CSV.",
 
   // Guidebook — the manual behind the tour. One page per screen, filtered by
   // what the reader can open (see src/lib/guide.ts).
@@ -470,7 +469,7 @@ export const messages: Messages = {
     "يفتح صف المسار تلك الحافلة: تقدمها، ومن على المتن، وكل طفل بترتيب نزوله.",
   "tour.step.actions.title": "أرسل أو صدّر",
   "tour.step.actions.body":
-    "الإرسال ينشئ رحلة ويسجّل طلابها مسبقاً. والتصدير يكتب صفوف اليوم ملف CSV.",
+    "الإرسال ينشئ رحلة التوصيل المسائي ويسجّل طلابها مسبقاً. والتصدير يكتب صفوف اليوم ملف CSV.",
   "tour.step.guide.title": "الدليل وهذه الجولة",
   "tour.step.guide.body":
     "يشرح الدليل كل شاشة، وفي «المساعدة» البابان، وهذا الصف يعيد الجولة متى شئت.",
@@ -522,7 +521,7 @@ export const messages: Messages = {
     "كل صف حافلة واحدة. افتحه لترى أطفال تلك الرحلة وترتيب نزولهم.",
   "hint.dispatch.title": "إرسال حافلة",
   "hint.dispatch.body":
-    "ينشئ رحلة التوصيل المسائي لحافلة. الصباح لا يحتاج إلى إطلاق، فقائمة السائق موجودة مسبقاً.",
+    "ينشئ رحلة التوصيل المسائي لحافلة. أما الصباح فلا إرسال فيه: قائمة السائق جاهزة سلفاً.",
   "hint.export.title": "تصدير CSV",
   "hint.export.body":
     "ينزّل كل صفوف نوع الرحلة المحدد، لا ما يظهر على الشاشة فقط.",
@@ -740,6 +739,7 @@ export const messages: Messages = {
   // ── الطلاب: سجل المدرسة في قسمه الخاص ─────────────────────────────────────
   "students.title": "الطلاب",
   "students.subtitle": "{school} · {count} في السجل · {classes} صفوف",
+  "students.subtitle.one": "{school} · {count} في السجل · صف واحد",
   "students.roll": "سجل الطلاب",
   "students.edit.title": "تعديل الطالب",
   "students.edit.aria": "تعديل {name}",
@@ -786,7 +786,8 @@ export const messages: Messages = {
   "busDetail.hint": "{driver} · {count} طالبًا · {percent}٪ مكتمل",
   "busDetail.hint.one": "{driver} · {count} طالب · {percent}٪ مكتمل",
   "busDetail.offColumn": "النزول",
-  "busDetail.caption": "{bus}: الطلاب بترتيب نزولهم من الحافلة",
+  "busDetail.caption":
+    "{bus}: الطلاب بترتيب نزولهم من الحافلة، ثم بقية طلاب الرحلة",
   "busDetail.foot": "{off} من {total} نزلوا · أول نزول {time}",
   "busDetail.openInStudents": "فتح في الطلاب",
   "busDetail.unaccounted": "غير محتسب",
@@ -819,7 +820,7 @@ export const messages: Messages = {
   "import.archiveToggle": "الورقة هي الكشف كاملًا",
   "import.archiveOff":
     "متوقف — الورقة ليست الكشف كاملًا، لذا لن يُؤرشف أحد. يتغيّر فقط الطلاب الذين تذكرهم.",
-  "import.unassignToken": "—",
+  "import.noClassToken": "—",
   "sheet.title": "استيراد ورقة",
   "sheet.template": "تنزيل القالب",
   "sheet.import": "استيراد ورقة",
@@ -846,17 +847,23 @@ export const messages: Messages = {
   "sheet.previewTitle": "معاينة — أول {shown} من {total} صفًا",
   "sheet.previewNote": "تُعرض الصفوف والطلاب الجدد قبل التطبيق — لا شيء يُخمَّن.",
   "sheet.resultNew": "{count} طالبًا جديدًا",
+  "sheet.resultNew.one": "{count} طالب جديد",
   "sheet.resultUpdate": "{count} طالبًا محدَّثًا",
+  "sheet.resultUpdate.one": "{count} طالب محدَّث",
   "sheet.resultUnchanged": "{count} مطابق أصلًا",
+  "sheet.resultUnchanged.one": "{count} مطابق أصلًا",
   "sheet.resultUnmatched": "{count} صفًا غير مطبَّق",
+  "sheet.resultUnmatched.one": "{count} صف غير مطبَّق",
   "sheet.classesTitle": "صفوف هذا الملف",
   "sheet.classNew": "جديد",
   "sheet.classesNote": "الصيغ التي تختلف فقط في الحروف الكبيرة أو المسافات أو كلمة Class/Grade تُعدّ صفًا واحدًا.",
   "sheet.newChildrenLabel": "طلاب جدد:",
   "sheet.notAppliedLabel": "غير مطبَّق:",
-  "sheet.moreNames": "+{count} أخرى",
-  "sheet.needsStudents": "إنشاء طالب أو تعيين صفه يحتاج إذن الطلاب. أما نقل الحافلة وحده فلا.",
+  "sheet.namesRest": "+{count} أخرى",
+  "sheet.needsStudents":
+    "إنشاء طالب أو تعيين صفه أو أرشفته يحتاج إذن الطلاب. أما نقل الحافلة وحده فلا.",
   "sheet.apply": "تطبيق {count} تغييرات",
+  "sheet.apply.one": "تطبيق {count} تغيير",
   "sheet.nothingWritten": "لا يُكتب شيء قبل التطبيق.",
   "sheet.back": "رجوع",
   "sheet.imported": "تم استيراد {count} طالبًا",

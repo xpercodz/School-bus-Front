@@ -36,6 +36,12 @@ export type PluralKey =
   | "import.restoreBody"
   | "sheet.ignoredCount"
   | "sheet.imported"
+  | "sheet.apply"
+  | "sheet.resultNew"
+  | "sheet.resultUpdate"
+  | "sheet.resultUnchanged"
+  | "sheet.resultUnmatched"
+  | "students.subtitle"
   | "toast.archived";
 
 /** The translation function signature shared by the context and helpers. */
