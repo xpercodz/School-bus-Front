@@ -743,7 +743,43 @@ git commit -m "feat(import): only the columns that mean something, and a matcher
 
 ---
 
-### Task 14: Whole-branch gate
+### Task 14: The polish pass
+
+**Files:** the files each item names.
+
+**Interfaces:** none — every item is local.
+
+Fourteen small items accumulated across the task reviews. None is architectural; several are real bugs. Do them in this order and run `npm run typecheck && npm run lint && npm run build` before committing. If any item turns out to fight another, stop and report rather than choosing.
+
+**Behaviour (these are defects, not polish):**
+
+1. **`setStudentArchived` claims success when it cannot write.** It returns silently when `fetchSchoolId` resolves null (`school-admin.ts:597-599`), so `handleRestore` toasts "restored" for a write that never happened — the same swallowed-null family as R21b on the write path. Throw as `fetchAllStudents` now does, and let `handleRestore`'s catch surface a failure (reuse an existing generic failure toast if one exists).
+2. **The Assignments list can stall with active children unreachable.** `useStudentsPaginated` filters after a 50-document cursor page, and `useAutoLoadMore` asks at most once per page number while a list shorter than a page pins `totalPages` at 1 (`use-page-slice.ts:46-48`, `:76-83`). Fix in the shared hook: keep asking while the list is shorter than a page and `hasMore` is true.
+3. **The roll's empty state lies when every child is archived.** `students.emptyRollTitle/Subtitle` renders whenever the active list is empty, while the toggle above reads "Show archived (N)". Add one more state for "everybody on this roll is archived" with its own two keys.
+4. **The roll CSV mixes archived children silently.** `buildRollCsv` has no archived column, and `handleExport` exports the filtered list, so a toggle-on export cannot be told apart from a normal one. Add an `Archived` column (yes/no) to the roll CSV only — not to the attendance export.
+5. **The import toast reports retired children as imported.** It receives the touched-children count, which includes archives and restores. Feed it the children the sheet moved or created (`writable.rows.length + writable.creates.length`) — the archive toast already reports the other half.
+
+**Copy and keys:**
+
+6. `import.unassignToken` holds a dash used as the **class** placeholder: rename it `import.noClassToken` in the three dictionaries and its one use.
+7. `sheet.needsStudents` speaks only of creating a child and setting a class; it must also say the reader cannot retire children.
+8. `sheet.apply` and the four `sheet.result*` keys are count-bearing with no `.one`: add the singular form and route them through `tp`, adding them to `PluralKey`.
+9. `students.subtitle` counts `{classes}` with no plural form: a one-class school reads "1 classes". Use `tp`.
+10. `help.content` and `tour.step.actions.body` describe dispatch without saying it is the afternoon's. Say so, in three languages.
+11. `studentList.restored` is dead — the restored row stays in the list when the toggle is on. Render it as the restored row's transient chip, or delete the key in all three. Choose one and say which.
+12. The bus sheet's `sr-only` caption still says "students in the order they came off the bus"; the table now also carries unrecorded rows. Reword it.
+13. `SlideSegments`'s `box` variant lost its last consumer when dispatch's segment control went; its doc comment still says "(dispatch run type)". Delete the variant and its six `Record` entries, and drop that clause.
+14. The `hint.dispatch.body` translations for `fr` and `ar` mirror an English-shaped clause ("the morning needs no dispatch"). Rewrite them idiomatically, keeping the meaning and the glossary's terms.
+
+The following are **documented as deferred**, not fixed here — say so in the report: the roster listener's frozen `runId` across midnight, a stale `COMPLETED` status no-oping taps, the empty state that speaks after a denied `students` read, `openImport`'s shared parse token, and the inherited "sum of card denominators equals total" edge.
+
+- [ ] **Step 1:** items 1-5, with `npm run typecheck && npm run lint && npm run build` and a commit.
+- [ ] **Step 2:** items 6-14, same gates, same commit or its own.
+- [ ] **Step 3:** the report lists each item with its file:line, and the five deferred ones with why.
+
+---
+
+### Task 15: Whole-branch gate
 
 - [ ] **Step 1: Full gate**
 
