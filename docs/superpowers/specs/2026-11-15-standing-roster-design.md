@@ -327,16 +327,22 @@ all today. Then the two write shapes this design needs.
    `useDriverBus` already queries `buses where driverUid == uid`, so the rule's
    field is the queried field and no `get()` is involved.
 
-2. `runs`:
+2. `runs` — the read is split into `get` and `list`:
 
    ```
-   allow read: if isMySchool(schoolId) && (
+   allow get: if isMySchool(schoolId) && (
      canSeeRuns()
-     || (isStaff() && staffsOwnBus(resource.data.busId)))
+     || (isStaff() && (resource == null || staffsOwnBus(resource.data.busId))))
+   allow list: if isMySchool(schoolId) && canSeeRuns()
    ```
 
-   The driver reads exactly one run document by id (`school-data.ts:302`), so this
-   is a single-document evaluation.
+   The driver reads exactly one run document by id (`school-data.ts:302`), and on
+   the normal morning that document does not exist yet — so the staff `get` has to
+   admit `resource == null`, or the listener errors instead of reporting
+   `exists: false` and the roster never learns that "no run yet" is the answer.
+   It cannot be one `allow read` with that same null check: a `list` evaluates
+   `resource` as null too, so the null branch would hand a driver the whole runs
+   collection. Hence the split — a staff `list` is refused outright.
 
 3. `attendance` — and this one may change the driver's **query**, because rules
    are not filters: a rule that constrains `busId` cannot authorise a query that
@@ -391,10 +397,13 @@ all today. Then the two write shapes this design needs.
    The update branch is unchanged: once the row exists, a driver may still only
    move the status and its two timestamps.
 
-6. `students` update: add `archived` (and the `busId: null` that archiving
-   carries) to the operator-with-Students allowlist and to the union allowlist
-   held by Students+Assignments, so a secretary can run rollover without the
-   directorship. `delete` stays director-only.
+6. `students` update: the rollover is two branches of its own, both under the
+   Students grant — archive (`archived: true` and `busId: null` in one write) and
+   restore (`archived: false` alone, bus untouched). `archived` is in **neither**
+   allowlist, because a field in a list cannot pin its value: `{archived: true}`
+   with the bus kept would be a legal write and the "archived means off the bus"
+   invariant would be client-only. Keeping it out of both lists is what makes the
+   rules enforce it. `delete` stays director-only.
 
 7. `auditEventAllowed()`: add `student.archived` and `student.restored` for a
    caller holding Students.
@@ -412,12 +421,17 @@ than today; it carries no records and is inert.
 New dictionary keys, in `en`, `ar` **and** `fr` (all three, typed as `Messages`):
 
 - `mobile.noStudentsTitle`, `mobile.noStudentsBody` — the bus has nobody on it.
-- `import.archiveTitle`, `import.archiveBody`, `import.archiveNone`,
-  `import.unassignToken` — the preview section and its empty state.
+- `import.archiveTitle`, `import.archiveBody`, `import.restoreTitle`,
+  `import.restoreBody`, `import.archiveToggle`, `import.archiveOff`,
+  `import.noClassToken` — the preview's two directions, its toggle, and the
+  token a child with no class prints.
+- `sheet.resultArchived`, `sheet.resultRestored` — the import's result strip
+  counts the rollover, which Apply writes.
 - `studentList.showArchived`, `studentList.archivedChip`,
-  `studentList.restore`, `studentList.restored` — the roll's toggle and row.
+  `studentList.restore`, `studentList.restoreAria` — the roll's toggle, its
+  row chip, and the row action that names the child.
 - `activity.event.studentArchived`, `activity.event.studentRestored` — the log.
-- `toast.archived`, `toast.restored` — the confirmations.
+- `toast.archived`, `toast.restored`, `toast.restoredMany` — the confirmations.
 
 Audit vocabulary: `student.archived` and `student.restored` in `AuditEvent`,
 `EVENT_FAMILY` (`"roll"`) and `EVENT_LABEL_KEY` (`src/lib/audit.ts`).
