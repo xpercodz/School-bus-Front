@@ -65,16 +65,17 @@ export function usePageSlice<T>(
 
 /**
  * Fetch the next cursor page when the reader reaches the last loaded page, so a
- * paged view never dead-ends in front of a "Load more" button. Runs at most once
- * per page number: a page that brings no new rows must not retry forever.
+ * paged view never dead-ends in front of a "Load more" button.
  *
- * A list shorter than a page is the exception. It never grows a second page, so
- * the page number alone cannot tell two asks apart, and stopping after one is
- * what left the rows on the pages behind a short list unreachable. There the ask
- * repeats while the cursor keeps delivering documents (`loaded` — the rows the
- * pagination slices, which a filter applied after the cursor page can narrow
- * away), and stops when a page delivers none, so a failed read is asked once
- * rather than in a loop.
+ * The page number is not enough to tell two asks apart: a filter applied after
+ * the cursor page can keep the visible list on the same last page for several
+ * reads (children the filter drops still arrive as documents), and a list
+ * shorter than a page can never grow a second page at all. So the repeat is
+ * decided by `loaded` — the rows behind the pagination — where the caller can
+ * supply it: ask again while the cursor delivers documents, and stop when a read
+ * delivers none. That is also what keeps a failed read from being retried in a
+ * loop, because a failure adds no document. Without `loaded` the old
+ * once-per-page rule stands.
  */
 export function useAutoLoadMore(
   pagination: Pagination,
@@ -93,9 +94,8 @@ export function useAutoLoadMore(
     if (!hasMore || loading || pagination.page !== pagination.totalPages) return;
     const previous = asked.current;
     if (previous && previous.page === pagination.page) {
-      // The same page can be a new question only while the list is shorter than
-      // a page; on a real last page a second ask is a duplicate read.
-      if (pagination.totalPages > 1) return;
+      // Same page, and the cursor brought nothing since the last ask: either
+      // that was the end or the read failed, and asking again would only spin.
       if (loaded === undefined || previous.loaded === loaded) return;
     }
     asked.current = { page: pagination.page, loaded };

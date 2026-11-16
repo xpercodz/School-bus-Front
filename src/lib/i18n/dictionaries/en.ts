@@ -213,6 +213,7 @@ export const messages = {
   // Archived children are off the roll but not gone: one toggle reveals them,
   // the chip says why one is listed, and Restore puts him back.
   "studentList.showArchived": "Show archived ({count})",
+  "studentList.showArchived.one": "Show archived ({count})",
   "studentList.archivedChip": "Archived",
   "studentList.restore": "Restore",
   // Inside a dropdown menu whose list is long enough to scan for a value.
@@ -547,6 +548,8 @@ export const messages = {
   "toast.archived": "Archived {count} students",
   "toast.archived.one": "Archived {count} student",
   "toast.restored": "{name} restored to the roll",
+  "toast.restoredMany": "Restored {count} students",
+  "toast.restoredMany.one": "Restored {count} student",
   "toast.dispatchExists": "A run already exists for this bus, date and type",
   "toast.error": "Something went wrong. Please try again.",
 
@@ -875,11 +878,10 @@ export const messages = {
     "Spellings that differ only in capitals, spacing or the word Class/Grade count as one class.",
   "sheet.newChildrenLabel": "New students:",
   "sheet.notAppliedLabel": "Not applied:",
-  // The name list's continuation, not a second statement of the count: it stays
-  // unpluralised on purpose (the sentence around it already counts the columns),
-  // so French says "+1 de plus" rather than "+1 autres", and it is not a
-  // `PluralKey`.
+  // The name list's continuation: the count is a bare suffix, so the singular
+  // form is the same text (and "+1 de plus" keeps French's plural out of it).
   "sheet.namesRest": "+{count} more",
+  "sheet.namesRest.one": "+{count} more",
   "sheet.needsStudents":
     "Creating a student, setting a class or archiving a child needs the Students permission. Moving a child between buses alone does not.",
   "sheet.apply": "Apply {count} changes",

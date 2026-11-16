@@ -307,7 +307,7 @@ function StudentsToolbar({
   showArchived: boolean;
   onToggleArchived: () => void;
 }) {
-  const { t, locale } = useLocale();
+  const { t, tp, locale } = useLocale();
 
   return (
     <div
@@ -380,7 +380,7 @@ function StudentsToolbar({
           className="arc-field"
           aria-pressed={showArchived}
         >
-          {t("studentList.showArchived", {
+          {tp("studentList.showArchived", archivedCount, {
             count: toLocaleDigits(String(archivedCount), locale),
           })}
         </Button>

@@ -213,6 +213,7 @@ export const messages: Messages = {
   "studentList.allGrades": "كل الصفوف",
   "studentList.clear": "مسح التصفية",
   "studentList.showArchived": "عرض المؤرشفين ({count})",
+  "studentList.showArchived.one": "عرض المؤرشفين ({count})",
   "studentList.archivedChip": "مؤرشف",
   "studentList.restore": "استعادة",
   // داخل قائمة منسدلة طويلة بما يكفي للبحث عن قيمة.
@@ -538,6 +539,8 @@ export const messages: Messages = {
   "toast.archived": "أُرشف {count} طالبًا",
   "toast.archived.one": "أُرشف {count} طالب",
   "toast.restored": "أُعيد {name} إلى السجل",
+  "toast.restoredMany": "أُعيد {count} طالبًا إلى السجل",
+  "toast.restoredMany.one": "أُعيد {count} طالب إلى السجل",
   "toast.dispatchExists": "توجد رحلة مسبقة لهذه الحافلة والتاريخ والنوع",
   "toast.error": "حدث خطأ ما. حاول مرة أخرى.",
 
@@ -860,6 +863,7 @@ export const messages: Messages = {
   "sheet.newChildrenLabel": "طلاب جدد:",
   "sheet.notAppliedLabel": "غير مطبَّق:",
   "sheet.namesRest": "+{count} أخرى",
+  "sheet.namesRest.one": "+{count} أخرى",
   "sheet.needsStudents":
     "إنشاء طالب أو تعيين صفه أو أرشفته يحتاج إذن الطلاب. أما نقل الحافلة وحده فلا.",
   "sheet.apply": "تطبيق {count} تغييرات",

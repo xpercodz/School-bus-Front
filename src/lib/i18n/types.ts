@@ -37,12 +37,15 @@ export type PluralKey =
   | "sheet.ignoredCount"
   | "sheet.imported"
   | "sheet.apply"
+  | "sheet.namesRest"
   | "sheet.resultNew"
   | "sheet.resultUpdate"
   | "sheet.resultUnchanged"
   | "sheet.resultUnmatched"
+  | "studentList.showArchived"
   | "students.subtitle"
-  | "toast.archived";
+  | "toast.archived"
+  | "toast.restoredMany";
 
 /** The translation function signature shared by the context and helpers. */
 export type TFunction = (key: MessageKey, vars?: TVars) => string;

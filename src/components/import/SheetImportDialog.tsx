@@ -333,20 +333,28 @@ function SheetImportBody({
     setApplying(true);
     try {
       const moved = await applyAssignmentPlan(uid, writable);
-      // `moved` counts every child the import touched, which includes the ones
-      // it retired and restored. The imported figure is the half the sheet
-      // actually moved or created — the archive toast reports the other half.
+      // `moved` counts every child the import touched; the plan's own counts are
+      // the halves of the decision. `moved` is 0 only when nothing was written
+      // (a school that could not be resolved, say): say so and stay open, rather
+      // than closing as if the sheet had landed.
+      if (moved === 0) {
+        showToast(t("toast.error"));
+        return;
+      }
+      // One toast per half, each counting its own children: what the sheet moved
+      // or created, who left the roll, who came back. A restore-only import still
+      // confirms.
       const imported = writable.rows.length + writable.creates.length;
-      // `moved` is 0 only when nothing was written (a school that could not be
-      // resolved, say): toasting then would report a success that did not happen.
-      if (moved > 0) {
-        if (imported > 0) {
-          showToast(tp("sheet.imported", imported, { count: digits(imported) }));
-        }
-        const archived = writable.archive.length;
-        if (archived > 0) {
-          showToast(tp("toast.archived", archived, { count: digits(archived) }));
-        }
+      const archived = writable.archive.length;
+      const restored = writable.restore.length;
+      if (imported > 0) {
+        showToast(tp("sheet.imported", imported, { count: digits(imported) }));
+      }
+      if (archived > 0) {
+        showToast(tp("toast.archived", archived, { count: digits(archived) }));
+      }
+      if (restored > 0) {
+        showToast(tp("toast.restoredMany", restored, { count: digits(restored) }));
       }
       onApplied(moved);
       onClose();
@@ -440,7 +448,7 @@ function SheetImportBody({
                             t("sheet.columnLetter", { letter: columnLetter(match.index) }),
                         ),
                         localeCode(locale),
-                        (rest) => t("sheet.namesRest", { count: digits(Number(rest)) }),
+                        (rest) => tp("sheet.namesRest", Number(rest), { count: digits(Number(rest)) }),
                       ),
                     })}
                   </span>
@@ -656,7 +664,7 @@ function SheetImportBody({
                 {nameList(
                   plan.creates.map((create) => create.name),
                   localeCode(locale),
-                  (rest) => t("sheet.namesRest", { count: digits(Number(rest)) }),
+                  (rest) => tp("sheet.namesRest", Number(rest), { count: digits(Number(rest)) }),
                 )}
               </p>
             )}
@@ -666,7 +674,7 @@ function SheetImportBody({
                   {t("sheet.notAppliedLabel")}
                 </span>{" "}
                 {nameList(plan.unmatched, localeCode(locale), (rest) =>
-                  t("sheet.namesRest", { count: digits(Number(rest)) }),
+                  tp("sheet.namesRest", Number(rest), { count: digits(Number(rest)) }),
                 )}
               </p>
             )}
