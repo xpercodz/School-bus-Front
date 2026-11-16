@@ -26,7 +26,7 @@ export default function DashboardPage() {
   const [dispatchOpen, setDispatchOpen] = useState(false);
   // The standing roster joins the day's arithmetic — on the live day only. A
   // past day is its records; Reports keeps asking for records alone.
-  const { kpis, summary, finding, findingKind, buses, attendance, loading, live } =
+  const { kpis, summary, finding, findingKind, buses, attendance, unrecorded, loading, live } =
     useDashboardData(date, segment, true, date === null || date === todayDateStr());
   const { t, locale } = useLocale();
   const schoolName = useSchoolName();
@@ -36,9 +36,10 @@ export default function DashboardPage() {
   const [overviewBusId, setOverviewBusId] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  // The selected run segment's rows. The bus overview filters these to one bus;
-  // Export writes all of them. The roster that used to read them lives on the
-  // Students screen now, so there is no page-level list state here any more.
+  // The selected run segment's records. The bus overview narrows them (plus the
+  // unrecorded children) to one bus; Export writes all of them. The roster that
+  // used to read them lives on the Students screen now, so there is no
+  // page-level list state here any more.
   const segmentRows = useMemo(
     () => attendance.filter((row) => row.runType === segment),
     [attendance, segment],
@@ -49,9 +50,18 @@ export default function DashboardPage() {
   const overviewBus = overviewBusId
     ? (buses.find((bus) => bus.id === overviewBusId) ?? null)
     : null;
+  // The bus sheet's rows: this bus's records, then the children nobody has
+  // recorded yet — the same population the fleet row's count and percentage
+  // describe. Export above still writes the records alone.
   const overviewRows = useMemo(
-    () => (overviewBus ? segmentRows.filter((row) => row.busId === overviewBus.id) : []),
-    [overviewBus, segmentRows],
+    () =>
+      overviewBus
+        ? [
+            ...segmentRows.filter((row) => row.busId === overviewBus.id),
+            ...unrecorded.filter((row) => row.busId === overviewBus.id),
+          ]
+        : [],
+    [overviewBus, segmentRows, unrecorded],
   );
 
   const effectiveDate = date ?? todayDateStr();

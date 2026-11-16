@@ -1066,6 +1066,8 @@ export function rollRow(
 /** A child standing on a bus — the roster's side of the day's union. */
 interface RosterChildDoc {
   id: string;
+  name: string;
+  grade: string;
   busId: string;
 }
 
@@ -1084,6 +1086,13 @@ export interface DashboardData {
   findingKind: "info" | "attention";
   buses: readonly Bus[];
   attendance: readonly AttendanceRow[];
+  /**
+   * The roster's side of the day, shaped as rows: children nobody has recorded
+   * yet, so the bus sheet lists the same population its count and percentage
+   * describe. `attendance` stays records-only, which is what the export writes.
+   * Empty unless `includeRoster` is on and the date is the live day.
+   */
+  unrecorded: readonly AttendanceRow[];
   loading: boolean;
   live: boolean;
 }
@@ -1139,12 +1148,15 @@ export function useDashboardData(
     );
     // Clear prior-date data on a date change so stale rows never linger while
     // the new date loads (or forever if the new query errors). Deferred to a
-    // microtask to keep setState out of the synchronous effect body.
+    // microtask to keep setState out of the synchronous effect body. The roster
+    // goes with them: it is a read this effect owns, and coming back to the live
+    // day must not union the roster from before the past date.
     queueMicrotask(() => {
       if (cancelled) return;
       setAttendance([]);
       setBuses([]);
       setRuns([]);
+      setRoster(EMPTY_ROSTER_CHILDREN);
     });
 
     void fetchSchoolId(uid).then((schoolId) => {
@@ -1235,7 +1247,14 @@ export function useDashboardData(
                   // A child off the roll, or on no bus, rides no run.
                   const busId = (data.busId as string | null) ?? "";
                   if (data.archived === true || !busId) return [];
-                  return [{ id: d.id, busId }];
+                  return [
+                    {
+                      id: d.id,
+                      name: (data.name as string) ?? "",
+                      grade: (data.grade as string) ?? "",
+                      busId,
+                    },
+                  ];
                 }),
               );
             },
@@ -1275,6 +1294,7 @@ export function useDashboardData(
         findingKind: "info",
         buses: [],
         attendance: [],
+        unrecorded: [],
         loading: false,
         live: false,
       };
@@ -1322,13 +1342,35 @@ export function useDashboardData(
     // child already carrying a row for the segment is counted from the row,
     // never a second time from the roster.
     const unrecordedByBus = new Map<string, number>();
+    // The same children as rows, so the bus sheet's list is the population its
+    // count and percentage come from. Not in `attendance`: the export stays the
+    // day's records.
+    const unrecordedRows: AttendanceRow[] = [];
     let unrecorded = 0;
     if (includeRoster && effectiveDate === todayDateStr()) {
       const recorded = new Set(segAtt.map((a) => a.id.split("__").at(-1) ?? a.id));
       for (const child of roster) {
-        if (!hasSegmentRun(child.busId) || recorded.has(child.id)) continue;
+        const run = runs.find(
+          (r) => r.busId === child.busId && runTypeFromRunId(r.id) === segment,
+        );
+        // A bus with no run of this segment is not on it at all.
+        if (!run || recorded.has(child.id)) continue;
+        const bus = buses.find((b) => b.id === child.busId);
         unrecordedByBus.set(child.busId, (unrecordedByBus.get(child.busId) ?? 0) + 1);
         unrecorded += 1;
+        unrecordedRows.push({
+          id: `${run.id}__${child.id}`,
+          name: child.name,
+          grade: child.grade,
+          bus: bus?.name ?? "",
+          busId: child.busId,
+          runType: segment,
+          morningBoarded: formatTime(null, locale),
+          dropOffTime: formatTime(null, locale),
+          status: "WAITING",
+          dropOrder: null,
+          boardOrder: null,
+        });
       }
     }
 
@@ -1461,6 +1503,7 @@ export function useDashboardData(
       findingKind,
       buses: busList,
       attendance: rows,
+      unrecorded: unrecordedRows,
       loading,
       live: true,
     };
