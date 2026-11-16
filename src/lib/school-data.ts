@@ -518,7 +518,8 @@ export function useRunRoster(): RunRoster {
     const schoolId = await fetchSchoolId(uid);
     if (!schoolId) return;
     const occurredAt = new Date();
-    const runId = buildRunId(busId, todayDateStr(), ROSTER_RUN_TYPE);
+    const date = todayDateStr();
+    const runId = buildRunId(busId, date, ROSTER_RUN_TYPE);
     // Atomic: complete the run and mark waiting students absent together. Write
     // the full run fields so a missing run doc (fresh day) isn't created partial.
     const batch = writeBatch(firestore);
@@ -528,7 +529,7 @@ export function useRunRoster(): RunRoster {
       {
         busId,
         runType: ROSTER_RUN_TYPE,
-        date: todayDateStr(),
+        date,
         status: "COMPLETED",
         ...stamp,
       },
@@ -539,7 +540,21 @@ export function useRunRoster(): RunRoster {
       if (student.status === "WAITING") {
         batch.set(
           doc(firestore, "schools", schoolId, "attendance", `${runId}__${student.id}`),
-          { status: "ABSENT", ...stamp },
+          // The whole row, not just the status: a child nobody has recorded
+          // today has no attendance document yet, so this write is a CREATE and
+          // the rules refuse one that does not name its run, day, bus and child.
+          {
+            runId,
+            date,
+            busId,
+            busName,
+            studentName: student.name,
+            grade: student.grade,
+            status: "ABSENT",
+            boardedAt: null,
+            droppedOffAt: null,
+            ...stamp,
+          },
           { merge: true },
         );
         markedAbsent += 1;
@@ -551,7 +566,7 @@ export function useRunRoster(): RunRoster {
       event: "run.completed",
       targetType: "run",
       targetId: runId,
-      meta: { runId, busId, count: markedAbsent, date: todayDateStr() },
+      meta: { runId, busId, count: markedAbsent, date },
       occurredAt,
     });
     await batch.commit();
