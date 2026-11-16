@@ -776,6 +776,9 @@ export const messages = {
   "students.th.absent": "Absent",
   "students.th.attendance": "Attendance",
   "students.th.lastRecord": "Last record",
+  "students.th.archived": "Archived",
+  "students.archivedYes": "Yes",
+  "students.archivedNo": "No",
   "students.presentTitle": "Days with a recorded run in the last {days} days",
   "students.absentTitle": "Days marked absent in the last {days} days",
   "students.attendanceTitle": "Present days out of the days with a record",
@@ -786,6 +789,9 @@ export const messages = {
   "students.phoneLastRecord": "Last record {date}",
   "students.emptyRollTitle": "No students on the roll",
   "students.emptyRollSubtitle": "Add students on the Assignments screen.",
+  "students.allArchivedTitle": "Every student on this roll is archived",
+  "students.allArchivedSubtitle":
+    "Turn on Show archived to see them, and restore the ones who are back.",
   "students.noMatchTitle": "No students match these filters",
   "students.noMatchSubtitle": "Try another name, or clear the filters.",
 

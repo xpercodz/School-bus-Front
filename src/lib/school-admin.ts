@@ -349,6 +349,12 @@ export interface StudentsState {
   loading: boolean;
   hasMore: boolean;
   loadMore: () => void;
+  /**
+   * Documents loaded so far, archived ones included — what `students` is
+   * filtered from. `useAutoLoadMore` reads it to tell a page that arrived from
+   * one that did not, because the visible count can stay short either way.
+   */
+  loaded: number;
   /** Client-side name search over the rows loaded so far. */
   search: string;
   setSearch: (q: string) => void;
@@ -450,7 +456,7 @@ export function useStudentsPaginated(refreshKey = 0): StudentsState {
     [items],
   );
 
-  return { students: active, loading, hasMore, loadMore, search, setSearch };
+  return { students: active, loading, hasMore, loadMore, loaded: items.length, search, setSearch };
 }
 
 /**
@@ -596,7 +602,10 @@ export async function setStudentArchived(
 ): Promise<void> {
   if (!db || !uid) return;
   const schoolId = await fetchSchoolId(uid);
-  if (!schoolId) return;
+  // Same distinction as `fetchAllStudents`: a null here is "the school could
+  // not be resolved", not a write with nothing to say. Returning would let the
+  // caller toast a restore that never happened.
+  if (!schoolId) throw new Error("setStudentArchived: school could not be resolved");
   const firestore = db;
   const batch = writeBatch(firestore);
   batch.set(

@@ -67,18 +67,38 @@ export function usePageSlice<T>(
  * Fetch the next cursor page when the reader reaches the last loaded page, so a
  * paged view never dead-ends in front of a "Load more" button. Runs at most once
  * per page number: a page that brings no new rows must not retry forever.
+ *
+ * A list shorter than a page is the exception. It never grows a second page, so
+ * the page number alone cannot tell two asks apart, and stopping after one is
+ * what left the rows on the pages behind a short list unreachable. There the ask
+ * repeats while the cursor keeps delivering documents (`loaded` — the rows the
+ * pagination slices, which a filter applied after the cursor page can narrow
+ * away), and stops when a page delivers none, so a failed read is asked once
+ * rather than in a loop.
  */
 export function useAutoLoadMore(
   pagination: Pagination,
-  state: { hasMore: boolean; loading: boolean; loadMore: () => void },
+  state: {
+    hasMore: boolean;
+    loading: boolean;
+    loadMore: () => void;
+    /** Rows loaded behind `pagination`, when a filter narrows that list. */
+    loaded?: number;
+  },
 ): void {
-  const { hasMore, loading, loadMore } = state;
-  const asked = useRef<number | null>(null);
+  const { hasMore, loading, loadMore, loaded } = state;
+  const asked = useRef<{ page: number; loaded: number | undefined } | null>(null);
 
   useEffect(() => {
     if (!hasMore || loading || pagination.page !== pagination.totalPages) return;
-    if (asked.current === pagination.page) return;
-    asked.current = pagination.page;
+    const previous = asked.current;
+    if (previous && previous.page === pagination.page) {
+      // The same page can be a new question only while the list is shorter than
+      // a page; on a real last page a second ask is a duplicate read.
+      if (pagination.totalPages > 1) return;
+      if (loaded === undefined || previous.loaded === loaded) return;
+    }
+    asked.current = { page: pagination.page, loaded };
     loadMore();
-  }, [hasMore, loading, loadMore, pagination.page, pagination.totalPages]);
+  }, [hasMore, loading, loadMore, loaded, pagination.page, pagination.totalPages]);
 }

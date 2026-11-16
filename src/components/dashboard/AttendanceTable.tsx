@@ -24,6 +24,12 @@ interface AttendanceTableProps {
    */
   hasFilters?: boolean;
   /**
+   * Every child in the school is archived, so the active roll is empty while the
+   * toggle above it still offers them. That is a third cause with its own words:
+   * "no students yet" would be a lie.
+   */
+  allArchived?: boolean;
+  /**
    * The children the reader is being shown as archived — the roll's own toggle
    * decides that, so the table only marks the rows it is handed.
    */
@@ -98,6 +104,7 @@ export function AttendanceTable({
   rows,
   summaries,
   hasFilters = false,
+  allArchived = false,
   archivedIds,
   restoringId,
   onRestore,
@@ -108,9 +115,11 @@ export function AttendanceTable({
   const digits = (value: string | number) => toLocaleDigits(String(value), locale);
   const days = digits(ROLL_SUMMARY_DAYS);
 
-  // An empty roll has two causes, and they need different words: a school with
-  // no students yet, or a filter that matched nobody. Claiming the roll is
-  // empty while a search is active sends the director looking for the importer.
+  // An empty roll has three causes, and they need different words: a school with
+  // no students yet, a filter that matched nobody, or a roll whose every child is
+  // archived. Claiming the roll is empty while a search is active sends the
+  // director looking for the importer; claiming it is empty while the toggle
+  // above reads "Show archived (N)" sends them looking for a bug.
   const empty = (
     <div className="flex w-full flex-col items-center gap-1.5 px-4 py-12 text-center">
       <Icon
@@ -120,10 +129,22 @@ export function AttendanceTable({
         className="text-dash-outline"
       />
       <p className="text-[13.5px] font-medium text-dash-on-surface">
-        {t(hasFilters ? "students.noMatchTitle" : "students.emptyRollTitle")}
+        {t(
+          hasFilters
+            ? "students.noMatchTitle"
+            : allArchived
+              ? "students.allArchivedTitle"
+              : "students.emptyRollTitle",
+        )}
       </p>
       <p className="text-[12.5px] text-dash-on-surface-variant">
-        {t(hasFilters ? "students.noMatchSubtitle" : "students.emptyRollSubtitle")}
+        {t(
+          hasFilters
+            ? "students.noMatchSubtitle"
+            : allArchived
+              ? "students.allArchivedSubtitle"
+              : "students.emptyRollSubtitle",
+        )}
       </p>
     </div>
   );

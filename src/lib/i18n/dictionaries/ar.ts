@@ -764,6 +764,9 @@ export const messages: Messages = {
   "students.th.absent": "غائب",
   "students.th.attendance": "نسبة الحضور",
   "students.th.lastRecord": "آخر سجل",
+  "students.th.archived": "مؤرشف",
+  "students.archivedYes": "نعم",
+  "students.archivedNo": "لا",
   "students.presentTitle": "الأيام التي سُجّل فيها الحضور خلال آخر {days} يومًا",
   "students.absentTitle": "الأيام المسجّلة غيابًا خلال آخر {days} يومًا",
   "students.attendanceTitle": "أيام الحضور من الأيام المسجّلة",
@@ -774,6 +777,8 @@ export const messages: Messages = {
   "students.phoneLastRecord": "آخر سجل {date}",
   "students.emptyRollTitle": "لا يوجد طلاب في السجل",
   "students.emptyRollSubtitle": "أضف الطلاب من شاشة التعيينات.",
+  "students.allArchivedTitle": "كل طلاب هذا السجل مؤرشفون",
+  "students.allArchivedSubtitle": "فعّل «عرض المؤرشفين» لرؤيتهم، ثم استعد من عاد منهم.",
   "students.noMatchTitle": "لا يوجد طلاب مطابقون لهذه التصفية",
   "students.noMatchSubtitle": "جرّب اسمًا آخر، أو امسح التصفية.",
 

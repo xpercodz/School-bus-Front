@@ -77,10 +77,15 @@ export function buildAttendanceCsv(
  * "--:--:--", and a dash in a time column reads as data in a director's
  * spreadsheet. `cell()` is shared so quoting, formula neutralisation and the
  * BOM/CRLF convention stay identical across both exports.
+ *
+ * `archivedIds` adds the one fact the rows cannot carry: whether a row is on the
+ * roll or retired. With the Show-archived toggle on, the file holds both kinds,
+ * and a spreadsheet has no toggle to tell them apart.
  */
 export function buildRollCsv(
   rows: readonly AttendanceRow[],
   summaries: ReadonlyMap<string, RollSummary>,
+  archivedIds: ReadonlySet<string>,
   t: TFunction,
   locale: Locale,
 ): string {
@@ -92,6 +97,7 @@ export function buildRollCsv(
     t("students.th.absent"),
     t("students.th.attendance"),
     t("students.th.lastRecord"),
+    t("students.th.archived"),
   ];
   const empty: RollSummary = { present: 0, absent: 0, lastDate: null, lastStatus: null };
   const lines = [header.map(cell).join(",")];
@@ -116,6 +122,7 @@ export function buildRollCsv(
         toLocaleDigits(String(summary.absent), locale),
         attendance,
         lastRecord,
+        t(archivedIds.has(row.id) ? "students.archivedYes" : "students.archivedNo"),
       ]
         .map(cell)
         .join(","),

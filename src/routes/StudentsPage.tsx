@@ -153,7 +153,7 @@ export default function StudentsPage() {
     // day-shaped rows here would write "--:--:--" times into a spreadsheet.
     downloadCsv(
       `students-roll-${todayDateStr()}.csv`,
-      buildRollCsv(list.filtered, summary.byStudentId, t, locale),
+      buildRollCsv(list.filtered, summary.byStudentId, archivedIds, t, locale),
     );
     showToast(
       t("toast.exported", { count: digits(list.filtered.length) }),
@@ -250,6 +250,9 @@ export default function StudentsPage() {
                 rows={list.paged}
                 summaries={summary.byStudentId}
                 hasFilters={list.hasFilters}
+                allArchived={
+                  !showArchived && activeStudents.length === 0 && archivedCount > 0
+                }
                 archivedIds={archivedIds}
                 restoringId={restoringId}
                 onRestore={handleRestore}

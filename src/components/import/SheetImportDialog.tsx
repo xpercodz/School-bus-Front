@@ -326,12 +326,20 @@ function SheetImportBody({
     setApplying(true);
     try {
       const moved = await applyAssignmentPlan(uid, writable);
-      showToast(tp("sheet.imported", moved, { count: digits(moved) }));
-      // The import's own count includes the children it archived, and leaving
-      // the roll is the half nobody expects to have happened.
-      const archived = writable.archive.length;
-      if (archived > 0) {
-        showToast(tp("toast.archived", archived, { count: digits(archived) }));
+      // `moved` counts every child the import touched, which includes the ones
+      // it retired and restored. The imported figure is the half the sheet
+      // actually moved or created — the archive toast reports the other half.
+      const imported = writable.rows.length + writable.creates.length;
+      // `moved` is 0 only when nothing was written (a school that could not be
+      // resolved, say): toasting then would report a success that did not happen.
+      if (moved > 0) {
+        if (imported > 0) {
+          showToast(tp("sheet.imported", imported, { count: digits(imported) }));
+        }
+        const archived = writable.archive.length;
+        if (archived > 0) {
+          showToast(tp("toast.archived", archived, { count: digits(archived) }));
+        }
       }
       onApplied(moved);
       onClose();
