@@ -21,6 +21,8 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Icon } from "@/components/Icon";
 import { staggerStyle } from "@/lib/motion";
 import { useLocale } from "@/lib/i18n/context";
+import { useCan } from "@/lib/permissions";
+import { useDriverCodeSecrets } from "@/lib/school-admin";
 import { toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
 
 /**
@@ -116,6 +118,10 @@ interface NewDriver {
  */
 export default function DriversPage() {
   const { t, locale } = useLocale();
+  const can = useCan();
+  // The code as the API stored it for the director: survives a reload, so a
+  // code issued yesterday is still readable today.
+  const secrets = useDriverCodeSecrets();
   const { showToast } = useToast();
 
   const { staff, loading: staffLoading } = useStaffUsers();
@@ -204,6 +210,7 @@ export default function DriversPage() {
    * in the row; the row must never fall back to "Generate code" afterwards.
    */
   async function issueCode(driver: StaffUser) {
+    if (!can("drivers.rotate")) return;
     if (busyUid) return;
     setBusyUid(driver.uid);
     try {
@@ -240,7 +247,8 @@ export default function DriversPage() {
           </div>
         ) : (
           <>
-            {/* Add driver */}
+            {/* Add driver — only for a reader who may create one. */}
+            {can("drivers.create") && (
             <section data-page-reveal data-tour="drivers-add" className="flex flex-col gap-4">
               {sectionTitle(
                 <Icon name="person_add" size={18} variant="outlined" className="flex-none" />,
@@ -275,6 +283,8 @@ export default function DriversPage() {
                 </Button>
               </form>
             </section>
+
+            )}
 
             {/* Access codes: cards on a phone, the table at md+ */}
             <section data-tour="drivers-codes" className="flex flex-col gap-4">
@@ -313,7 +323,8 @@ export default function DriversPage() {
                     <ul className="divide-y divide-dash-outline-variant md:hidden">
                       {staffPage.paged.map((driver, index) => {
                         const issued = Boolean(issuedCodes[driver.uid]);
-                        const code = issuedCodes[driver.uid] ?? codes[driver.uid] ?? "";
+                        const stored = secrets[driver.uid] ?? codes[driver.uid] ?? "";
+                        const code = issuedCodes[driver.uid] ?? stored;
                         const bus = buses.find((b) => b.driverUid === driver.uid);
                         const shown = revealed.has(driver.uid);
                         return (
@@ -342,7 +353,7 @@ export default function DriversPage() {
                                     className="text-[13px] font-medium leading-5 tabular-nums tracking-[0.18em] text-dash-on-surface"
                                   />
                                 </div>
-                                {issued && (
+                                {issued && !stored && (
                                   <p className="mt-1 text-end text-[11.5px] leading-4 text-dash-on-surface-variant">
                                     {t("drivers.codeOnceHint")}
                                   </p>
@@ -371,7 +382,7 @@ export default function DriversPage() {
                                     size="md"
                                     className="arc-field"
                                   />
-                                  <Button
+                                  {can("drivers.rotate") && (<Button
                                     type="button"
                                     onClick={() => setRegenerateTarget(driver)}
                                     aria-label={t("drivers.regenerateAria", { name: driver.displayName })}
@@ -381,11 +392,11 @@ export default function DriversPage() {
                                     className="arc-field"
                                   >
                                     <Icon name="refresh" size={18} variant="outlined" />
-                                  </Button>
+                                  </Button>)}
                                 </div>
                               </>
                             ) : (
-                              <Button
+                              can("drivers.rotate") ? (<Button
                                 type="button"
                                 onClick={() => issueCode(driver)}
                                 disabled={busyUid !== null}
@@ -396,7 +407,7 @@ export default function DriversPage() {
                               >
                                 <Icon name="add_link" size={16} variant="outlined" />
                                 {t("drivers.generateCode")}
-                              </Button>
+                              </Button>) : null
                             )}
                           </li>
                         );
@@ -418,7 +429,8 @@ export default function DriversPage() {
                         <tbody className="text-dash-body-sm text-dash-on-surface">
                           {staffPage.paged.map((driver) => {
                             const issued = Boolean(issuedCodes[driver.uid]);
-                            const code = issuedCodes[driver.uid] ?? codes[driver.uid] ?? "";
+                            const stored = secrets[driver.uid] ?? codes[driver.uid] ?? "";
+                            const code = issuedCodes[driver.uid] ?? stored;
                             const bus = buses.find((b) => b.driverUid === driver.uid);
                             const shown = revealed.has(driver.uid);
                             return (
@@ -460,7 +472,7 @@ export default function DriversPage() {
                                             variant="ghost"
                                             size="sm"
                                           />
-                                          <Button
+                                          {can("drivers.rotate") && (<Button
                                             type="button"
                                             onClick={() => setRegenerateTarget(driver)}
                                             aria-label={t("drivers.regenerateAria", { name: driver.displayName })}
@@ -469,17 +481,17 @@ export default function DriversPage() {
                                             icon
                                           >
                                             <Icon name="refresh" size={18} variant="outlined" />
-                                          </Button>
+                                          </Button>)}
                                         </div>
                                       </div>
-                                      {issued && (
+                                      {issued && !stored && (
                                         <p className="text-[11.5px] leading-4 text-dash-on-surface-variant">
                                           {t("drivers.codeOnceHint")}
                                         </p>
                                       )}
                                     </div>
                                   ) : (
-                                    <Button
+                                    can("drivers.rotate") ? (<Button
                                       type="button"
                                       onClick={() => issueCode(driver)}
                                       disabled={busyUid !== null}
@@ -490,7 +502,7 @@ export default function DriversPage() {
                                     >
                                       <Icon name="add_link" size={16} variant="outlined" />
                                       {t("drivers.generateCode")}
-                                    </Button>
+                                    </Button>) : null
                                   )}
                                 </td>
                               </tr>
@@ -540,7 +552,7 @@ export default function DriversPage() {
                 />
               </div>
               <p className="text-center text-[12px] leading-4 text-on-surface-variant">
-                {t("drivers.codeOnceHint")}
+                {t("drivers.codeSavedHint")}
               </p>
             </div>
           )}

@@ -19,10 +19,12 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth";
+import { useUserProfile } from "@/lib/user-profile";
 import { fetchSchoolId } from "@/lib/school-id";
 import { LOADING_SETTLE_TIMEOUT_MS, settlesLoading } from "@/lib/firestore-loading";
 import { useCursorPage } from "@/lib/use-cursor-page";
 import type { OperatorScreen } from "@/lib/api-contract";
+import type { Capability } from "@/lib/permissions";
 import { queueAudit, sanitizeText } from "@/lib/audit";
 import { buildRunId, todayDateStr } from "@/lib/school-data";
 
@@ -128,6 +130,57 @@ export interface StaffUsers {
  * page gated only on buses used to flash "No drivers yet" for the gap between
  * the two snapshots.
  */
+/**
+ * The retrievable code of each driver — `schools/{schoolId}/driverCodeSecrets`,
+ * written by the API beside the hash and readable by DIRECTORS ONLY.
+ *
+ * Its own collection because a read is document-level: keeping the plaintext on
+ * the `driverCodes` doc would hand it to every operator granted Drivers, and a
+ * view permission would quietly become "sign in as any driver".
+ *
+ * Absent for a code minted before this collection existed — those rows keep
+ * offering "Generate code", and issuing one makes it visible for good.
+ */
+export function useDriverCodeSecrets(): Record<string, string> {
+  const { user } = useAuth();
+  const uid = user?.uid;
+  const { profile } = useUserProfile();
+  const isDirector = profile.role === "director";
+  const [codes, setCodes] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    // An operator's listener would only be denied; don't open it.
+    if (!uid || !db || !isDirector) return;
+    const firestore = db;
+    let cancelled = false;
+    let unsubscribe = () => {};
+
+    void fetchSchoolId(uid).then((schoolId) => {
+      if (cancelled || !schoolId) return;
+      unsubscribe = onSnapshot(
+        collection(firestore, "schools", schoolId, "driverCodeSecrets"),
+        (snap) => {
+          if (cancelled) return;
+          const next: Record<string, string> = {};
+          snap.docs.forEach((d) => {
+            next[d.id] = (d.data().code as string) ?? "";
+          });
+          setCodes(next);
+        },
+        // Ignore: a sign-out denies every open listener before React unmounts.
+        () => {},
+      );
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [uid, isDirector]);
+
+  return codes;
+}
+
 export function useStaffUsers(): StaffUsers {
   const { user } = useAuth();
   const uid = user?.uid;
@@ -203,8 +256,10 @@ export interface TeamMember {
   role: "director" | "operator";
   /** Director-only: the main director, who may administer operators. */
   owner: boolean;
-  /** Operator-only: the screens they may open. */
+  /** Operator-only: the screens they may open (legacy; see `permissions`). */
   screens: OperatorScreen[];
+  /** Operator-only: the capabilities they hold, or null on a pre-capability profile. */
+  permissions: string[] | null;
 }
 
 export interface SchoolTeam {
@@ -265,6 +320,11 @@ export function useSchoolTeam(enabled = true): SchoolTeam {
                       (screen): screen is OperatorScreen => typeof screen === "string",
                     )
                   : [],
+                permissions: Array.isArray(d.data().permissions)
+                  ? (d.data().permissions as unknown[]).filter(
+                      (capability): capability is string => typeof capability === "string",
+                    )
+                  : null,
               })),
           );
           if (settlesLoading(snap.metadata.fromCache, snap.size > 0)) {
@@ -290,11 +350,10 @@ export function useSchoolTeam(enabled = true): SchoolTeam {
 /**
  * Realtime driver access-code docs of the school — `schools/{schoolId}/driverCodes`,
  * mapped `{ [driverUid]: code }` where `code` is the doc's legacy plaintext
- * `code` field. Codes are now stored hashed (`codeHash` only, plaintext shown
- * once at create/regenerate), so such docs map to "" and the UI falls back to
- * the regenerate affordance. Director-only per rules (drivers must not read
- * each other's codes). Small reference data (one doc per staff account), so no
- * pagination.
+ * `code` field. A code minted since the hashing change has only `codeHash`, so
+ * such docs map to "" and the row reads its code from `useDriverCodeSecrets`
+ * instead. Director-only per rules (drivers must not read each other's codes).
+ * Small reference data (one doc per staff account), so no pagination.
  */
 export function useDriverCodes(): Record<string, string> {
   const { user } = useAuth();
@@ -709,4 +768,47 @@ export async function updateStudent(
   await batch.commit();
 
   return { sheetRows: refs.length };
+}
+
+/**
+ * Replace one operator's capabilities — the whole list, and that field only.
+ *
+ * A director writes it (the rules allow exactly `permissions` on an operator's
+ * profile and nothing else), so the owner can re-scope a colleague without the
+ * API, which is still what creates and deletes the account itself. The audit
+ * entry rides the same batch: a permission change nobody can see afterwards is
+ * the one change an office would most want to explain.
+ *
+ * `next` is the set the editor shows; `previous` is what the profile held, and
+ * only the difference is recorded, like every other audit write here.
+ */
+export async function setOperatorPermissions(
+  uid: string,
+  targetUid: string,
+  next: readonly Capability[],
+  previous: readonly string[],
+): Promise<void> {
+  if (!db || !uid) return;
+  const schoolId = await fetchSchoolId(uid);
+  if (!schoolId) throw new Error("setOperatorPermissions: school could not be resolved");
+  const firestore = db;
+  const batch = writeBatch(firestore);
+  batch.set(
+    doc(firestore, "users", targetUid),
+    { permissions: [...next] },
+    { merge: true },
+  );
+  queueAudit(batch, firestore, schoolId, {
+    event: "operator.permissions_changed",
+    targetType: "account",
+    targetId: targetUid,
+    changes: {
+      permissions: {
+        from: previous.length > 0 ? [...previous].sort().join(", ") : null,
+        to: [...next].sort().join(", ") || null,
+      },
+    },
+    occurredAt: new Date(),
+  });
+  await batch.commit();
 }

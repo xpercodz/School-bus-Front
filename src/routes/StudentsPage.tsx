@@ -29,6 +29,7 @@ import { Button } from "@/components/arc/button/button";
 import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { ExpandingSearch } from "@/components/arc/expanding-search/expanding-search";
 import { useLocale } from "@/lib/i18n/context";
+import { useCan } from "@/lib/permissions";
 import { toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
 import type { MessageKey } from "@/lib/i18n/types";
 
@@ -58,6 +59,7 @@ const SORT_LABEL_KEY: Record<StudentSort, MessageKey> = {
  */
 export default function StudentsPage() {
   const { t, tp, locale } = useLocale();
+  const can = useCan();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const schoolName = useSchoolName();
@@ -170,6 +172,7 @@ export default function StudentsPage() {
           subtitle={subtitle}
           actions={
             <>
+              {can("students.export") && (
               <Button
                 type="button"
                 onClick={handleExport}
@@ -180,6 +183,7 @@ export default function StudentsPage() {
                 <Icon name="download" size={16} variant="outlined" />
                 {t("reports.export")}
               </Button>
+              )}
               {/* Students are created on the Assignments screen (or by importing the
                   school's sheet), so the control takes the director there instead of
                   sitting disabled — a disabled button with a tooltip is a hint no
@@ -257,15 +261,18 @@ export default function StudentsPage() {
                 }
                 archivedIds={archivedIds}
                 restoringId={restoringId}
-                onRestore={handleRestore}
-                onViewHistory={setHistoryStudent}
-                onEdit={(row) =>
-                  setEditing({
-                    id: row.id,
-                    name: row.name,
-                    grade: row.grade,
-                    busId: row.busId || null,
-                  })
+                onRestore={can("students.restore") ? handleRestore : undefined}
+                onViewHistory={can("students.history") ? setHistoryStudent : undefined}
+                onEdit={
+                  can("students.edit")
+                    ? (row) =>
+                        setEditing({
+                          id: row.id,
+                          name: row.name,
+                          grade: row.grade,
+                          busId: row.busId || null,
+                        })
+                    : undefined
                 }
               />
               <PaginationBar pagination={list} />

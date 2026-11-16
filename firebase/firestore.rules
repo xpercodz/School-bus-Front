@@ -90,11 +90,31 @@ service cloud.firestore {
       return isSignedIn() && schoolId() == schoolId;
     }
 
+    // ── capabilities ───────────────────────────────────────────────────────
+    // A capability is one `section.action` key. A director holds every one; an
+    // operator holds what their profile lists.
+    //
+    // Profiles written before capabilities existed carry no `permissions`
+    // field, and their `screens` are read as "every capability of that section"
+    // — exactly what a screen used to unlock. This fallback is the only place
+    // the two vocabularies meet, and it is what lets the field arrive without
+    // locking every existing operator out of their own screens.
+    function perms() {
+      return profile().get('permissions', null);
+    }
+
+    function hasCap(cap, screen) {
+      return isDirector() || (isOperator() && (
+        (perms() != null && cap in perms())
+        || (perms() == null && screen in screens())
+      ));
+    }
+
     // ── screen capabilities ────────────────────────────────────────────────
-    // A director holds every screen. An operator holds only what their profile
-    // lists; `screens` defaults to [] so a malformed profile grants nothing.
+    // `x.view` opens screen x, so every read grant below becomes
+    // capability-aware through this one line.
     function can(screen) {
-      return isDirector() || (isOperator() && screen in screens());
+      return hasCap(screen + '.view', screen);
     }
 
     // ── collection capabilities, derived from the screens that need them ────
@@ -118,9 +138,6 @@ service cloud.firestore {
       return can('live') || can('students');
     }
 
-    function canAssign() {
-      return can('assignments');
-    }
 
     // The pages that list staff names: Assignments (link a driver to a bus) and
     // Drivers (the access-code list).
@@ -198,6 +215,12 @@ service cloud.firestore {
         ) || (
           (request.resource.data.event in ['student.archived', 'student.restored'])
           && can('students')
+        ) || (
+          // Account events belong to the API, except this one: re-scoping a
+          // colleague is the director's own work, and it is written by the same
+          // batch as the profile write it describes.
+          (request.resource.data.event == 'operator.permissions_changed')
+          && isDirector()
         );
     }
 
@@ -213,11 +236,26 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if request.auth.uid == uid
         || (isSignedIn() && resource.data.schoolId == schoolId() && canSeeTeam());
-      allow update: if request.auth.uid == uid
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.schoolId == resource.data.schoolId
-        && request.resource.data.get('owner', false) == resource.data.get('owner', false)
-        && request.resource.data.get('screens', []) == resource.data.get('screens', []);
+      allow update: if (
+        // Self: the four authorization fields AND `permissions` untouched —
+        // without that last one an operator could grant himself the school by
+        // editing his own profile.
+        (request.auth.uid == uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.schoolId == resource.data.schoolId
+          && request.resource.data.get('owner', false) == resource.data.get('owner', false)
+          && request.resource.data.get('screens', []) == resource.data.get('screens', [])
+          && request.resource.data.get('permissions', null) == resource.data.get('permissions', null))
+        // A director re-scopes ONE operator: that field, that role, that school,
+        // and nothing else. `hasOnly` is what stops this from becoming a profile
+        // editor — role, owner, schoolId and screens cannot be touched here.
+        || (isSignedIn() && isDirector()
+          && resource.data.schoolId == schoolId()
+          && resource.data.role == 'operator'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['permissions'])
+          && request.resource.data.permissions is list
+          && request.resource.data.permissions.size() <= 40)
+      );
       allow delete: if false;
     }
 
@@ -231,7 +269,7 @@ service cloud.firestore {
       allow create, delete: if isMySchool(schoolId) && isDirector();
       allow update: if isMySchool(schoolId) && (
         isDirector()
-        || (canAssign()
+        || (hasCap('assignments.mode', 'assignments')
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['assignmentMode', 'updatedBy', 'updatedAt']))
       ) && stamped();
@@ -269,20 +307,21 @@ service cloud.firestore {
         // A driver reads the children standing on their own bus, and only those.
         allow read: if isMySchool(schoolId) && (canSeeStudents()
           || (isStaff() && staffsOwnBus(resource.data.busId)));
-        allow create: if isMySchool(schoolId) && can('students')
+        allow create: if isMySchool(schoolId) && hasCap('students.import', 'students')
           && request.resource.data.keys()
             .hasOnly(['name', 'grade', 'busId', 'updatedBy', 'updatedAt'])
           && stamped();
         allow delete: if isMySchool(schoolId) && isDirector();
         allow update: if isMySchool(schoolId) && (
           isDirector()
-          || (isOperator() && can('students')
+          || (hasCap('students.edit', 'students')
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['name', 'grade', 'updatedBy', 'updatedAt']))
-          || (canAssign()
+          || (hasCap('assignments.move', 'assignments')
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['busId', 'updatedBy', 'updatedAt']))
-          || (can('students') && canAssign()
+          || (hasCap('students.import', 'students')
+            && hasCap('assignments.move', 'assignments')
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['grade', 'busId', 'updatedBy', 'updatedAt']))
           // Archiving is one write: `archived: true` and `busId: null` land
@@ -295,7 +334,7 @@ service cloud.firestore {
           // driver's roster from including him, and an archive that kept a bus
           // would be a bus change — the Assignments grant — wearing this
           // branch's clothes.
-          || (can('students')
+          || (hasCap('students.import', 'students')
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['archived', 'busId', 'updatedBy', 'updatedAt'])
             && request.resource.data.diff(resource.data).affectedKeys()
@@ -307,7 +346,7 @@ service cloud.firestore {
           // its own branch rather than a Students allowlist entry because the
           // value, not just the key, is what makes it a restore — and because
           // `archived` in an allowlist would let `{archived: true}` keep the bus.
-          || (can('students')
+          || (hasCap('students.restore', 'students')
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['archived', 'updatedBy', 'updatedAt'])
             && request.resource.data.archived == false)
@@ -321,7 +360,7 @@ service cloud.firestore {
         allow create, delete: if isMySchool(schoolId) && isDirector();
         allow update: if isMySchool(schoolId) && (
           isDirector()
-          || (canAssign()
+          || (hasCap('assignments.driver', 'assignments')
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['driverUid', 'driver', 'updatedBy', 'updatedAt']))
         ) && stamped();
@@ -335,6 +374,16 @@ service cloud.firestore {
       match /driverCodes/{driverUid} {
         allow read: if isMySchool(schoolId) && (isDirector() || can('drivers'));
         allow write: if isMySchool(schoolId) && isDirector();
+      }
+
+      // The retrievable copy of each driver's code, written by the API beside
+      // the hash. Its own collection because reads are document-level: on the
+      // `driverCodes` doc it would reach every operator granted Drivers, and a
+      // view permission would quietly become "sign in as any driver". Directors
+      // only, and nothing but the Admin SDK writes it.
+      match /driverCodeSecrets/{driverUid} {
+        allow read: if isMySchool(schoolId) && isDirector();
+        allow write: if false;
       }
 
       // Runs hold run metadata (bus, type, date, status). Office staff granted a

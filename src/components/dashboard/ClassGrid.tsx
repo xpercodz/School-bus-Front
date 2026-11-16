@@ -42,7 +42,9 @@ const BAR_TONES = {
 interface ClassGridProps {
   /** One row per class, from `summarizeByGrade(rows)`. */
   classes: readonly GradeSummary[];
-  onOpenClass: (grade: string) => void;
+  /** Omitted for a reader who may not open a class: the cards still report,
+   *  they simply stop being doors. */
+  onOpenClass?: (grade: string) => void;
 }
 
 export function ClassGrid({ classes, onOpenClass }: ClassGridProps) {
@@ -162,9 +164,11 @@ export function ClassGrid({ classes, onOpenClass }: ClassGridProps) {
             })),
           ]}
         />
-        <p className="ms-auto text-[12.5px] leading-4 text-dash-on-surface-variant">
-          {t("reports.openClassHint")}
-        </p>
+        {onOpenClass && (
+          <p className="ms-auto text-[12.5px] leading-4 text-dash-on-surface-variant">
+            {t("reports.openClassHint")}
+          </p>
+        )}
       </div>
 
       {sorted.length === 0 ? (
@@ -179,7 +183,11 @@ export function ClassGrid({ classes, onOpenClass }: ClassGridProps) {
         <>
         <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 min-[900px]:grid-cols-3 min-[1180px]:grid-cols-4">
           {page.paged.map((row) => (
-            <ClassCard key={row.grade} row={row} onOpen={() => onOpenClass(row.grade)} />
+            <ClassCard
+              key={row.grade}
+              row={row}
+              onOpen={onOpenClass ? () => onOpenClass(row.grade) : undefined}
+            />
           ))}
         </div>
         {/* Print paints the whole document at once and cannot be paged: the
@@ -188,7 +196,11 @@ export function ClassGrid({ classes, onOpenClass }: ClassGridProps) {
         {sorted.length > page.paged.length && (
           <div className="hidden grid-cols-4 gap-3 print:grid">
             {sorted.slice(page.paged.length).map((row) => (
-              <ClassCard key={row.grade} row={row} onOpen={() => onOpenClass(row.grade)} />
+              <ClassCard
+                key={row.grade}
+                row={row}
+                onOpen={onOpenClass ? () => onOpenClass(row.grade) : undefined}
+              />
             ))}
           </div>
         )}
@@ -206,7 +218,7 @@ function ClassCard({
   onOpen,
 }: {
   row: GradeSummary;
-  onOpen: () => void;
+  onOpen?: () => void;
 }) {
   const { t, locale } = useLocale();
   const digits = (n: number) => toLocaleDigits(String(n), locale);
@@ -235,11 +247,17 @@ function ClassCard({
     count: digits(row.assigned),
   })}: ${parts.map((part) => `${digits(part.value)} ${part.label}`).join(", ")}`;
 
+  // A door only when there is something behind it: the same card, rendered as
+  // a plain panel for a reader without `reports.classDetail`.
+  const Tag = onOpen ? "button" : "div";
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="flex w-full cursor-pointer flex-col gap-2.5 rounded-lg border border-dash-outline-variant bg-dash-surface p-3.5 text-start transition-colors hover:bg-dash-surface-container-low focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-primary"
+    <Tag
+      {...(onOpen ? { type: "button" as const, onClick: onOpen } : {})}
+      className={`flex w-full flex-col gap-2.5 rounded-lg border border-dash-outline-variant bg-dash-surface p-3.5 text-start transition-colors ${
+        onOpen
+          ? "cursor-pointer hover:bg-dash-surface-container-low focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-primary"
+          : ""
+      }`}
     >
       <span className="flex items-baseline justify-between gap-2">
         <span className="min-w-0 truncate text-[13.5px] font-semibold text-dash-on-surface">
@@ -277,6 +295,6 @@ function ClassCard({
           {digits(completion)}%
         </span>
       </span>
-    </button>
+    </Tag>
   );
 }

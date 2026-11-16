@@ -5,9 +5,12 @@ import {
   createOperator,
   removeOperator,
   updateOperatorPassword,
-  updateOperatorScreens,
 } from "@/lib/api";
-import { useSchoolTeam, type TeamMember } from "@/lib/school-admin";
+import {
+  setOperatorPermissions,
+  useSchoolTeam,
+  type TeamMember,
+} from "@/lib/school-admin";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/arc/button/button";
 import { Dialog } from "@/components/Dialog";
@@ -18,9 +21,16 @@ import { generatePassword, isPasswordStrong } from "@/lib/password";
 import { useLocale } from "@/lib/i18n/context";
 import { useAuth } from "@/lib/auth";
 import {
-  DEFAULT_OPERATOR_SCREENS,
+  CAPABILITY_GLOSS_KEY,
+  CAPABILITY_GROUPS,
+  CAPABILITY_LABEL_KEY,
+  DEFAULT_OPERATOR_PERMISSIONS,
   GRANTABLE_SCREENS,
   SCREEN_LABEL_KEY,
+  capabilitiesOfScreen,
+  grantedCapabilities,
+  viewCapability,
+  type Capability,
 } from "@/lib/permissions";
 import type { OperatorScreen } from "@/lib/api-contract";
 
@@ -28,14 +38,14 @@ import type { OperatorScreen } from "@/lib/api-contract";
 const FIELD_CLASS =
   "mt-1 h-11 w-full rounded-lg border border-dash-control-outline bg-dash-surface px-3 text-[16px] text-dash-on-surface placeholder:text-dash-outline focus:border-dash-primary focus:outline-none focus:ring-1 focus:ring-dash-primary sm:h-10 sm:text-dash-body-sm";
 
-/** What the editor dialog is doing: a new account, or one account's screens. */
+/** What the editor dialog is doing: a new account, or one account's capabilities. */
 interface EditorState {
   mode: "create" | "edit";
   member: TeamMember | null;
   name: string;
   email: string;
   password: string;
-  screens: OperatorScreen[];
+  permissions: Capability[];
 }
 
 const EMPTY_EDITOR: EditorState = {
@@ -44,7 +54,7 @@ const EMPTY_EDITOR: EditorState = {
   name: "",
   email: "",
   password: "",
-  screens: [...DEFAULT_OPERATOR_SCREENS],
+  permissions: [...DEFAULT_OPERATOR_PERMISSIONS],
 };
 
 /**
@@ -106,7 +116,9 @@ export default function OperatorsPage() {
       name: member.displayName,
       email: member.email,
       password: "",
-      screens: member.screens.length > 0 ? [...member.screens] : [...DEFAULT_OPERATOR_SCREENS],
+      // A profile from before capabilities holds only screens; show what those
+      // screens mean today, so the first save writes the explicit set.
+      permissions: [...grantedCapabilities(member.screens, member.permissions)],
     });
   }
 
@@ -132,15 +144,48 @@ export default function OperatorsPage() {
     }
   }
 
-  function toggleScreen(screen: OperatorScreen) {
+  /**
+   * One tick. Ticking an action implies the screen that opens it (an action
+   * with no way in is a permission nobody can use), and unticking a screen
+   * takes its actions with it — otherwise the editor can save a set the app
+   * would render as nothing at all.
+   */
+  function toggleCapability(screen: OperatorScreen, capability: Capability) {
     setEditor((current) => {
       if (!current) return current;
-      const has = current.screens.includes(screen);
+      const has = current.permissions.includes(capability);
+      const view = viewCapability(screen);
+      if (capability === view) {
+        const section = capabilitiesOfScreen(screen);
+        return {
+          ...current,
+          permissions: has
+            ? current.permissions.filter((c) => !section.includes(c))
+            : [...current.permissions, ...section.filter((c) => !current.permissions.includes(c))],
+        };
+      }
       return {
         ...current,
-        screens: has
-          ? current.screens.filter((s) => s !== screen)
-          : [...current.screens, screen],
+        permissions: has
+          ? current.permissions.filter((c) => c !== capability)
+          : [...current.permissions.filter((c) => c !== capability), view, capability].filter(
+              (c, index, all) => all.indexOf(c) === index,
+            ),
+      };
+    });
+  }
+
+  /** The group's own switch: every key in, or every key out. */
+  function toggleGroup(screen: OperatorScreen) {
+    setEditor((current) => {
+      if (!current) return current;
+      const section = capabilitiesOfScreen(screen);
+      const all = section.every((c) => current.permissions.includes(c));
+      return {
+        ...current,
+        permissions: all
+          ? current.permissions.filter((c) => !section.includes(c))
+          : [...current.permissions, ...section.filter((c) => !current.permissions.includes(c))],
       };
     });
   }
@@ -157,7 +202,9 @@ export default function OperatorsPage() {
       setFormError(t("operators.passwordWeak"));
       return;
     }
-    if (editor.screens.length === 0) {
+    // An operator who can open nothing has an account and no job. The view
+    // keys are what "open" means, so one of them is the minimum.
+    if (!editor.permissions.some((capability) => capability.endsWith(".view"))) {
       setFormError(t("operators.screensRequired"));
       return;
     }
@@ -167,12 +214,24 @@ export default function OperatorsPage() {
     try {
       if (editor.mode === "create") {
         const displayName = editor.name.trim();
-        await createOperator({
+        // `screens` still goes to the API: it is what creates the account, and
+        // a profile that predates capabilities is read through it.
+        const screens = GRANTABLE_SCREENS.filter((screen) =>
+          capabilitiesOfScreen(screen).some((capability) =>
+            editor.permissions.includes(capability),
+          ),
+        );
+        const { uid: createdUid } = await createOperator({
           email: editor.email.trim(),
           password: editor.password,
           displayName,
-          screens: editor.screens,
+          screens,
         });
+        // Then the exact set. The account's capabilities are the truth from here
+        // on; `screens` stays behind as the fallback for an older client.
+        await setOperatorPermissions(uid!, createdUid, editor.permissions, [
+          ...screens.flatMap((screen) => capabilitiesOfScreen(screen)),
+        ]);
         // Hold the credentials for the confirmation panel BEFORE closing the
         // form, or the password is gone the moment the dialog unmounts.
         setCreated({
@@ -181,7 +240,10 @@ export default function OperatorsPage() {
           password: editor.password,
         });
       } else if (editor.member) {
-        await updateOperatorScreens(editor.member.uid, editor.screens);
+        await setOperatorPermissions(uid!, editor.member.uid, editor.permissions, [
+          ...(editor.member.permissions ??
+            editor.member.screens.flatMap((screen) => capabilitiesOfScreen(screen))),
+        ]);
         if (editor.password) {
           // Screens first: if the password call fails the grants still landed,
           // and the two toasts would otherwise claim the wrong thing.
@@ -357,9 +419,12 @@ export default function OperatorsPage() {
                               per screen rather than a count: the owner should be
                               able to check it without opening the editor. */}
                           <div className="mt-2 flex flex-wrap gap-1.5">
-                            {GRANTABLE_SCREENS.filter((screen) =>
-                              member.screens.includes(screen),
-                            ).map((screen) => (
+                            {GRANTABLE_SCREENS.filter((screen) => {
+                              const held = grantedCapabilities(member.screens, member.permissions);
+                              return capabilitiesOfScreen(screen).some((capability) =>
+                                held.has(capability),
+                              );
+                            }).map((screen) => (
                               <span
                                 key={screen}
                                 className="rounded bg-dash-surface-container px-1.5 py-0.5 text-[11px] leading-4 text-dash-on-surface-variant"
@@ -487,25 +552,55 @@ export default function OperatorsPage() {
               <p className="text-[11.5px] leading-4 text-dash-on-surface-variant">
                 {t("operators.screensHint")}
               </p>
-              <div
-                role="group"
-                aria-label={t("operators.screensLabel")}
-                className="mt-1 divide-y divide-dash-outline-variant rounded-lg border border-dash-outline-variant"
-              >
-                {GRANTABLE_SCREENS.map((screen) => (
-                  <label
-                    key={screen}
-                    className="flex min-h-11 cursor-pointer items-center gap-2.5 px-3 py-2 text-[13.5px] text-dash-on-surface hover:bg-dash-surface-container-low"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={editor.screens.includes(screen)}
-                      onChange={() => toggleScreen(screen)}
-                      className="h-4 w-4 flex-none accent-dash-primary"
-                    />
-                    {t(SCREEN_LABEL_KEY[screen])}
-                  </label>
-                ))}
+              {/* One card per screen, one tick per thing they may do there.
+                  A flat list of eighteen ticks is a screen nobody can
+                  use safely, and a mis-ticked editor hands out the wrong job —
+                  so the keys are grouped, and every row says what it buys. */}
+              <div role="group" aria-label={t("operators.screensLabel")} className="mt-1 flex flex-col gap-2">
+                {CAPABILITY_GROUPS.map(({ screen, keys }) => {
+                  const all = keys.every((key) => editor.permissions.includes(key));
+                  return (
+                    <div
+                      key={screen}
+                      className="overflow-hidden rounded-lg border border-dash-outline-variant"
+                    >
+                      <div className="flex items-center justify-between gap-3 border-b border-dash-outline-variant bg-dash-surface-container-low px-3 py-2">
+                        <p className="text-[12.5px] font-semibold text-dash-on-surface">
+                          {t(SCREEN_LABEL_KEY[screen])}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => toggleGroup(screen)}
+                          className="rounded px-1 text-[11.5px] font-medium text-dash-primary hover:underline"
+                        >
+                          {all ? t("operators.capsNone") : t("operators.capsAll")}
+                        </button>
+                      </div>
+                      <ul className="divide-y divide-dash-outline-variant">
+                        {keys.map((key) => (
+                          <li key={key}>
+                            <label className="flex min-h-11 cursor-pointer items-start gap-2.5 px-3 py-2 hover:bg-dash-surface-container-low">
+                              <input
+                                type="checkbox"
+                                checked={editor.permissions.includes(key)}
+                                onChange={() => toggleCapability(screen, key)}
+                                className="mt-0.5 h-4 w-4 flex-none accent-dash-primary"
+                              />
+                              <span className="min-w-0">
+                                <span className="block text-[13px] leading-5 text-dash-on-surface">
+                                  {t(CAPABILITY_LABEL_KEY[key])}
+                                </span>
+                                <span className="block text-[11.5px] leading-4 text-dash-on-surface-variant">
+                                  {t(CAPABILITY_GLOSS_KEY[key])}
+                                </span>
+                              </span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

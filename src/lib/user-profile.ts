@@ -3,6 +3,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth";
 import type { OperatorScreen } from "@/lib/api-contract";
+import { primeSchoolId } from "@/lib/school-id";
 
 /**
  * Roles in the app.
@@ -26,8 +27,20 @@ export interface UserProfile {
    * `npm run owner` in the API repo; never from the browser.
    */
   owner: boolean;
-  /** Operator-only: the screens they may open. Empty for every other role. */
+  /**
+   * Operator-only: the screens they may open. Empty for every other role.
+   *
+   * Superseded by `permissions` but still read as its fallback: a profile
+   * written before capabilities existed holds only this, and dropping it would
+   * lock every existing operator out of their own screens.
+   */
   screens: OperatorScreen[];
+  /**
+   * Operator-only: the capabilities they hold (`section.action`, see
+   * `lib/permissions.ts`). `null` means "this profile predates the field" —
+   * distinct from `[]`, which is an operator who may do nothing at all.
+   */
+  permissions: string[] | null;
 }
 
 /** The profile of a signed-out / not-yet-loaded user. */
@@ -37,6 +50,7 @@ export const EMPTY_PROFILE: UserProfile = {
   displayName: null,
   owner: false,
   screens: [],
+  permissions: null,
 };
 
 /**
@@ -73,7 +87,17 @@ export function useUserProfile(): { profile: UserProfile; loading: boolean } {
                 (screen): screen is OperatorScreen => typeof screen === "string",
               )
             : [],
+          // An absent field is `null` (the old profile), an empty list is an
+          // operator granted nothing — the two must not collapse into one.
+          permissions: Array.isArray(data?.permissions)
+            ? (data.permissions as unknown[]).filter(
+                (capability): capability is string => typeof capability === "string",
+              )
+            : null,
         });
+        // The profile is the source of the tenant id; share it so no other
+        // hook pays a second read of this same document.
+        primeSchoolId(uid, (data?.schoolId as string) ?? null);
         setLoadedUid(uid);
       },
       () => setLoadedUid(uid),

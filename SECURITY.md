@@ -36,14 +36,19 @@ Security model for the app. Keep this accurate when controls change.
     **Origin check** (`APP_ORIGINS` allowlist; cross-origin auth POSTs → 403) as CSRF
     hardening. Failed attempts log one structured line (event/reason/ip —
     never codes, emails, or passwords).
-- **Codes are stored hashed, not plaintext.** A `driverCodes/{uid}` doc holds
-  only `codeHash = HMAC-SHA256(CODE_PEPPER, code)`; the plaintext code is
-  returned exactly once at create/regenerate (`POST /v1/drivers`,
-  `POST /v1/drivers/regenerate`, both on School-bus-API) so directors can hand it
-  to the driver.
-  Legacy plaintext `code` docs still display until regenerated (rotation
-  replaces them); verification only matches `codeHash`, so regenerate is the
-  recovery path for any lost code.
+- **Codes verify against a hash, and the retrievable copy is director-only.** A
+  `driverCodes/{uid}` doc holds only `codeHash = HMAC-SHA256(CODE_PEPPER, code)`,
+  and verification matches that hash and nothing else. The plaintext is also
+  kept, in its own `driverCodeSecrets/{uid}` doc, so the Drivers page can show a
+  driver their code long after it was issued. That collection is **director-only
+  in `firestore.rules` and never client-writable**: rules are document-level, so
+  keeping the plaintext on the `driverCodes` doc would have handed every
+  operator granted Drivers the ability to sign in as any driver. The trade-off
+  is deliberate — a director already mints and rotates these codes, so reading
+  one adds no authority a director lacks, while an operator gains none. A code
+  minted before this collection existed is not retrievable (regenerate to make
+  it visible again), and legacy plaintext `code` fields still display until
+  rotated.
 - **Per-code lockout:** `verify-code` keeps a transactional
   `attempts`/`lockedUntil` counter on the code doc — 10 failed role-gate
   attempts lock the code for 15 minutes (429). Wrong-code guesses can't be

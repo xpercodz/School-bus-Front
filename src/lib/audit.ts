@@ -49,6 +49,7 @@ export type AuditEvent =
   | "driver.code_regenerated"
   | "operator.created"
   | "operator.screens_changed"
+  | "operator.permissions_changed"
   | "operator.password_changed"
   | "operator.removed"
   | "owner.changed"
@@ -79,6 +80,7 @@ export const EVENT_FAMILY: Record<AuditEvent, AuditFamily> = {
   "driver.code_regenerated": "access",
   "operator.created": "access",
   "operator.screens_changed": "access",
+  "operator.permissions_changed": "access",
   "operator.password_changed": "access",
   "operator.removed": "access",
   "owner.changed": "access",
@@ -112,6 +114,7 @@ export const EVENT_LABEL_KEY: Record<AuditEvent, MessageKey> = {
   "driver.code_regenerated": "activity.event.codeRotated",
   "operator.created": "activity.event.operatorCreated",
   "operator.screens_changed": "activity.event.screensChanged",
+  "operator.permissions_changed": "activity.event.permissionsChanged",
   "operator.password_changed": "activity.event.passwordReset",
   "operator.removed": "activity.event.operatorRemoved",
   "owner.changed": "activity.event.ownerChanged",

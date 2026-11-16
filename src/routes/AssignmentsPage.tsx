@@ -30,6 +30,7 @@ import { parseSheetFile, type ParsedSheet } from "@/lib/sheet-import";
 import { Icon } from "@/components/Icon";
 import { staggerStyle } from "@/lib/motion";
 import { useLocale } from "@/lib/i18n/context";
+import { useCan } from "@/lib/permissions";
 import { toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
 
 /**
@@ -61,6 +62,7 @@ export default function AssignmentsPage() {
   const uid = user?.uid;
   const { showToast } = useToast();
   const { profile } = useUserProfile();
+  const can = useCan();
   /**
    * The import writes two fields owned by two different grants: `busId` (this
    * screen) and `grade` (the Students screen). A director holds both; an
@@ -429,7 +431,7 @@ export default function AssignmentsPage() {
                   <Icon name="download" size={16} variant="outlined" />
                   {t("sheet.template")}
                 </Button>
-                <Button
+                {(can("students.import") || can("assignments.move")) && (<Button
                   type="button"
                   variant="primary"
                   size="md"
@@ -437,7 +439,7 @@ export default function AssignmentsPage() {
                 >
                   <Icon name="description" size={16} variant="outlined" />
                   {t("sheet.import")}
-                </Button>
+                </Button>)}
               </>
             }
           />
@@ -495,6 +497,7 @@ export default function AssignmentsPage() {
                               label={driver ? driver.displayName : t("assignments.unassigned")}
                               align="start"
                               matchTriggerWidth
+                              disabled={!can("assignments.driver")}
                               triggerClassName="arc-field mt-2 w-full"
                               searchable={searchable(staff.length)}
                               items={[
@@ -579,6 +582,7 @@ export default function AssignmentsPage() {
                     school document), so every colleague reads the same column.
                     A director, or an operator granted Assignments, may flip it;
                     the rules refuse the write from anyone else. */}
+                {can("assignments.mode") && (
                 <div className="w-full sm:w-60 sm:flex-none">
                   <SlideSegments
                     variant="dash-box"
@@ -593,6 +597,7 @@ export default function AssignmentsPage() {
                     }}
                   />
                 </div>
+                )}
               </div>
 
               {/* The new way in: the school's own class list. Parsing is a
@@ -650,7 +655,7 @@ export default function AssignmentsPage() {
                     />
                   </button>
                   {sheet && (
-                    <Button
+                    (can("students.import") || can("assignments.move")) && (<Button
                       type="button"
                       variant="secondary"
                       size="sm"
@@ -659,7 +664,7 @@ export default function AssignmentsPage() {
                       disabled={importReading}
                     >
                       {t("sheet.matchColumns")}
-                    </Button>
+                    </Button>)
                   )}
                 </div>
 
@@ -904,6 +909,7 @@ export default function AssignmentsPage() {
                             label={busLabelFor(effectiveBusId)}
                             align="start"
                             matchTriggerWidth
+                            disabled={!can("assignments.move")}
                             triggerClassName="arc-field mt-2 w-full"
                             searchable={searchable(buses.length)}
                             items={[

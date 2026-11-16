@@ -157,11 +157,14 @@ code-only sign-in).
 
 **The three places that have to agree, or the permission is a hidden link:**
 
-1. `src/lib/permissions.ts` — `canOpenScreen` decides what is DRAWN (nav rows,
-   route guards). `RequireAccess` admits the management shell; `RequireScreen`
-   gates each route and redirects to the first screen the reader CAN use.
-2. `firebase/firestore.rules` — reads the same `screens` names off the caller's
-   profile and grants a collection to the union of screens that need it.
+1. `src/lib/permissions.ts` — `canOpenScreen`/`can` decide what is DRAWN (nav
+   rows, route guards, and each control inside a screen). `RequireAccess` admits
+   the management shell; `RequireScreen` gates each route and redirects to the
+   first screen the reader CAN use.
+2. `firebase/firestore.rules` — `hasCap(cap, screen)` reads the caller's
+   `permissions` list and grants a collection to the union of screens that need
+   it; `can(screen)` is `hasCap(screen + '.view', screen)`, so every read grant
+   is capability-aware through one line.
    Writes are narrower and split by grant, each with its own field list: an
    operator granted **Students** may **create** a student and correct a `name`
    or `grade`; one granted **Assignments** may change the `busId` and nothing
@@ -175,6 +178,28 @@ code-only sign-in).
 3. `School-bus-API` — `requireManager(screen)` for the privileged driver
    endpoints, `requireOwner` for `/v1/operators*`. Accounts can only be created
    there: Firebase Auth users and profiles are Admin-SDK-only.
+
+**An operator holds CAPABILITIES, not screens.** One flat `section.action` key
+per thing they may do (`students.edit`, `assignments.move`, `reports.export`, …
+— the list is `CAPABILITY_GROUPS`, the editor groups it, the server reads it
+one key at a time). `section.view` is what opens a screen; every other key gates
+a control inside it. The two vocabularies meet in exactly one place, the
+fallback in `capabilitiesFor` and in the rules' `hasCap`: a profile with **no**
+`permissions` field is read as "every capability of the `screens` it names", so
+profiles written before capabilities existed keep working and keep exactly what
+they had. An empty list means "nothing", which is not the same as absent.
+
+The **owner writes the field from the browser**, in the same batch as its audit
+entry (`setOperatorPermissions`), because the API cannot be deployed yet; the
+rules allow exactly `permissions` on an existing `operator` profile of the same
+school and nothing else. They also pin `permissions` on the self-update branch —
+without that an operator could grant himself the school. Accounts are still
+created only by the Admin SDK, and `screens` still rides the create call.
+
+Adding a capability means: a key in `permissions.ts` **and** in the rules'
+`hasCap` call sites **and** the API's validation later, a label + gloss in
+**all three** dictionaries, and the control gated with `useCan()` at the place
+it actually appears. A key with no gated control is a permission that lies.
 
 The main director is resolved in one place, `src/lib/main-director.tsx`
 (`MainDirectorProvider` in the shell), because the rail, the phone bar and every
@@ -386,14 +411,23 @@ toggle, the hamburger and the theme glyph deliberately stay as they are — ther
 no eye family, the hamburger is covered while its sheet is open, and the sun/moon
 belongs to `theme-switch`.
 
-**A one-time access code is state, not a toast.** Codes are hashed at rest, so
-`POST /v1/drivers/regenerate` returns the plaintext exactly once — the Drivers
-page must keep that answer in component state (`issuedCodes`), not throw it
-away. Discarding it was the "Generate code does nothing" bug: the toast fired,
-`useDriverCodes` still had no plaintext, and the row kept showing "Generate
-code". The issued code is revealed in the row with the once-per-code
-`code-issued` / `code-scan` animation and the "copy it now" hint; leaving the
-page loses it by design, so the hint must never promise persistence.
+**A driver's code lives in two documents, and neither replaces the other.**
+`driverCodes/{uid}` holds only `codeHash` — verification matches that and nothing
+else. `driverCodeSecrets/{uid}` holds the plaintext, written by the API in the
+same batch, **director-only** in the rules: on the `driverCodes` doc it would
+reach every operator granted Drivers, and a view permission would quietly become
+"sign in as any driver". The Drivers page reads both (`useDriverCodeSecrets` for
+the plaintext, `useDriverCodes` for the legacy `code` field of pre-hash docs) and
+the reveal/copy controls work off whichever answered, so an issued code is
+readable again tomorrow instead of vanishing with the page.
+
+The freshly minted answer still goes into component state (`issuedCodes`) — that
+is what drives the once-per-code `code-issued` / `code-scan` animation — and
+dropping it was the "Generate code does nothing" bug. The "copy it now" warning
+is therefore shown **only** when the code is not stored (`issued && !stored`,
+which today means a code minted before the secrets collection existed): for a
+stored code the dialog says it can be shown again, and a hint that promised
+otherwise would be a lie.
 
 **A whole-row action is one overlay button.** A fleet row opens the bus overview,
 so the row's hit area is a single absolute `<button>` (inset 0, `aria-label`,

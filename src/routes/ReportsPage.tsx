@@ -25,6 +25,7 @@ import { Reveal } from "@/components/Reveal";
 import { StudentHistorySheet } from "@/components/StudentHistorySheet";
 import { useToast } from "@/components/Toast";
 import { useLocale } from "@/lib/i18n/context";
+import { useCan } from "@/lib/permissions";
 import { formatDate, toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
 
 /**
@@ -37,6 +38,7 @@ const REVEAL_PRINT = "print:opacity-100! print:transform-none!";
 
 export default function ReportsPage() {
   const { t, locale } = useLocale();
+  const can = useCan();
   const { showToast } = useToast();
   const schoolName = useSchoolName();
   const navigate = useNavigate();
@@ -180,7 +182,10 @@ export default function ReportsPage() {
                 "which class needs attention" and opens one class in place. */}
             <Reveal delay={100} className={REVEAL_PRINT}>
               <div data-tour="reports-classes">
-                <ClassGrid classes={byGrade} onOpenClass={setOpenClass} />
+                <ClassGrid
+                  classes={byGrade}
+                  onOpenClass={can("reports.classDetail") ? setOpenClass : undefined}
+                />
               </div>
             </Reveal>
           </>
@@ -231,10 +236,12 @@ function ReportsActions({
   onExport: () => void;
 }) {
   const { t } = useLocale();
+  const can = useCan();
 
   return (
     <>
       <div className="hidden items-center gap-2 sm:flex">
+        {can("reports.analytics") && (
         <Button
           type="button"
           variant="secondary"
@@ -246,16 +253,21 @@ function ReportsActions({
           <Icon name="monitoring" size={16} variant="outlined" />
           {t("reports.analytics")}
         </Button>
+        )}
+        {can("reports.print") && (
         <Button type="button" variant="secondary" size="md" className="arc-field" onClick={onPrint}>
           <Icon name="print" size={16} variant="outlined" />
           {t("reports.print")}
         </Button>
+        )}
       </div>
 
+      {can("reports.export") && (
       <Button type="button" variant="primary" size="md" onClick={onExport}>
         <Icon name="download" size={16} variant="outlined" />
         {t("reports.export")}
       </Button>
+      )}
 
       {/* PageHeader stretches every action child on phones; the disclosure is a
           fixed 44px square, so it opts out of that stretch. */}
@@ -270,12 +282,13 @@ function ReportsActions({
               label: t("reports.analytics"),
               icon: <Icon name="monitoring" size={18} variant="outlined" />,
               onSelect: onAnalytics,
-              disabled: analyticsDisabled,
+              disabled: analyticsDisabled || !can("reports.analytics"),
             },
             {
               label: t("reports.print"),
               icon: <Icon name="print" size={18} variant="outlined" />,
               onSelect: onPrint,
+              disabled: !can("reports.print"),
             },
           ]}
         />
