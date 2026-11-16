@@ -6,6 +6,9 @@ import {
   useRollSummary,
   useSchoolRoll,
 } from "@/lib/school-data";
+import type { AttendanceRow } from "@/data/dashboard";
+import { setStudentArchived } from "@/lib/school-admin";
+import { useAuth } from "@/lib/auth";
 import {
   useStudentList,
   type StudentListState,
@@ -58,23 +61,47 @@ export default function StudentsPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const schoolName = useSchoolName();
+  const { user } = useAuth();
+  const uid = user?.uid;
 
   const [historyStudent, setHistoryStudent] = useState<string | null>(null);
   // Correcting a name or grade: the only student fields this screen writes. The
   // bus belongs to Assignments, where the grant and the audit entry live.
   const [editing, setEditing] = useState<EditableStudent | null>(null);
+  /**
+   * Archived children are off the roll but not gone — attendance history still
+   * resolves and the Activity log still names them. The page hides them by
+   * default and this one toggle brings them back, with Restore on each row.
+   */
+  const [showArchived, setShowArchived] = useState(false);
 
   // One read: every child in the school, summarised over the window. Nothing on
   // this screen is scoped to a date, so no day query is made.
   const roll = useSchoolRoll();
   const summary = useRollSummary(true);
-  const rows = useMemo(
-    () =>
-      roll.students.map((student) =>
-        rollRow(student, summary.byStudentId.get(student.id)),
-      ),
-    [roll.students, summary.byStudentId],
+  // The hook deliberately returns everyone (the Activity log resolves names
+  // through it); the screen is what leaves the archived children out.
+  const activeStudents = useMemo(
+    () => roll.students.filter((student) => student.archived !== true),
+    [roll.students],
   );
+  const archivedCount = roll.students.length - activeStudents.length;
+  const archivedIds = useMemo(
+    () =>
+      new Set(
+        roll.students
+          .filter((student) => student.archived === true)
+          .map((student) => student.id),
+      ),
+    [roll.students],
+  );
+
+  const rows = useMemo(() => {
+    const listed = showArchived ? roll.students : activeStudents;
+    return listed.map((student) =>
+      rollRow(student, summary.byStudentId.get(student.id)),
+    );
+  }, [showArchived, roll.students, activeStudents, summary.byStudentId]);
   const list = useStudentList(rows, "name");
 
   const loading = roll.live && (roll.loading || summary.loading);
@@ -88,15 +115,28 @@ export default function StudentsPage() {
     toLocaleDigits(String(value), locale);
 
   const classes = useMemo(
-    () => new Set(roll.students.map((student) => student.grade)).size,
-    [roll.students],
+    () => new Set(activeStudents.map((student) => student.grade)).size,
+    [activeStudents],
   );
 
+  // The header describes the roll, so it counts the children who are on it —
+  // the toggle adds archived rows to the table below, not to this figure.
   const subtitle = t("students.subtitle", {
     school: schoolName ?? t("dashboard.loading"),
-    count: digits(roll.students.length),
+    count: digits(activeStudents.length),
     classes: digits(classes),
   });
+
+  /** Bring one child back. He returns unassigned; a sheet or Assignments gives him a bus. */
+  async function handleRestore(row: AttendanceRow) {
+    if (!uid) return;
+    try {
+      await setStudentArchived(uid, row.id, false);
+      showToast(t("toast.restored", { name: row.name }));
+    } catch {
+      showToast(t("toast.error"));
+    }
+  }
 
   function handleExport() {
     // The roll's columns are presence over the window, not a run: exporting
@@ -183,7 +223,12 @@ export default function StudentsPage() {
             </div>
           </div>
 
-          <StudentsToolbar list={list} />
+          <StudentsToolbar
+            list={list}
+            archivedCount={archivedCount}
+            showArchived={showArchived}
+            onToggleArchived={() => setShowArchived((shown) => !shown)}
+          />
 
           {live && loading ? (
             <div role="status" aria-label={t("dashboard.loading")}>
@@ -195,6 +240,8 @@ export default function StudentsPage() {
                 rows={list.paged}
                 summaries={summary.byStudentId}
                 hasFilters={list.hasFilters}
+                archivedIds={archivedIds}
+                onRestore={handleRestore}
                 onViewHistory={setHistoryStudent}
                 onEdit={(row) =>
                   setEditing({
@@ -229,8 +276,21 @@ export default function StudentsPage() {
  * Search, then the value selectors the roll is read by, then the clear action.
  * Every control is an Arc control with `arc-field` so the outlined edge keeps
  * its 3:1 step; the phone wraps them, the desktop keeps one row.
+ *
+ * The archived toggle is a pressed-state button, not a third value selector: it
+ * adds rows to the same list rather than narrowing it.
  */
-function StudentsToolbar({ list }: { list: StudentListState }) {
+function StudentsToolbar({
+  list,
+  archivedCount,
+  showArchived,
+  onToggleArchived,
+}: {
+  list: StudentListState;
+  archivedCount: number;
+  showArchived: boolean;
+  onToggleArchived: () => void;
+}) {
   const { t, locale } = useLocale();
 
   return (
@@ -295,6 +355,19 @@ function StudentsToolbar({ list }: { list: StudentListState }) {
             })),
           ]}
         />
+
+        <Button
+          type="button"
+          onClick={onToggleArchived}
+          variant="secondary"
+          size="sm"
+          className="arc-field"
+          aria-pressed={showArchived}
+        >
+          {t("studentList.showArchived", {
+            count: toLocaleDigits(String(archivedCount), locale),
+          })}
+        </Button>
 
         {list.hasFilters && (
           <Button

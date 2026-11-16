@@ -23,6 +23,13 @@ interface AttendanceTableProps {
    * "nothing matched", not "the school has no students".
    */
   hasFilters?: boolean;
+  /**
+   * The children the reader is being shown as archived — the roll's own toggle
+   * decides that, so the table only marks the rows it is handed.
+   */
+  archivedIds?: ReadonlySet<string>;
+  /** Bring an archived child back onto the roll (row Restore action). */
+  onRestore?: (row: AttendanceRow) => void;
   /** Open a student's attendance history (row History action). */
   onViewHistory?: (name: string) => void;
   /**
@@ -42,6 +49,16 @@ function StatusBadge({ status }: { status: StudentStatus }) {
     >
       <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[status]}`} aria-hidden="true" />
       {t(statusKey(status))}
+    </span>
+  );
+}
+
+/** Says why a row the reader can see is off the roll. Neutral, like the state. */
+function ArchivedChip() {
+  const { t } = useLocale();
+  return (
+    <span className="inline-flex flex-none items-center rounded bg-dash-surface-container-high px-1.5 py-0.5 text-[10.5px] font-medium text-dash-on-surface-variant">
+      {t("studentList.archivedChip")}
     </span>
   );
 }
@@ -76,6 +93,8 @@ export function AttendanceTable({
   rows,
   summaries,
   hasFilters = false,
+  archivedIds,
+  onRestore,
   onViewHistory,
   onEdit,
 }: AttendanceTableProps) {
@@ -120,6 +139,7 @@ export function AttendanceTable({
               const status = rollLastStatus(summary, row.status);
               const recorded = present + absent;
               const percent = recorded === 0 ? 0 : Math.round((present / recorded) * 100);
+              const archived = archivedIds?.has(row.id) === true;
 
               return (
                 <div
@@ -131,9 +151,12 @@ export function AttendanceTable({
                     <div className="min-w-0 flex-1">
                       {/* Two lines, never a hidden identity: a long name gets the
                           full width instead of an ellipsis. */}
-                      <p className="line-clamp-2 text-[14px] leading-5 font-medium break-words text-dash-on-surface">
-                        {row.name}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <p className="line-clamp-2 min-w-0 text-[14px] leading-5 font-medium break-words text-dash-on-surface">
+                          {row.name}
+                        </p>
+                        {archived && <ArchivedChip />}
+                      </div>
                       <p className="mt-0.5 truncate text-[12px] text-dash-on-surface-variant">
                         {translateDataLabel(row.grade, locale, t)} · {digits(row.bus)}
                       </p>
@@ -192,6 +215,17 @@ export function AttendanceTable({
                       </>
                     )}
                   </p>
+                  {archived && onRestore && (
+                    <Button
+                      type="button"
+                      onClick={() => onRestore(row)}
+                      variant="secondary"
+                      size="md"
+                      className="arc-field mt-2"
+                    >
+                      {t("studentList.restore")}
+                    </Button>
+                  )}
                 </div>
               );
             })}
@@ -273,11 +307,15 @@ export function AttendanceTable({
                 const recorded = present + absent;
                 const percent = recorded === 0 ? 0 : Math.round((present / recorded) * 100);
                 const badge = lastStatus ? <StatusBadge status={lastStatus} /> : null;
+                const archived = archivedIds?.has(row.id) === true;
 
                 return (
                   <tr key={row.id}>
                     <th scope="row" className="h-11 px-4 text-[13.5px] font-medium text-dash-on-surface">
-                      {row.name}
+                      <span className="inline-flex flex-wrap items-center gap-2">
+                        {row.name}
+                        {archived && <ArchivedChip />}
+                      </span>
                     </th>
                     <td className="px-4 text-[13px] text-dash-on-surface-variant">
                       {translateDataLabel(row.grade, locale, t)}
@@ -326,6 +364,16 @@ export function AttendanceTable({
                     </td>
                     <td className="px-4 text-end">
                       <div className="flex items-center justify-end gap-1">
+                        {archived && onRestore && (
+                          <Button
+                            type="button"
+                            onClick={() => onRestore(row)}
+                            variant="ghost"
+                            size="sm"
+                          >
+                            {t("studentList.restore")}
+                          </Button>
+                        )}
                         {onEdit && (
                           <Button
                             type="button"

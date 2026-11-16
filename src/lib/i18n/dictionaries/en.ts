@@ -211,6 +211,12 @@ export const messages = {
   "studentList.gradeAria": "Filter by class",
   "studentList.allGrades": "All classes",
   "studentList.clear": "Clear filters",
+  // Archived children are off the roll but not gone: one toggle reveals them,
+  // the chip says why one is listed, and Restore puts him back.
+  "studentList.showArchived": "Show archived ({count})",
+  "studentList.archivedChip": "Archived",
+  "studentList.restore": "Restore",
+  "studentList.restored": "Restored",
   // Inside a dropdown menu whose list is long enough to scan for a value.
   "dropdown.searchPlaceholder": "Search…",
   "dropdown.searchEmpty": "No matches",
@@ -542,6 +548,7 @@ export const messages = {
   "toast.markedAbsent": "{name} marked absent",
   "toast.archived": "Archived {count} students",
   "toast.archived.one": "Archived {count} student",
+  "toast.restored": "{name} restored to the roll",
   "toast.dispatchExists": "A run already exists for this bus, date and type",
   "toast.error": "Something went wrong. Please try again.",
 
@@ -863,6 +870,11 @@ export const messages = {
   "sheet.imported": "Imported {count} students",
   "sheet.imported.one": "Imported {count} student",
   "sheet.unreadable": "That file could not be read. Save it as CSV or an Excel workbook.",
+  // The mapping dialog plans against the whole roll, so the read comes first
+  // and a failure keeps the dialog shut rather than matching a partial list.
+  "sheet.readingRoll": "Reading the whole school roll…",
+  "sheet.rollFailed":
+    "The school's roll could not be read, so nothing was matched. Try again.",
   "sheet.dz.files": "Files",
   "sheet.dz.remove": "Remove {name}",
   "sheet.dz.retry": "Retry",

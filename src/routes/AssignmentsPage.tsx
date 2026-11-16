@@ -114,12 +114,17 @@ export default function AssignmentsPage() {
   // parse whose file was removed before it finished.
   const [sheet, setSheet] = useState<ParsedSheet | null>(null);
   /**
-   * The whole roll, fetched when a sheet is read. The table's own list is one
-   * cursor page (50), and a sheet matched against only those rows would report
-   * every child past them as "no student" and silently skip the move.
+   * The whole roll, read before the mapping dialog opens. Never fall back to
+   * `students.students`: that is one cursor page of 50, and a plan built against
+   * it would create a duplicate for every child past the page and compute the
+   * archive set from a roster the preview never showed (R21).
    */
   const [importStudents, setImportStudents] = useState<AdminStudent[] | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  /** The roll read is in flight — the drop card says so instead of opening on air. */
+  const [importReading, setImportReading] = useState(false);
+  /** The roll read failed, so the dialog stays shut and the card carries the reason. */
+  const [importRollFailed, setImportRollFailed] = useState(false);
   const [parseFailed, setParseFailed] = useState(false);
   /**
    * The drop zone is a disclosure, closed by default: importing is a
@@ -139,6 +144,10 @@ export default function AssignmentsPage() {
 
   async function handleSheetFiles(files: File[]) {
     const token = ++parseToken.current;
+    // This file supersedes whatever read was in flight: its result is dropped
+    // by the token, so the states it would have cleared are cleared here.
+    setImportReading(false);
+    setImportRollFailed(false);
     const file = files[0];
     if (!file) {
       // Removing the row in the drop zone withdraws the stashed sheet with it.
@@ -158,23 +167,49 @@ export default function AssignmentsPage() {
       const parsed = await parseSheetFile(file);
       if (token !== parseToken.current) return;
       setSheet(parsed);
-      // The sheet is read: fold the target away and let the summary row carry
-      // the file. The mapping dialog opens over it.
-      setDropOpen(false);
-      setImportOpen(true);
-      if (uid) {
-        void fetchAllStudents(uid)
-          .then((all) => {
-            if (token === parseToken.current) setImportStudents(all);
-          })
-          .catch(() => setImportStudents(null));
-      }
+      // The sheet is read; the roster is not. The dialog waits for it.
+      void openImport(parsed);
     } catch {
       if (token !== parseToken.current) return;
       setSheet(null);
       setParseFailed(true);
       setDropOpen(true);
       showToast(t("sheet.unreadable"));
+    }
+  }
+
+  /**
+   * Read the whole roll, then open the mapping dialog — never the other way
+   * round (R21).
+   *
+   * The table's list is one cursor page (50) and the dialog's plan is a decision
+   * about every child: what it does not find, it creates; what it does not see
+   * named, it archives. So an Apply against a partial roster would duplicate the
+   * children past the page and retire children the preview never listed. The
+   * read happens first, and a failure keeps the dialog shut with the file still
+   * selected — never a silent fall back to the page.
+   */
+  async function openImport(parsed: ParsedSheet) {
+    if (!uid) return;
+    const token = ++parseToken.current;
+    // The card says what it is doing: the panel stays open (or opens) for it.
+    setSheet(parsed);
+    setImportRollFailed(false);
+    setImportReading(true);
+    setDropOpen(true);
+    try {
+      const all = await fetchAllStudents(uid);
+      if (token !== parseToken.current) return;
+      setImportStudents(all);
+      setDropOpen(false);
+      setImportOpen(true);
+    } catch {
+      if (token !== parseToken.current) return;
+      // No roster, no dialog. A stale complete roll would be as wrong as none.
+      setImportStudents(null);
+      setImportRollFailed(true);
+    } finally {
+      if (token === parseToken.current) setImportReading(false);
     }
   }
 
@@ -196,7 +231,9 @@ export default function AssignmentsPage() {
   // keyboard on the file picker, instead of opening an empty panel.
   function handleImport() {
     if (sheet) {
-      setImportOpen(true);
+      // Re-read the roll even when the dialog was opened before: an applied
+      // import replaced the documents, so the roster it last saw is stale.
+      void openImport(sheet);
       return;
     }
     setDropOpen(true);
@@ -613,6 +650,7 @@ export default function AssignmentsPage() {
                       size="sm"
                       className="arc-field flex-none"
                       onClick={handleImport}
+                      disabled={importReading}
                     >
                       {t("sheet.matchColumns")}
                     </Button>
@@ -661,6 +699,48 @@ export default function AssignmentsPage() {
                           <Icon name="info" size={15} variant="outlined" className="mt-px flex-none" />
                           {t("sheet.unreadable")}
                         </p>
+                      )}
+                      {/* Reading the whole roll, before any dialog can open on it. */}
+                      {importReading && (
+                        <p
+                          role="status"
+                          className="mt-2 flex items-center gap-1.5 text-[12.5px] leading-4 text-dash-on-surface-variant"
+                        >
+                          <Icon
+                            name="progress_activity"
+                            size={15}
+                            variant="outlined"
+                            className="flex-none animate-spin"
+                          />
+                          {t("sheet.readingRoll")}
+                        </p>
+                      )}
+                      {/* A failed read leaves the dialog shut. The file is still
+                          selected above, so Retry reads the same sheet again. */}
+                      {importRollFailed && (
+                        <div
+                          role="alert"
+                          className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[12.5px] leading-4 text-dash-error"
+                        >
+                          <Icon
+                            name="info"
+                            size={15}
+                            variant="outlined"
+                            className="flex-none"
+                          />
+                          <span>{t("sheet.rollFailed")}</span>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            className="arc-field"
+                            onClick={() => {
+                              if (sheet) void openImport(sheet);
+                            }}
+                          >
+                            {t("sheet.dz.retry")}
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -895,24 +975,27 @@ export default function AssignmentsPage() {
         )}
       </div>
 
-      {/* The import's second step. Students and buses are the page's own
-          queries — the dialog never re-reads them. */}
-      <SheetImportDialog
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        sheet={sheet}
-        students={importStudents ?? students.students}
-        buses={buses}
-        canWriteStudents={canWriteStudents}
-        onApplied={() => {
-          // The import rewrote the documents in bulk, so the loaded page is
-          // stale: re-read it, and hand the bus answers back to the documents
-          // that just replaced them.
-          setListVersion((v) => v + 1);
-          setBusOverrides({});
-          setCountsVersion((v) => v + 1);
-        }}
-      />
+      {/* The import's second step, mounted only with the whole roll in hand. The
+          type is `AdminStudent[]`, not the table's page: there is no expression
+          left that could hand the plan a partial roster. */}
+      {importStudents && (
+        <SheetImportDialog
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          sheet={sheet}
+          students={importStudents}
+          buses={buses}
+          canWriteStudents={canWriteStudents}
+          onApplied={() => {
+            // The import rewrote the documents in bulk, so the loaded page is
+            // stale: re-read it, and hand the bus answers back to the documents
+            // that just replaced them.
+            setListVersion((v) => v + 1);
+            setBusOverrides({});
+            setCountsVersion((v) => v + 1);
+          }}
+        />
+      )}
     </>
   );
 }

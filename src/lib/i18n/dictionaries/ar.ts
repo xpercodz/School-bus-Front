@@ -213,6 +213,10 @@ export const messages: Messages = {
   "studentList.gradeAria": "تصفية حسب الصف",
   "studentList.allGrades": "كل الصفوف",
   "studentList.clear": "مسح التصفية",
+  "studentList.showArchived": "عرض المؤرشفين ({count})",
+  "studentList.archivedChip": "مؤرشف",
+  "studentList.restore": "استعادة",
+  "studentList.restored": "تمت الاستعادة",
   // داخل قائمة منسدلة طويلة بما يكفي للبحث عن قيمة.
   "dropdown.searchPlaceholder": "ابحث…",
   "dropdown.searchEmpty": "لا توجد نتائج",
@@ -535,6 +539,7 @@ export const messages: Messages = {
   "toast.markedAbsent": "تم وضع علامة غياب على {name}",
   "toast.archived": "أُرشف {count} طالبًا",
   "toast.archived.one": "أُرشف {count} طالب",
+  "toast.restored": "أُعيد {name} إلى السجل",
   "toast.dispatchExists": "توجد رحلة مسبقة لهذه الحافلة والتاريخ والنوع",
   "toast.error": "حدث خطأ ما. حاول مرة أخرى.",
 
@@ -849,6 +854,9 @@ export const messages: Messages = {
   "sheet.imported": "تم استيراد {count} طالبًا",
   "sheet.imported.one": "تم استيراد {count} طالب",
   "sheet.unreadable": "تعذّرت قراءة الملف. احفظه بصيغة CSV أو مصنّف Excel.",
+  "sheet.readingRoll": "جارٍ قراءة سجل الطلاب كاملًا…",
+  "sheet.rollFailed":
+    "تعذّرت قراءة سجل الطلاب، فلم تُطابَق أي صفوف. أعد المحاولة.",
   "sheet.dz.files": "الملفات",
   "sheet.dz.remove": "إزالة {name}",
   "sheet.dz.retry": "إعادة المحاولة",

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,
@@ -408,6 +408,12 @@ export async function fetchAllStudents(uid: string): Promise<AdminStudent[]> {
  * more" (the always-paginate rule), with a client-side name search over the
  * rows loaded so far.
  *
+ * **Archived children are left out of the rows this returns**, and this is the
+ * only place in the data layer that filters them: the hook exists for the
+ * Assignments table alone. `useSchoolRoll` keeps them for the Activity log's
+ * name lookup, and `fetchAllStudents` keeps them so a returning child is
+ * recognised instead of created twice.
+ *
  * `refreshKey` re-runs the first page. It is opt-in because this list is a
  * one-shot read: a caller bumps it only when the documents themselves changed
  * outside this screen (a sheet import), never after a single move — a `getDocs`
@@ -427,8 +433,14 @@ export function useStudentsPaginated(refreshKey = 0): StudentsState {
     },
     mapItem: toAdminStudent,
   });
+  // A cursor page can be entirely archived; the filter runs after mapping so the
+  // page itself still fills. Reference-stable so the page's own memos keep still.
+  const active = useMemo(
+    () => items.filter((student) => student.archived !== true),
+    [items],
+  );
 
-  return { students: items, loading, hasMore, loadMore, search, setSearch };
+  return { students: active, loading, hasMore, loadMore, search, setSearch };
 }
 
 /**

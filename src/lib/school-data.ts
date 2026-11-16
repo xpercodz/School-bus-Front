@@ -490,6 +490,12 @@ export interface RollStudent {
   name: string;
   grade: string;
   busId: string | null;
+  /**
+   * Off the year's roster — carried, never filtered here. The roll supplies the
+   * names the Activity log resolves archived children by, so the hook returns
+   * everyone; the screens decide what a reader sees.
+   */
+  archived?: boolean;
   /** Resolved display name of the assigned bus; "" when unassigned. */
   bus: string;
 }
@@ -511,6 +517,7 @@ interface RollDoc {
   name: string;
   grade: string;
   busId: string | null;
+  archived?: boolean;
 }
 
 const EMPTY_ROLL: readonly RollStudent[] = [];
@@ -531,6 +538,11 @@ const EMPTY_ROLL_SUMMARIES: ReadonlyMap<string, RollSummary> = new Map();
  * The bus name is resolved there too — never in a snapshot callback — so a buses
  * snapshot that lands after the students one still fixes every row's name
  * rather than baking in "" for the ones mapped first.
+ *
+ * **Everyone is returned, archived children included.** This same hook is how the
+ * Activity log resolves the name on a `student.archived` entry, so filtering here
+ * would print "Removed student" for the very child the entry is about. Screens
+ * filter on `archived` instead.
  */
 export function useSchoolRoll(): SchoolRoll {
   const live = useLiveFlag();
@@ -577,6 +589,8 @@ export function useSchoolRoll(): SchoolRoll {
                   name: (data.name as string) ?? "",
                   grade: (data.grade as string) ?? "",
                   busId: (data.busId as string | null) ?? null,
+                  // Absent means active; only an explicit `true` archives.
+                  archived: data.archived === true,
                 };
               }),
             );
