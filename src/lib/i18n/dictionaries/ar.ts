@@ -50,7 +50,6 @@ export const messages: Messages = {
   "mobile.runDate": "{date}",
   "mobile.runInProgress": "قيد التنفيذ",
   "mobile.runCompleted": "اكتملت الرحلة",
-  "mobile.runNotStarted": "لم تُرسل رحلة",
   "mobile.moreOptionsAria": "خيارات إضافية",
   "mobile.moreOptionsForAria": "خيارات إضافية لـ {name}",
   "mobile.searchAria": "بحث عن الطلاب",
@@ -61,6 +60,9 @@ export const messages: Messages = {
   "mobile.noRunTitle": "لا توجد رحلة اليوم",
   "mobile.noRunBody":
     "لم يُرسل مدير المدرسة رحلة هذه الحافلة الصباحية بعد. ستظهر هنا عند إرسالها.",
+  "mobile.noStudentsTitle": "لا يوجد طلاب في هذه الحافلة",
+  "mobile.noStudentsBody":
+    "لم يُعيَّن أي طفل لهذه الحافلة بعد. يمكن لمكتب المدرسة إضافتهم من الكشف.",
   "mobile.syncStatus": "حالة المزامنة",
   "mobile.online": "مباشر",
   "mobile.offline": "دون اتصال — التغييرات محفوظة",

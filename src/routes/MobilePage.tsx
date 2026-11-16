@@ -36,7 +36,6 @@ export default function Home() {
     writeFailed,
     runMeta,
     runStatus,
-    runExists,
   } = useRunRoster();
   const { t, locale } = useLocale();
   const online = useOnlineStatus();
@@ -99,7 +98,7 @@ export default function Home() {
   if (!live) {
     return (
       <>
-        <TopAppBar runMeta={runMeta} runStatus={runStatus} runExists={runExists} students={roster} />
+        <TopAppBar runMeta={runMeta} runStatus={runStatus} students={roster} />
         <main className="page-enter flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
           <EmptyState
             icon="login"
@@ -123,11 +122,9 @@ export default function Home() {
     );
   }
 
-  const showNoRun = !loading && runMeta.busId !== "" && !runExists;
-
   return (
     <>
-      <TopAppBar runMeta={runMeta} runStatus={runStatus} runExists={runExists} students={roster} />
+      <TopAppBar runMeta={runMeta} runStatus={runStatus} students={roster} />
       <main className="page-enter flex-1 space-y-3 px-4 py-3 pb-[calc(7rem+env(safe-area-inset-bottom))]">
         {!online && (
           <div
@@ -162,12 +159,19 @@ export default function Home() {
             title={t("mobile.noBusTitle")}
             body={t("mobile.noBusBody")}
           />
-        ) : showNoRun ? (
-          <EmptyState
-            icon="event_busy"
-            title={t("mobile.noRunTitle")}
-            body={t("mobile.noRunBody")}
-          />
+        ) : roster.length === 0 ? (
+          // A bus with nobody standing on it. Gated on being online: offline
+          // with a cold cache the `students` read settles at once and empty
+          // (see `settlesLoading`), so an empty roster there means "not
+          // fetched", not "no children" — and the offline banner already
+          // explains the blank screen. Render nothing rather than an empty list.
+          online && (
+            <EmptyState
+              icon="groups"
+              title={t("mobile.noStudentsTitle")}
+              body={t("mobile.noStudentsBody")}
+            />
+          )
         ) : (
           <>
             <StatusChips counts={counts} />
@@ -239,7 +243,7 @@ export default function Home() {
           {announcement}
         </p>
       </main>
-      {runMeta.busId !== "" && live && runExists && !loading && (
+      {runMeta.busId !== "" && live && !loading && roster.length > 0 && (
         <BottomBar completed={completed} onComplete={completeRun} />
       )}
 

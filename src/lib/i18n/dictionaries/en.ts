@@ -49,7 +49,6 @@ export const messages = {
   "mobile.runDate": "{date}",
   "mobile.runInProgress": "In progress",
   "mobile.runCompleted": "Run completed",
-  "mobile.runNotStarted": "No run dispatched",
   "mobile.moreOptionsAria": "More options",
   "mobile.moreOptionsForAria": "More options for {name}",
   "mobile.searchAria": "Search students",
@@ -60,6 +59,9 @@ export const messages = {
   "mobile.noRunTitle": "No run today",
   "mobile.noRunBody":
     "Your director hasn't dispatched this bus's morning run yet. It will appear here when they do.",
+  "mobile.noStudentsTitle": "No students on this bus",
+  "mobile.noStudentsBody":
+    "No child is assigned to this bus yet. The school office can add them from the roll.",
   "mobile.syncStatus": "Sync status",
   "mobile.online": "Live",
   "mobile.offline": "Offline — changes saved",

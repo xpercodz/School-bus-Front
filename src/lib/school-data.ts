@@ -211,10 +211,12 @@ export interface RunRoster {
   cycleStatus: (id: string) => void;
   /** True when the current run is marked COMPLETED. */
   completed: boolean;
-  /** Live run status for the run-details sheet. */
-  runStatus: "IN_PROGRESS" | "COMPLETED";
-  /** Whether a run doc exists for this bus/date/type. */
-  runExists: boolean;
+  /**
+   * Live run status for the run-details sheet, or null when there is no run
+   * document for this bus/date/type yet — the first tap creates it, so "no run"
+   * is the absence of a status rather than a status of its own.
+   */
+  runStatus: "IN_PROGRESS" | "COMPLETED" | null;
   /** Static identity of the run the roster shows (for the run-details sheet). busId is "" when the user has no bus. */
   runMeta: { busId: string; runType: string; date: string };
   /** Complete the run: mark it COMPLETED and any WAITING students ABSENT. */
@@ -248,8 +250,7 @@ export function useRunRoster(): RunRoster {
   const [docs, setDocs] = useState<readonly RosterDoc[]>(EMPTY_ROSTER_DOCS);
   const [statuses, setStatuses] =
     useState<ReadonlyMap<string, StudentStatus>>(EMPTY_STATUSES);
-  const [runStatus, setRunStatus] = useState<RunDoc["status"]>("IN_PROGRESS");
-  const [runExists, setRunExists] = useState(false);
+  const [runStatus, setRunStatus] = useState<RunDoc["status"] | null>(null);
   /**
    * True when a tap could not be recorded. Both writes are now `await`ed
    * because the rules refuse an unstamped roster write, and a refusal used to
@@ -301,7 +302,7 @@ export function useRunRoster(): RunRoster {
         // No school, or this user isn't assigned to a bus — no roster to show.
         setDocs(EMPTY_ROSTER_DOCS);
         setStatuses(EMPTY_STATUSES);
-        setRunExists(false);
+        setRunStatus(null);
         setSettled({ key: effectKey, students: true, attendance: true });
         return;
       }
@@ -382,13 +383,16 @@ export function useRunRoster(): RunRoster {
       );
       // The run document itself: it no longer gates the roster (the first tap
       // creates it), but it is still what the app bar and the completed lock
-      // read.
+      // read. A missing document is `null` — not a status of its own.
       unsubscribers.push(
         onSnapshot(
           doc(firestore, "schools", schoolId, "runs", runId),
           (snap) => {
-            setRunExists(snap.exists());
-            setRunStatus((snap.data()?.status as RunDoc["status"]) ?? "IN_PROGRESS");
+            setRunStatus(
+              snap.exists()
+                ? ((snap.data()?.status as RunDoc["status"]) ?? "IN_PROGRESS")
+                : null,
+            );
           },
           () => {
             // Ignore: sign-out denies every open listener before React unmounts
@@ -638,7 +642,6 @@ export function useRunRoster(): RunRoster {
     cycleStatus,
     completed: runStatus === "COMPLETED",
     runStatus,
-    runExists,
     runMeta: {
       busId: busId ?? "",
       runType: ROSTER_RUN_TYPE,
