@@ -110,8 +110,11 @@ export default function AssignmentsPage() {
   const [gradeFilter, setGradeFilter] = useState<string | null>(null);
 
   // Sheet import: the parsed file is stashed so closing the mapping dialog
-  // does not force the director to choose the file again. The token drops a
-  // parse whose file was removed before it finished.
+  // does not force the director to choose the file again. `parseToken` drops a
+  // parse whose file was removed before it finished; `rollToken` is the roll
+  // read's own, because the two cancel different things — one token for both
+  // meant that opening the dialog on the stashed sheet ("Match columns")
+  // invalidated a parse of a new file that was still in flight.
   const [sheet, setSheet] = useState<ParsedSheet | null>(null);
   /**
    * The whole roll, read before the mapping dialog opens. Never fall back to
@@ -135,6 +138,7 @@ export default function AssignmentsPage() {
    */
   const [dropOpen, setDropOpen] = useState(false);
   const parseToken = useRef(0);
+  const rollToken = useRef(0);
   const dropZoneRef = useRef<HTMLDivElement>(null);
 
   const digits = (n: number) => toLocaleDigits(String(n), locale);
@@ -144,8 +148,10 @@ export default function AssignmentsPage() {
 
   async function handleSheetFiles(files: File[]) {
     const token = ++parseToken.current;
-    // This file supersedes whatever read was in flight: its result is dropped
-    // by the token, so the states it would have cleared are cleared here.
+    // This file supersedes whatever read was in flight — the parse and the roll
+    // read alike: their results are dropped by their own tokens, so the states
+    // they would have cleared are cleared here.
+    ++rollToken.current;
     setImportReading(false);
     setImportRollFailed(false);
     const file = files[0];
@@ -191,7 +197,7 @@ export default function AssignmentsPage() {
    */
   async function openImport(parsed: ParsedSheet) {
     if (!uid) return;
-    const token = ++parseToken.current;
+    const token = ++rollToken.current;
     // The card says what it is doing: the panel stays open (or opens) for it.
     setSheet(parsed);
     setImportRollFailed(false);
@@ -199,17 +205,17 @@ export default function AssignmentsPage() {
     setDropOpen(true);
     try {
       const all = await fetchAllStudents(uid);
-      if (token !== parseToken.current) return;
+      if (token !== rollToken.current) return;
       setImportStudents(all);
       setDropOpen(false);
       setImportOpen(true);
     } catch {
-      if (token !== parseToken.current) return;
+      if (token !== rollToken.current) return;
       // No roster, no dialog. A stale complete roll would be as wrong as none.
       setImportStudents(null);
       setImportRollFailed(true);
     } finally {
-      if (token === parseToken.current) setImportReading(false);
+      if (token === rollToken.current) setImportReading(false);
     }
   }
 

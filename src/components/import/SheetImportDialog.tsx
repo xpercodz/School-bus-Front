@@ -204,6 +204,22 @@ function SheetImportBody({
       ...writable.archive.map((child) => child.id),
       ...writable.restore,
     ]).size + writable.creates.length;
+  // The strip below counts what Apply writes, so it counts the rollover too: a
+  // restore-only import used to read "0 · 0 · 0 · 0" above "Apply 1 change". A
+  // rollover figure is named only when it is non-zero — "0 archived" on every
+  // ordinary import is a number the reader has to skip past.
+  const resultCounts: { key: PluralKey; count: number }[] = [
+    { key: "sheet.resultNew", count: writable.creates.length },
+    { key: "sheet.resultUpdate", count: writable.rows.length },
+    { key: "sheet.resultUnchanged", count: plan.unchanged },
+    { key: "sheet.resultUnmatched", count: plan.unmatched.length },
+  ];
+  if (writable.archive.length > 0) {
+    resultCounts.push({ key: "sheet.resultArchived", count: writable.archive.length });
+  }
+  if (writable.restore.length > 0) {
+    resultCounts.push({ key: "sheet.resultRestored", count: writable.restore.length });
+  }
   /**
    * The sheet asks for something this reader may not write. Silent omission
    * would be worse than an outright failure: the same file would appear to
@@ -632,17 +648,10 @@ function SheetImportBody({
             separator trails its own statement, so a wrapped line never starts
             with a lone dot. */}
         <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1 rounded-lg border border-dash-outline-variant bg-dash-surface-container-low px-3 py-2.5 text-[12.5px] leading-5 tabular-nums text-dash-on-surface-variant">
-          {(
-            [
-              { key: "sheet.resultNew", count: writable.creates.length },
-              { key: "sheet.resultUpdate", count: writable.rows.length },
-              { key: "sheet.resultUnchanged", count: plan.unchanged },
-              { key: "sheet.resultUnmatched", count: plan.unmatched.length },
-            ] as const
-          ).map(({ key, count }, index, all) => (
+          {resultCounts.map(({ key, count }, index) => (
             <span key={key} className="whitespace-nowrap">
               {figure(key, count)}
-              {index < all.length - 1 && (
+              {index < resultCounts.length - 1 && (
                 <span className="ps-1" aria-hidden="true">
                   ·
                 </span>
