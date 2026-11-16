@@ -34,6 +34,7 @@ export type PluralKey =
   | "activity.preset.days"
   | "import.archiveBody"
   | "import.restoreBody"
+  | "sheet.ignoredCount"
   | "sheet.imported"
   | "toast.archived";
 

@@ -551,13 +551,46 @@ const FIELD_LABELS: Record<Exclude<ImportField, "ignore">, string> = {
   bus: "Bus",
 };
 
-/** Synonyms that are accepted but flagged as "alias". */
+/**
+ * Synonyms that are accepted but flagged as "alias".
+ *
+ * `normalizeHeader` folds case and punctuation but not accents, so a French
+ * header needs both spellings listed. The app ships in French and Arabic, and a
+ * school's own sheet is written in its own language: a header the matcher knows
+ * is a decision the director does not have to make by hand.
+ */
 const FIELD_ALIASES: Record<Exclude<ImportField, "ignore">, readonly string[]> = {
-  studentName: ["student", "name", "full name", "pupil", "child"],
+  studentName: [
+    "student",
+    "name",
+    "full name",
+    "pupil",
+    "child",
+    "élève",
+    "eleve",
+    "nom",
+    "nom complet",
+    "طالب",
+    "الطالب",
+    "اسم الطالب",
+  ],
   // "Grade" is the older name for the same column, so a sheet written before the
   // word changed still imports.
-  grade: ["class", "grade", "year", "form", "section"],
-  bus: ["bus", "bus no", "bus no.", "bus number", "route", "vehicle"],
+  grade: ["class", "grade", "year", "form", "section", "classe", "niveau", "قسم", "الصف", "الفصل"],
+  bus: [
+    "bus",
+    "bus no",
+    "bus no.",
+    "bus number",
+    "route",
+    "vehicle",
+    "car",
+    "véhicule",
+    "vehicule",
+    "حافلة",
+    "الباص",
+    "باص",
+  ],
 };
 
 const IMPORT_FIELDS: readonly Exclude<ImportField, "ignore">[] = [

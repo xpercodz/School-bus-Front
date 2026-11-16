@@ -160,6 +160,10 @@ function SheetImportBody({
 
   const [matches, setMatches] = useState<ColumnMatch[]>(() => matchColumns(sheet));
   const [applying, setApplying] = useState(false);
+  // The ignored columns' disclosure, closed by default: they are columns this
+  // import will not read, so they must not cost a row each. The body mounts per
+  // file, so a new sheet starts closed.
+  const [ignoredOpen, setIgnoredOpen] = useState(false);
   // "The sheet is the whole roster": on by default, because a re-uploaded
   // roster is how a child leaves. Off is the safe state — nobody is archived.
   const [archiveMissing, setArchiveMissing] = useState(true);
@@ -226,7 +230,14 @@ function SheetImportBody({
   }, [matches]);
   const previewFields = PREVIEW_FIELDS.filter((field) => columnOf.has(field));
   const previewRows = sheet.rows.slice(0, 3);
-  const matched = matches.filter((match) => match.field !== "ignore").length;
+  // Only a mapped column is a decision. The rest stay mappable — an unknown
+  // header (a French or Arabic word, a school's own) must not become
+  // unreachable — but behind one line, so a file with three real columns reads
+  // as three decisions instead of six. The plan above is built from `matches`,
+  // never from what this section draws.
+  const matchedColumns = matches.filter((match) => match.field !== "ignore");
+  const ignoredColumns = matches.filter((match) => match.field === "ignore");
+  const matched = matchedColumns.length;
 
   /** The list a restore resolves its ids against — already in props, not re-read. */
   const studentsById = useMemo(
@@ -254,6 +265,59 @@ function SheetImportBody({
           ? { ...match, field, via: null }
           : match,
       ),
+    );
+  }
+
+  /**
+   * One sheet column and the dropdown that says where it goes. The same row is
+   * drawn for a mapped column and for one behind the ignored line, so a header
+   * the matcher did not know is corrected with the control it always had.
+   */
+  function mappingRow(match: ColumnMatch) {
+    const letter = t("sheet.columnLetter", { letter: columnLetter(match.index) });
+    const hint =
+      match.field === "ignore"
+        ? t("sheet.notMatched")
+        : match.via === "alias"
+          ? t("sheet.matchedOn", { name: match.header })
+          : null;
+    return (
+      <div
+        key={match.index}
+        className="grid grid-cols-1 gap-2 py-3 min-[761px]:grid-cols-[minmax(0,1fr)_28px_220px] min-[761px]:items-center min-[761px]:gap-3"
+      >
+        <div className="min-w-0">
+          <p className="break-words text-[13.5px] font-medium leading-[1.3] text-dash-on-surface">
+            {match.header}
+          </p>
+          <p className="mt-px text-[11.5px] leading-4 text-dash-on-surface-variant">
+            {letter}
+            {hint && <span> · {hint}</span>}
+          </p>
+        </div>
+        {/* The glyph points from the sheet's column to its target;
+            the arrow's direction is the reading direction. */}
+        <Icon
+          name="arrow_forward"
+          size={18}
+          variant="outlined"
+          className={`hidden text-dash-on-surface-variant min-[761px]:block ${
+            dir === "rtl" ? "-scale-x-100" : ""
+          }`}
+        />
+        <DropdownMenu
+          ariaLabel={`${match.header} — ${t(FIELD_KEY[match.field])}`}
+          label={t(FIELD_KEY[match.field])}
+          align="end"
+          matchTriggerWidth
+          triggerClassName="arc-field w-full"
+          items={FIELDS.map((field) => ({
+            label: t(FIELD_KEY[field]),
+            checked: match.field === field,
+            onSelect: () => setField(match.index, field),
+          }))}
+        />
+      </div>
     );
   }
 
@@ -335,53 +399,49 @@ function SheetImportBody({
           </p>
 
           <div className="mt-2 divide-y divide-dash-outline-variant">
-            {matches.map((match) => {
-              const letter = t("sheet.columnLetter", { letter: columnLetter(match.index) });
-              const hint =
-                match.field === "ignore"
-                  ? t("sheet.notMatched")
-                  : match.via === "alias"
-                    ? t("sheet.matchedOn", { name: match.header })
-                    : null;
-              return (
-                <div
-                  key={match.index}
-                  className="grid grid-cols-1 gap-2 py-3 min-[761px]:grid-cols-[minmax(0,1fr)_28px_220px] min-[761px]:items-center min-[761px]:gap-3"
+            {matchedColumns.map(mappingRow)}
+            {ignoredColumns.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  aria-expanded={ignoredOpen}
+                  aria-controls="sheet-ignored-columns"
+                  onClick={() => setIgnoredOpen((open) => !open)}
+                  className="press flex min-h-11 w-full items-center gap-2 py-2 text-start sm:min-h-9"
                 >
-                  <div className="min-w-0">
-                    <p className="break-words text-[13.5px] font-medium leading-[1.3] text-dash-on-surface">
-                      {match.header}
-                    </p>
-                    <p className="mt-px text-[11.5px] leading-4 text-dash-on-surface-variant">
-                      {letter}
-                      {hint && <span> · {hint}</span>}
-                    </p>
-                  </div>
-                  {/* The glyph points from the sheet's column to its target;
-                      the arrow's direction is the reading direction. */}
+                  <span className="min-w-0 flex-1 break-words text-[12.5px] leading-4 text-dash-on-surface-variant">
+                    {tp("sheet.ignoredCount", ignoredColumns.length, {
+                      count: digits(ignoredColumns.length),
+                      names: nameList(
+                        ignoredColumns.map(
+                          (match) =>
+                            match.header.trim() ||
+                            t("sheet.columnLetter", { letter: columnLetter(match.index) }),
+                        ),
+                        localeCode(locale),
+                        (rest) => t("sheet.moreNames", { count: digits(Number(rest)) }),
+                      ),
+                    })}
+                  </span>
+                  <span className="flex-none text-[12px] font-medium text-dash-on-surface-variant">
+                    {t(ignoredOpen ? "sheet.hideIgnored" : "sheet.showIgnored")}
+                  </span>
                   <Icon
-                    name="arrow_forward"
+                    name="expand_more"
                     size={18}
                     variant="outlined"
-                    className={`hidden text-dash-on-surface-variant min-[761px]:block ${
-                      dir === "rtl" ? "-scale-x-100" : ""
+                    className={`flex-none text-dash-on-surface-variant transition-transform duration-[var(--t-ui)] ${
+                      ignoredOpen ? "rotate-180" : ""
                     }`}
                   />
-                  <DropdownMenu
-                    ariaLabel={`${match.header} — ${t(FIELD_KEY[match.field])}`}
-                    label={t(FIELD_KEY[match.field])}
-                    align="end"
-                    matchTriggerWidth
-                    triggerClassName="arc-field w-full"
-                    items={FIELDS.map((field) => ({
-                      label: t(FIELD_KEY[field]),
-                      checked: match.field === field,
-                      onSelect: () => setField(match.index, field),
-                    }))}
-                  />
-                </div>
-              );
-            })}
+                </button>
+                {ignoredOpen && (
+                  <div id="sheet-ignored-columns" className="divide-y divide-dash-outline-variant">
+                    {ignoredColumns.map(mappingRow)}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </section>
 
