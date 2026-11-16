@@ -762,6 +762,10 @@ CLI is not a dependency — run it with `npx firebase-tools@latest …`.
 the roster fails on a missing index — the one order that produces a driver screen
 that loads nothing. `npm run deploy:indexes`, then `npm run deploy:rules`.
 
+`docs/standing-roster-rollout.md` is the short version of that change: what a
+user sees, the four decisions worth not re-deriving, the deploy order, the
+browser pass no test covers, and what was deliberately left.
+
 ### Hosting is live; the API is not
 
 The web app is on Hosting. The **backend is not**: the project is on Spark, so
