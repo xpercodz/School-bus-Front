@@ -10,14 +10,17 @@ export type MessageKey = keyof Messages;
 export type TVars = Record<string, string | number>;
 
 /**
- * Keys whose singular form differs from their plural. The dictionary keeps the
- * plural on the base key and adds `<key>.one`; `tp(key, count, vars)` picks the
- * CLDR category with `Intl.PluralRules` and falls back to `.other`, then to the
- * base key. Listing the base here is what makes `tp` type-safe — a key with no
- * plural forms cannot be passed to it.
+ * Keys that take a count. The dictionary keeps the plural on the base key and
+ * adds `<key>.one`; `tp(key, count, vars)` picks the CLDR category with
+ * `Intl.PluralRules` and falls back to `.other`, then to the base key. Listing
+ * the base here is what makes `tp` type-safe — a key with no plural forms cannot
+ * be passed to it.
  *
- * Only the singular is listed, because that is the form a flat template cannot
- * express: "1 students still unrecorded" is the failure this prevents.
+ * Most singulars differ ("1 student", not "1 students"), which is the failure
+ * this prevents. A few counts are a bare suffix or a parenthesised number, where
+ * the singular is the same text as the plural; those keys still list `.one`,
+ * identical to the base, because the rule is "a count-bearing string goes
+ * through `tp`", not "the text must change".
  */
 export type PluralKey =
   | "dashboard.finding.allClear"
