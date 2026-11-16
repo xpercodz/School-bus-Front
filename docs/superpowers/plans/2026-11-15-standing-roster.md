@@ -440,6 +440,16 @@ git commit -m "feat(import): the preview names every child the sheet leaves out"
 
 The roll toolbar gains one Arc `Button` (`secondary`, `size="sm"`, `arc-field`): `studentList.showArchived` with the count, `aria-pressed`. Archived rows render an `Archived` chip (`studentList.archivedChip`) and a `studentList.restore` action calling `setStudentArchived(uid, id, false)`; success shows the `toast.restored` toast.
 
+- [ ] **Step 2b: The import dialog opens on the whole roll, or not at all (R21)**
+
+`AssignmentsPage` currently opens the sheet dialog immediately and starts reading the whole roll afterwards (`AssignmentsPage.tsx:165-171`), handing the dialog `importStudents ?? students.students` (`:904`) — and `students.students` is **one cursor page of 50**. Until that fetch lands, and permanently if it rejects, `buildAssignmentPlan` matches the sheet against a partial roster: children past the first page are seen as new (a duplicate child is created) and the archive set is computed against a roster the preview does not show.
+
+This is the one place where a read failure could retire or duplicate real children, so close it here:
+
+- read the roll **before** opening the dialog — while it is in flight the drop card shows its own reading state; do not open a dialog whose Apply would write against a partial list;
+- if the read rejects, do not open the dialog: report it in the drop card (`sheet.rollFailed`, three dictionaries) with the file still selected, so the reader can retry. Falling back to the cursor page is what must not happen;
+- delete the `?? students.students` fallback, so the type says `AdminStudent[]` and no future caller can reintroduce it.
+
 - [ ] **Step 3: The per-bus counts stay right**
 
 Do not touch `useBusStudentCounts`. Archiving clears `busId`, so its `where("busId","==",id)` count stops including the child by construction. Confirm by reading, not by adding a filter.
