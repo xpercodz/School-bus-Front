@@ -10,12 +10,13 @@ import { useLocale } from "@/lib/i18n/context";
 import { staggerDelay } from "@/lib/motion";
 import { useSignOut } from "@/lib/sign-out";
 import { formatDate, formatDayMonth, toLocaleDigits, translateDataLabel } from "@/lib/i18n/format";
+import type { MessageKey } from "@/lib/i18n/types";
 import type { StudentStatus } from "@/data/students";
 
 interface TopAppBarProps {
   runMeta: { busId: string; runType: string; date: string };
   /** `null` when no run document exists yet — the first tap creates it. */
-  runStatus: "IN_PROGRESS" | "COMPLETED" | null;
+  runStatus: RunStatus | null;
   /**
    * The run's students, in roster order. Their statuses become the manifest
    * rail under the bar — one tick per child, so a driver sees the whole run at
@@ -23,6 +24,20 @@ interface TopAppBarProps {
    */
   students?: readonly { id: string; status: StudentStatus }[];
 }
+
+/** The run's own two states; a missing run document is neither of them. */
+type RunStatus = "IN_PROGRESS" | "COMPLETED";
+
+const RUN_LABEL_KEY: Record<RunStatus, MessageKey> = {
+  IN_PROGRESS: "mobile.runInProgress",
+  COMPLETED: "mobile.runCompleted",
+};
+
+/** One dot colour per run state — green finished, primary still running. */
+const RUN_DOT_CLASS: Record<RunStatus, string> = {
+  IN_PROGRESS: "bg-primary",
+  COMPLETED: "bg-success",
+};
 
 /**
  * One hue per attendance state; the same marks as the roster pills. A child with
@@ -72,13 +87,6 @@ export function TopAppBar({ runMeta, runStatus, students }: TopAppBarProps) {
     ? t("mobile.appBarTitle", { bus: busNumber })
     : t("mobile.appBarTitleNoBus");
 
-  // No "not dispatched" state: before the first tap there is no run document,
-  // so there is no status to show at all. The status line and its dot exist
-  // only once a run does.
-  const statusLabel =
-    runStatus === "COMPLETED" ? t("mobile.runCompleted") : t("mobile.runInProgress");
-  const statusDot = runStatus === "COMPLETED" ? "bg-success" : "bg-primary";
-
   function openMenu() {
     setView("menu");
     setMenuOpen(true);
@@ -106,10 +114,15 @@ export function TopAppBar({ runMeta, runStatus, students }: TopAppBarProps) {
             >
               {title}
             </h1>
+            {/* No "not dispatched" state: before the first tap there is no run
+                document, so there is no status line at all. */}
             {runStatus !== null && (
               <p className="flex min-w-0 items-center gap-1.5 text-[11.5px] leading-4 text-on-surface-variant">
-                <span className={`h-1.5 w-1.5 flex-none rounded-full ${statusDot}`} aria-hidden="true" />
-                <span className="truncate">{statusLabel}</span>
+                <span
+                  className={`h-1.5 w-1.5 flex-none rounded-full ${RUN_DOT_CLASS[runStatus]}`}
+                  aria-hidden="true"
+                />
+                <span className="truncate">{t(RUN_LABEL_KEY[runStatus])}</span>
                 {/* The date is the first thing to give up its width on a 320px
                     phone; the status must stay readable. It remains available in
                     the run-details sheet. */}
@@ -140,9 +153,10 @@ export function TopAppBar({ runMeta, runStatus, students }: TopAppBarProps) {
       {/* The run manifest: one tick per student, in roster order. It is the
           signature mobile element and it costs one line — the summary strip
           below still carries the counts and their labels. Decorative here:
-          every count is announced by the summary section. Like the status line,
-          it belongs to a run, so it appears with the first tap. */}
-      {runStatus !== null && students && students.length > 0 && (
+          every count is announced by the summary section. It is about the
+          children, not the run, so it is there before the first tap too — all
+          neutral ticks, which is exactly "nobody has boarded yet". */}
+      {students && students.length > 0 && (
         <div
           className="flex items-center gap-px px-4 pb-2"
           aria-hidden="true"
@@ -218,7 +232,10 @@ export function TopAppBar({ runMeta, runStatus, students }: TopAppBarProps) {
               />
               <DetailRow label={t("runDetails.date")} value={formatDate(runMeta.date, locale)} />
               {runStatus !== null && (
-                <DetailRow label={t("runDetails.status")} value={statusLabel} />
+                <DetailRow
+                  label={t("runDetails.status")}
+                  value={t(RUN_LABEL_KEY[runStatus])}
+                />
               )}
             </dl>
           </div>

@@ -57,9 +57,6 @@ export const messages: Messages = {
   "mobile.clearSearchAria": "مسح البحث",
   "mobile.emptyTitle": "لا يوجد طلاب",
   "mobile.emptySubtitle": "جرّب اسماً أو تصفية أخرى.",
-  "mobile.noRunTitle": "لا توجد رحلة اليوم",
-  "mobile.noRunBody":
-    "لم يُرسل مدير المدرسة رحلة هذه الحافلة الصباحية بعد. ستظهر هنا عند إرسالها.",
   "mobile.noStudentsTitle": "لا يوجد طلاب في هذه الحافلة",
   "mobile.noStudentsBody":
     "لم يُعيَّن أي طفل لهذه الحافلة بعد. يمكن لمكتب المدرسة إضافتهم من الكشف.",

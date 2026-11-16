@@ -441,66 +441,69 @@ export function useRunRoster(): RunRoster {
       // and clear the one that no longer applies when the driver cycles back.
       // Without this, a row that went BOARDED → WAITING would keep a stale
       // "Board at" time on the dashboard.
-      //
-      // The row is written whole — its run, its day, its bus and its child —
-      // because on a child with no record yet this write is a CREATE, and the
-      // rules refuse a create that does not carry them. On a row that already
-      // exists those values are the ones it holds, so `affectedKeys()` sees only
-      // the status and the stamps and the update branch still admits it.
-      const patch: {
-        runId: string;
-        date: string;
-        busId: string;
-        busName: string;
-        studentName: string;
-        grade: string;
-        status: StudentStatus;
+      const times: {
         boardedAt?: FieldValue | null;
         droppedOffAt?: FieldValue | null;
-        // Provenance is mandatory: `firestore.rules` refuses a roster write that
-        // does not carry who made it and the server's clock.
-        updatedBy: string;
-        updatedAt: FieldValue;
-      } = {
-        runId,
-        date,
-        busId,
-        busName,
-        studentName: current.name,
-        grade: current.grade,
-        status: next,
-        updatedBy: uid,
-        updatedAt: serverTimestamp(),
-      };
+      } = {};
       if (next === "BOARDED") {
-        patch.boardedAt = serverTimestamp();
-        patch.droppedOffAt = null;
+        times.boardedAt = serverTimestamp();
+        times.droppedOffAt = null;
       } else if (next === "DROPPED_OFF") {
-        patch.droppedOffAt = serverTimestamp();
+        times.droppedOffAt = serverTimestamp();
       } else {
-        patch.boardedAt = null;
-        patch.droppedOffAt = null;
+        times.boardedAt = null;
+        times.droppedOffAt = null;
       }
+      // The row's identity rides a CREATE and nothing else. `merge: true` does
+      // not hide a changed value from `affectedKeys()`, and the rules let a
+      // driver change only the status, the two times and the stamps on a row
+      // that already exists — so a bus renamed mid-run or a class corrected by a
+      // sheet import after the row was written would make every tap, and the
+      // whole sign-off batch, be refused. `statuses` is the live map, so a child
+      // in it has a row; a stale cache that misses one lands on the create shape
+      // and is refused (and reported), which is what the driver saw before.
+      //
+      // Provenance is mandatory either way: `firestore.rules` refuses a roster
+      // write that does not carry who made it and the server's clock.
+      const hasRecord = statuses.has(id);
+      const row = hasRecord
+        ? { status: next, ...times, updatedBy: uid, updatedAt: serverTimestamp() }
+        : {
+            runId,
+            date,
+            busId,
+            busName,
+            studentName: current.name,
+            grade: current.grade,
+            status: next,
+            ...times,
+            updatedBy: uid,
+            updatedAt: serverTimestamp(),
+          };
       // The change and its log entry commit together or not at all. A queued tap
       // that synced an hour later keeps `occurredAt` as the moment of the press.
       const batch = writeBatch(firestore);
-      // The run is created by the first tap, not by a dispatch. `merge` means an
-      // existing run document is rewritten with the values it already carries.
-      batch.set(
-        doc(firestore, "schools", schoolId, "runs", runId),
-        {
-          busId,
-          runType: ROSTER_RUN_TYPE,
-          date,
-          status: "IN_PROGRESS",
-          updatedBy: uid,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
+      // The run is created by the first tap, not by a dispatch — and only when
+      // this client knows of no run. Rewriting it on every tap would cost one
+      // write per child and would let a client that has not yet observed a
+      // COMPLETED run move it back to IN_PROGRESS.
+      if (runStatus === null) {
+        batch.set(
+          doc(firestore, "schools", schoolId, "runs", runId),
+          {
+            busId,
+            runType: ROSTER_RUN_TYPE,
+            date,
+            status: "IN_PROGRESS",
+            updatedBy: uid,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      }
       batch.set(
         doc(firestore, "schools", schoolId, "attendance", `${runId}__${id}`),
-        patch,
+        row,
         { merge: true },
       );
       queueAudit(batch, firestore, schoolId, {
@@ -542,23 +545,29 @@ export function useRunRoster(): RunRoster {
     let markedAbsent = 0;
     for (const student of roster) {
       if (student.status === "WAITING") {
+        // A child nobody has recorded has no attendance document, so his write is
+        // a CREATE and must carry the row's identity. A child who still has the
+        // dispatch-era WAITING row gets the status and the stamps only — an
+        // update may change nothing else, and a diverged `grade` or `busName`
+        // would otherwise refuse the whole batch and leave the day signed off as
+        // nothing.
+        const row = statuses.has(student.id)
+          ? { status: "ABSENT", boardedAt: null, droppedOffAt: null, ...stamp }
+          : {
+              runId,
+              date,
+              busId,
+              busName,
+              studentName: student.name,
+              grade: student.grade,
+              status: "ABSENT",
+              boardedAt: null,
+              droppedOffAt: null,
+              ...stamp,
+            };
         batch.set(
           doc(firestore, "schools", schoolId, "attendance", `${runId}__${student.id}`),
-          // The whole row, not just the status: a child nobody has recorded
-          // today has no attendance document yet, so this write is a CREATE and
-          // the rules refuse one that does not name its run, day, bus and child.
-          {
-            runId,
-            date,
-            busId,
-            busName,
-            studentName: student.name,
-            grade: student.grade,
-            status: "ABSENT",
-            boardedAt: null,
-            droppedOffAt: null,
-            ...stamp,
-          },
+          row,
           { merge: true },
         );
         markedAbsent += 1;
@@ -588,38 +597,50 @@ export function useRunRoster(): RunRoster {
       const runId = buildRunId(busId, date, ROSTER_RUN_TYPE);
       const batch = writeBatch(firestore);
       // Same lazy run creation as `cycleStatus`: correcting a child to absent is
-      // also a write on today's run, so it must not need a dispatch either.
-      batch.set(
-        doc(firestore, "schools", schoolId, "runs", runId),
-        {
-          busId,
-          runType: ROSTER_RUN_TYPE,
-          date,
-          status: "IN_PROGRESS",
-          updatedBy: uid,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
+      // also a write on today's run, so it must not need a dispatch either — but
+      // a run this client can see is never rewritten by a tap.
+      if (runStatus === null) {
+        batch.set(
+          doc(firestore, "schools", schoolId, "runs", runId),
+          {
+            busId,
+            runType: ROSTER_RUN_TYPE,
+            date,
+            status: "IN_PROGRESS",
+            updatedBy: uid,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      }
+      // The identity fields are what the rules require of a CREATE — a child
+      // nobody has recorded today has no row until this one — and what an update
+      // may not touch. A correction to "absent" must not leave a boarded/dropped
+      // time behind either: the roster and the dashboard columns would
+      // contradict it.
+      const absentTimes = { boardedAt: null, droppedOffAt: null };
+      const row = statuses.has(id)
+        ? {
+            status: "ABSENT",
+            ...absentTimes,
+            updatedBy: uid,
+            updatedAt: serverTimestamp(),
+          }
+        : {
+            runId,
+            date,
+            busId,
+            busName,
+            studentName: current.name,
+            grade: current.grade,
+            status: "ABSENT",
+            ...absentTimes,
+            updatedBy: uid,
+            updatedAt: serverTimestamp(),
+          };
       batch.set(
         doc(firestore, "schools", schoolId, "attendance", `${runId}__${id}`),
-        // A correction to "absent" must not leave a boarded/dropped time
-        // behind: the roster and the dashboard columns would contradict it.
-        // The identity fields are what the rules require of a create — a child
-        // nobody has recorded today has no row until this one.
-        {
-          runId,
-          date,
-          busId,
-          busName,
-          studentName: current.name,
-          grade: current.grade,
-          status: "ABSENT",
-          boardedAt: null,
-          droppedOffAt: null,
-          updatedBy: uid,
-          updatedAt: serverTimestamp(),
-        },
+        row,
         { merge: true },
       );
       queueAudit(batch, firestore, schoolId, {

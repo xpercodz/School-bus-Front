@@ -56,9 +56,6 @@ export const messages = {
   "mobile.clearSearchAria": "Clear search",
   "mobile.emptyTitle": "No students found",
   "mobile.emptySubtitle": "Try a different name or filter.",
-  "mobile.noRunTitle": "No run today",
-  "mobile.noRunBody":
-    "Your director hasn't dispatched this bus's morning run yet. It will appear here when they do.",
   "mobile.noStudentsTitle": "No students on this bus",
   "mobile.noStudentsBody":
     "No child is assigned to this bus yet. The school office can add them from the roll.",

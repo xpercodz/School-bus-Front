@@ -55,8 +55,6 @@ export const messages: Messages = {
   "mobile.clearSearchAria": "Effacer la recherche",
   "mobile.emptyTitle": "Aucun élève trouvé",
   "mobile.emptySubtitle": "Essayez un autre nom ou un autre filtre.",
-  "mobile.noRunTitle": "Aucun trajet aujourd’hui",
-  "mobile.noRunBody": "Le directeur n’a pas encore lancé le trajet du matin de ce bus. Il apparaîtra ici dès que ce sera fait.",
   "mobile.noStudentsTitle": "Aucun élève dans ce bus",
   "mobile.noStudentsBody": "Aucun enfant n’est encore affecté à ce bus. Le secrétariat de l’école peut les ajouter depuis la liste.",
   "mobile.syncStatus": "État de synchronisation",
