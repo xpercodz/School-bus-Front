@@ -376,11 +376,21 @@ function toAdminStudent(d: DocumentSnapshot): AdminStudent {
  * reads it a page at a time — but an import must match the WHOLE roll, or every
  * child past the loaded pages is reported as "no student" and silently skipped.
  * Pages through the same query the table uses.
+ *
+ * Resolves `[]` only for a school that genuinely has no children; rejects when
+ * the school itself cannot be resolved, so a caller cannot mistake an unread
+ * roster for an empty one.
  */
 export async function fetchAllStudents(uid: string): Promise<AdminStudent[]> {
   if (!db || !uid) return [];
   const schoolId = await fetchSchoolId(uid);
-  if (!schoolId) return [];
+  // `fetchSchoolId` swallows its own read failure and answers `null`, so a null
+  // here is "the school could not be resolved", not "a school with no children".
+  // The importer plans every create and every archive against this list, so it
+  // must be able to tell the two apart: an empty array would read as "every
+  // child on the sheet is new" and duplicate the whole roll. Throwing is what
+  // keeps `openImport` from opening the dialog on a roster it never read.
+  if (!schoolId) throw new Error("fetchAllStudents: school could not be resolved");
   const firestore = db;
   const all: AdminStudent[] = [];
   let cursor: DocumentSnapshot | null = null;

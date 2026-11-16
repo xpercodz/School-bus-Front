@@ -28,6 +28,11 @@ interface AttendanceTableProps {
    * decides that, so the table only marks the rows it is handed.
    */
   archivedIds?: ReadonlySet<string>;
+  /**
+   * The child whose Restore is being written. The pressed row shows the spinner
+   * and every other Restore is disabled, so one press is one audit entry.
+   */
+  restoringId?: string | null;
   /** Bring an archived child back onto the roll (row Restore action). */
   onRestore?: (row: AttendanceRow) => void;
   /** Open a student's attendance history (row History action). */
@@ -94,6 +99,7 @@ export function AttendanceTable({
   summaries,
   hasFilters = false,
   archivedIds,
+  restoringId,
   onRestore,
   onViewHistory,
   onEdit,
@@ -222,6 +228,8 @@ export function AttendanceTable({
                       variant="secondary"
                       size="md"
                       className="arc-field mt-2"
+                      disabled={restoringId != null}
+                      loading={restoringId === row.id}
                     >
                       {t("studentList.restore")}
                     </Button>
@@ -370,6 +378,8 @@ export function AttendanceTable({
                             onClick={() => onRestore(row)}
                             variant="ghost"
                             size="sm"
+                            disabled={restoringId != null}
+                            loading={restoringId === row.id}
                           >
                             {t("studentList.restore")}
                           </Button>

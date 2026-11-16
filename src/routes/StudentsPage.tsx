@@ -127,14 +127,24 @@ export default function StudentsPage() {
     classes: digits(classes),
   });
 
+  /**
+   * The child whose Restore write is in flight. Every restore queues its own
+   * audit entry, so a second press would write a second `student.restored` —
+   * one press, one entry, while the row shows the spinner.
+   */
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
   /** Bring one child back. He returns unassigned; a sheet or Assignments gives him a bus. */
   async function handleRestore(row: AttendanceRow) {
-    if (!uid) return;
+    if (!uid || restoringId !== null) return;
+    setRestoringId(row.id);
     try {
       await setStudentArchived(uid, row.id, false);
       showToast(t("toast.restored", { name: row.name }));
     } catch {
       showToast(t("toast.error"));
+    } finally {
+      setRestoringId(null);
     }
   }
 
@@ -241,6 +251,7 @@ export default function StudentsPage() {
                 summaries={summary.byStudentId}
                 hasFilters={list.hasFilters}
                 archivedIds={archivedIds}
+                restoringId={restoringId}
                 onRestore={handleRestore}
                 onViewHistory={setHistoryStudent}
                 onEdit={(row) =>
