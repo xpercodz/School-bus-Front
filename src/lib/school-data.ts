@@ -123,6 +123,11 @@ function useLiveFlag(): boolean {
 interface DriverBus {
   /** The signed-in driver's bus id, or null when they aren't linked to one. */
   busId: string | null;
+  /**
+   * That bus's display name, from the same snapshot. Only the attendance row a
+   * tap creates reads it (`busName` is a copy taken when the row is written).
+   */
+  busName: string;
   loading: boolean;
 }
 
@@ -139,6 +144,7 @@ function useDriverBus(): DriverBus {
   const uid = user?.uid;
 
   const [busId, setBusId] = useState<string | null>(null);
+  const [busName, setBusName] = useState("");
   const [loadedUid, setLoadedUid] = useState<string | null>(null);
   const loading = live && loadedUid !== uid;
 
@@ -154,6 +160,7 @@ function useDriverBus(): DriverBus {
       if (cancelled) return;
       if (!schoolId) {
         setBusId(null);
+        setBusName("");
         setLoadedUid(uid);
         return;
       }
@@ -173,6 +180,7 @@ function useDriverBus(): DriverBus {
           (snap) => {
             if (cancelled) return;
             setBusId(snap.docs[0]?.id ?? null);
+            setBusName((snap.docs[0]?.data().name as string | undefined) ?? "");
             // Not on an empty cache read — see settlesLoading.
             if (settlesLoading(snap.metadata.fromCache, snap.size > 0)) {
               setLoadedUid(uid);
@@ -192,7 +200,7 @@ function useDriverBus(): DriverBus {
     };
   }, [live, uid]);
 
-  return { busId, loading };
+  return { busId, busName, loading };
 }
 
 export interface RunRoster {
@@ -220,13 +228,26 @@ export interface RunRoster {
   writeFailed: boolean;
 }
 
+/** A child standing on the driver's bus, before today's record is merged in. */
+interface RosterDoc {
+  id: string;
+  name: string;
+  grade: string;
+}
+
+const EMPTY_ROSTER_DOCS: readonly RosterDoc[] = [];
+const EMPTY_ROSTER: readonly Student[] = [];
+const EMPTY_STATUSES: ReadonlyMap<string, StudentStatus> = new Map();
+
 export function useRunRoster(): RunRoster {
   const live = useLiveFlag();
   const { user } = useAuth();
   const uid = user?.uid;
-  const { busId, loading: busLoading } = useDriverBus();
+  const { busId, busName, loading: busLoading } = useDriverBus();
 
-  const [roster, setRoster] = useState<readonly Student[]>([]);
+  const [docs, setDocs] = useState<readonly RosterDoc[]>(EMPTY_ROSTER_DOCS);
+  const [statuses, setStatuses] =
+    useState<ReadonlyMap<string, StudentStatus>>(EMPTY_STATUSES);
   const [runStatus, setRunStatus] = useState<RunDoc["status"]>("IN_PROGRESS");
   const [runExists, setRunExists] = useState(false);
   /**
@@ -236,12 +257,20 @@ export function useRunRoster(): RunRoster {
    * way to know a child's record was lost. Resets on the next success.
    */
   const [writeFailed, setWriteFailed] = useState(false);
-  // loading = live && the bus/roster snapshot hasn't landed for this key yet.
-  // The key includes busId so a live driver reassignment re-shows the skeleton
-  // until the new bus's roster arrives (never a stale bus's students).
-  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  // loading = live && every listener that feeds the roster has delivered for
+  // this key. There are two of them now (the bus's children and today's
+  // records), so the key settles only when BOTH have. The key includes busId so
+  // a live driver reassignment re-shows the skeleton until the new bus's
+  // children arrive (never a stale bus's students).
+  const [settled, setSettled] = useState<{
+    key: string;
+    students: boolean;
+    attendance: boolean;
+  } | null>(null);
   const key = `${uid ?? ""}|${busId ?? ""}`;
-  const loading = live && (busLoading || loadedKey !== key);
+  const loading =
+    live &&
+    (busLoading || settled?.key !== key || !settled.students || !settled.attendance);
 
   useEffect(() => {
     if (!live || !uid || !db) return;
@@ -250,53 +279,110 @@ export function useRunRoster(): RunRoster {
     let cancelled = false;
     const unsubscribers: (() => void)[] = [];
     const effectKey = `${uid}|${busId ?? ""}`;
+    // One gate per gating listener; the ceiling below settles both, exactly as
+    // the single-listener hooks settle their one.
+    const settle = (part: "students" | "attendance") =>
+      setSettled((prev) => {
+        const base =
+          prev?.key === effectKey
+            ? prev
+            : { key: effectKey, students: false, attendance: false };
+        return { ...base, [part]: true };
+      });
     // Ceiling: never leave the skeleton up forever.
-    const settleTimer = setTimeout(() => setLoadedKey(effectKey), LOADING_SETTLE_TIMEOUT_MS);
+    const settleTimer = setTimeout(
+      () => setSettled({ key: effectKey, students: true, attendance: true }),
+      LOADING_SETTLE_TIMEOUT_MS,
+    );
 
     void fetchSchoolId(uid).then((schoolId) => {
       if (cancelled) return;
       if (!schoolId || !busId) {
         // No school, or this user isn't assigned to a bus — no roster to show.
-        setRoster([]);
+        setDocs(EMPTY_ROSTER_DOCS);
+        setStatuses(EMPTY_STATUSES);
         setRunExists(false);
-        setLoadedKey(effectKey);
+        setSettled({ key: effectKey, students: true, attendance: true });
         return;
       }
       const runId = buildRunId(busId, todayDateStr(), ROSTER_RUN_TYPE);
-      const attQuery = query(
-        collection(firestore, "schools", schoolId, "attendance"),
-        where("runId", "==", runId),
-      );
+      // The roster is the children standing on this bus, not the day's copy of
+      // them: `students` is the record, so a child nobody has recorded anything
+      // about today is still listed (and reads WAITING through the absence of a
+      // row below). A child moved onto this bus appears, and one moved off it
+      // disappears, without a reload — both listeners are live.
       unsubscribers.push(
         onSnapshot(
-          attQuery,
+          query(
+            collection(firestore, "schools", schoolId, "students"),
+            where("busId", "==", busId),
+          ),
           // See settlesLoading + useDriverBus: without metadata changes a warm
           // empty cache never reports the server confirmation, and the skeleton
           // waits out the whole settle ceiling.
           { includeMetadataChanges: true },
           (snap) => {
-            const list: Student[] = snap.docs
-              .map((d) => {
+            if (cancelled) return;
+            setDocs(
+              snap.docs.flatMap((d) => {
                 const data = d.data();
-                // Doc id is `${runId}__${studentId}` — keep only the student id so
-                // writes (cycleStatus/markAbsent/completeRun) land on the right doc.
-                return {
-                  id: d.id.split("__").at(-1) ?? d.id,
-                  name: (data.studentName as string) ?? "",
-                  grade: (data.grade as string) ?? "",
-                  status: (data.status as StudentStatus) ?? "WAITING",
-                };
-              })
-              .sort((a, b) => a.name.localeCompare(b.name));
-            setRoster(list);
+                // An archived child has left the roster — and an archive clears
+                // the bus, so this is belt and braces rather than the norm.
+                if (data.archived === true) return [];
+                return [
+                  {
+                    id: d.id,
+                    name: (data.name as string) ?? "",
+                    grade: (data.grade as string) ?? "",
+                  },
+                ];
+              }),
+            );
             // Not on an empty cache read — see settlesLoading.
             if (settlesLoading(snap.metadata.fromCache, snap.size > 0)) {
-              setLoadedKey(effectKey);
+              settle("students");
             }
           },
-          () => setLoadedKey(effectKey),
+          () => settle("students"),
         ),
       );
+      // Today's records for this run, keyed by student id. BOTH filters are
+      // load-bearing: `firestore.rules` authorises a staff list on
+      // `resource.data.busId`, and Firestore proves a list only from the fields
+      // the query itself constrains — a `runId`-only query is denied. The pair
+      // needs the composite index in firebase/firestore.indexes.json.
+      unsubscribers.push(
+        onSnapshot(
+          query(
+            collection(firestore, "schools", schoolId, "attendance"),
+            where("busId", "==", busId),
+            where("runId", "==", runId),
+          ),
+          { includeMetadataChanges: true },
+          (snap) => {
+            if (cancelled) return;
+            setStatuses(
+              new Map(
+                snap.docs.map((d) => [
+                  // Doc id is `${runId}__${studentId}` — keep only the student
+                  // id so the merge below matches the roster entry and the
+                  // writes land on the right doc.
+                  d.id.split("__").at(-1) ?? d.id,
+                  (d.data().status as StudentStatus) ?? "WAITING",
+                ]),
+              ),
+            );
+            // Not on an empty cache read — see settlesLoading.
+            if (settlesLoading(snap.metadata.fromCache, snap.size > 0)) {
+              settle("attendance");
+            }
+          },
+          () => settle("attendance"),
+        ),
+      );
+      // The run document itself: it no longer gates the roster (the first tap
+      // creates it), but it is still what the app bar and the completed lock
+      // read.
       unsubscribers.push(
         onSnapshot(
           doc(firestore, "schools", schoolId, "runs", runId),
@@ -319,6 +405,15 @@ export function useRunRoster(): RunRoster {
     };
   }, [live, uid, busId, busLoading]);
 
+  // The merge: the bus's children in name order, each carrying today's status
+  // or WAITING when nobody has recorded anything about them yet.
+  const roster = useMemo<readonly Student[]>(() => {
+    if (!live) return EMPTY_ROSTER;
+    return docs
+      .map((d) => ({ ...d, status: statuses.get(d.id) ?? "WAITING" }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [live, docs, statuses]);
+
   function cycleStatus(id: string) {
     // Completed runs are locked — no status changes after sign-off.
     if (!live || !uid || !db || !busId || runStatus === "COMPLETED") return;
@@ -333,21 +428,43 @@ export function useRunRoster(): RunRoster {
       STATUS_CYCLE[(STATUS_CYCLE.indexOf(current.status) + 1) % STATUS_CYCLE.length];
     void fetchSchoolId(uid).then(async (schoolId) => {
       if (!schoolId) return;
-      const runId = buildRunId(busId, todayDateStr(), ROSTER_RUN_TYPE);
+      // One date for the run id and the row's `date`: the rules pin a created
+      // row to `busId + '-' + date + '-morning'`, so the two must not straddle
+      // midnight.
+      const date = todayDateStr();
+      const runId = buildRunId(busId, date, ROSTER_RUN_TYPE);
       // Record boarding/drop-off timestamps so the dashboard columns populate,
       // and clear the one that no longer applies when the driver cycles back.
       // Without this, a row that went BOARDED → WAITING would keep a stale
       // "Board at" time on the dashboard.
+      //
+      // The row is written whole — its run, its day, its bus and its child —
+      // because on a child with no record yet this write is a CREATE, and the
+      // rules refuse a create that does not carry them. On a row that already
+      // exists those values are the ones it holds, so `affectedKeys()` sees only
+      // the status and the stamps and the update branch still admits it.
       const patch: {
+        runId: string;
+        date: string;
+        busId: string;
+        busName: string;
+        studentName: string;
+        grade: string;
         status: StudentStatus;
         boardedAt?: FieldValue | null;
         droppedOffAt?: FieldValue | null;
+        // Provenance is mandatory: `firestore.rules` refuses a roster write that
+        // does not carry who made it and the server's clock.
         updatedBy: string;
         updatedAt: FieldValue;
       } = {
+        runId,
+        date,
+        busId,
+        busName,
+        studentName: current.name,
+        grade: current.grade,
         status: next,
-        // Provenance is mandatory: `firestore.rules` refuses a roster write that
-        // does not carry who made it and the server's clock.
         updatedBy: uid,
         updatedAt: serverTimestamp(),
       };
@@ -363,6 +480,20 @@ export function useRunRoster(): RunRoster {
       // The change and its log entry commit together or not at all. A queued tap
       // that synced an hour later keeps `occurredAt` as the moment of the press.
       const batch = writeBatch(firestore);
+      // The run is created by the first tap, not by a dispatch. `merge` means an
+      // existing run document is rewritten with the values it already carries.
+      batch.set(
+        doc(firestore, "schools", schoolId, "runs", runId),
+        {
+          busId,
+          runType: ROSTER_RUN_TYPE,
+          date,
+          status: "IN_PROGRESS",
+          updatedBy: uid,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
       batch.set(
         doc(firestore, "schools", schoolId, "attendance", `${runId}__${id}`),
         patch,
@@ -430,16 +561,40 @@ export function useRunRoster(): RunRoster {
     if (!live || !uid || !db || !busId || runStatus === "COMPLETED") return;
     const firestore = db;
     const current = roster.find((s) => s.id === id);
+    if (!current) return;
     const occurredAt = new Date();
     void fetchSchoolId(uid).then(async (schoolId) => {
       if (!schoolId) return;
-      const runId = buildRunId(busId, todayDateStr(), ROSTER_RUN_TYPE);
+      const date = todayDateStr();
+      const runId = buildRunId(busId, date, ROSTER_RUN_TYPE);
       const batch = writeBatch(firestore);
+      // Same lazy run creation as `cycleStatus`: correcting a child to absent is
+      // also a write on today's run, so it must not need a dispatch either.
+      batch.set(
+        doc(firestore, "schools", schoolId, "runs", runId),
+        {
+          busId,
+          runType: ROSTER_RUN_TYPE,
+          date,
+          status: "IN_PROGRESS",
+          updatedBy: uid,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
       batch.set(
         doc(firestore, "schools", schoolId, "attendance", `${runId}__${id}`),
         // A correction to "absent" must not leave a boarded/dropped time
         // behind: the roster and the dashboard columns would contradict it.
+        // The identity fields are what the rules require of a create — a child
+        // nobody has recorded today has no row until this one.
         {
+          runId,
+          date,
+          busId,
+          busName,
+          studentName: current.name,
+          grade: current.grade,
           status: "ABSENT",
           boardedAt: null,
           droppedOffAt: null,
@@ -452,7 +607,7 @@ export function useRunRoster(): RunRoster {
         event: "attendance.changed",
         targetType: "student",
         targetId: id,
-        changes: { status: { from: current?.status ?? null, to: "ABSENT" } },
+        changes: { status: { from: current.status, to: "ABSENT" } },
         meta: { runId, busId },
         occurredAt,
       });
