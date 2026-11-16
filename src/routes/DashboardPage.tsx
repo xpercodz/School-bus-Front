@@ -24,8 +24,10 @@ export default function DashboardPage() {
   const [date, setDate] = useSelectedDate("live");
   const [segment, setSegment] = useState<RunSegmentId>("morning");
   const [dispatchOpen, setDispatchOpen] = useState(false);
+  // The standing roster joins the day's arithmetic — on the live day only. A
+  // past day is its records; Reports keeps asking for records alone.
   const { kpis, summary, finding, findingKind, buses, attendance, loading, live } =
-    useDashboardData(date, segment);
+    useDashboardData(date, segment, true, date === null || date === todayDateStr());
   const { t, locale } = useLocale();
   const schoolName = useSchoolName();
   // One coordinated reveal when the data blocks actually render; a live

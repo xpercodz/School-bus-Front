@@ -1063,6 +1063,14 @@ export function rollRow(
 
 // ── director dashboard ───────────────────────────────────────────────────────
 
+/** A child standing on a bus — the roster's side of the day's union. */
+interface RosterChildDoc {
+  id: string;
+  busId: string;
+}
+
+const EMPTY_ROSTER_CHILDREN: readonly RosterChildDoc[] = [];
+
 export interface DashboardData {
   kpis: readonly KPI[];
   summary: DashboardSummary;
@@ -1093,11 +1101,18 @@ export interface DashboardData {
  *
  * Callers that always want the day (every call site but that one) keep passing
  * two arguments and get the same behaviour as before.
+ *
+ * `includeRoster` adds the standing roster to the day's arithmetic: children
+ * standing on a bus that has a run of the selected segment read as waiting when
+ * nobody has recorded them. It is opt-in, and the memo applies it only on the
+ * live day — a past day is its records, and Reports never asks for it. It never
+ * gates `loading`: a late roster snapshot fills the numbers in silently.
  */
 export function useDashboardData(
   dateStr?: string | null,
   segment: RunSegmentId = "morning",
   enabled = true,
+  includeRoster = false,
 ): DashboardData {
   const live = useLiveFlag();
   const { user } = useAuth();
@@ -1108,6 +1123,7 @@ export function useDashboardData(
   const [attendance, setAttendance] = useState<AttendanceDoc[]>([]);
   const [buses, setBuses] = useState<BusDoc[]>([]);
   const [runs, setRuns] = useState<RunDoc[]>([]);
+  const [roster, setRoster] = useState<readonly RosterChildDoc[]>(EMPTY_ROSTER_CHILDREN);
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const loading = live && enabled && loadedKey !== `${uid}|${effectiveDate}`;
 
@@ -1201,6 +1217,34 @@ export function useDashboardData(
         () => setLoadedKey(`${uid}|${effectiveDate}`),
       );
       unsubscribers.push(unsubAtt);
+
+      // The standing roster: the children standing on each bus today, whether or
+      // not anyone has recorded them. Only the Live monitor asks for it, and it
+      // never touches `loadedKey` — the gate above stays the attendance
+      // snapshot's, so a late roster fills the union in instead of holding the
+      // skeleton or clearing the page.
+      if (includeRoster) {
+        unsubscribers.push(
+          onSnapshot(
+            collection(firestore, base, "students"),
+            (snap) => {
+              if (cancelled) return;
+              setRoster(
+                snap.docs.flatMap((d) => {
+                  const data = d.data();
+                  // A child off the roll, or on no bus, rides no run.
+                  const busId = (data.busId as string | null) ?? "";
+                  if (data.archived === true || !busId) return [];
+                  return [{ id: d.id, busId }];
+                }),
+              );
+            },
+            // Ignore: sign-out denies every open listener before React unmounts
+            // them — and this one never settles the loading gate.
+            () => {},
+          ),
+        );
+      }
     });
 
     return () => {
@@ -1208,7 +1252,7 @@ export function useDashboardData(
       clearTimeout(settleTimer);
       unsubscribers.forEach((u) => u());
     };
-  }, [live, uid, effectiveDate, enabled]);
+  }, [live, uid, effectiveDate, enabled, includeRoster]);
 
   const data = useMemo<DashboardData>(() => {
     if (!live) {
@@ -1267,10 +1311,31 @@ export function useDashboardData(
     // page applies one uniform segment+search filter).
     const segAtt = attendance.filter((a) => runTypeFromRunId(a.runId) === segment);
 
-    const total = segAtt.length;
+    // A bus with no run of the selected segment is not on this segment at all.
+    const hasSegmentRun = (busId: string) =>
+      runs.some((r) => r.busId === busId && runTypeFromRunId(r.id) === segment);
+
+    // The roster's side of the union: a child standing on a bus with a run of
+    // this segment whom nobody has recorded yet is on that run, so he is
+    // waiting — not absent from the day. Opt-in (the Live monitor) and the live
+    // day only: a past day is its records, and Reports never asks for it. A
+    // child already carrying a row for the segment is counted from the row,
+    // never a second time from the roster.
+    const unrecordedByBus = new Map<string, number>();
+    let unrecorded = 0;
+    if (includeRoster && effectiveDate === todayDateStr()) {
+      const recorded = new Set(segAtt.map((a) => a.id.split("__").at(-1) ?? a.id));
+      for (const child of roster) {
+        if (!hasSegmentRun(child.busId) || recorded.has(child.id)) continue;
+        unrecordedByBus.set(child.busId, (unrecordedByBus.get(child.busId) ?? 0) + 1);
+        unrecorded += 1;
+      }
+    }
+
+    const total = segAtt.length + unrecorded;
     const onboard = countByStatus(segAtt, "BOARDED");
     const dropped = countByStatus(segAtt, "DROPPED_OFF");
-    const waiting = countByStatus(segAtt, "WAITING");
+    const waiting = countByStatus(segAtt, "WAITING") + unrecorded;
     const absent = countByStatus(segAtt, "ABSENT");
     const unaccounted = waiting + absent;
     const accounted = onboard + dropped;
@@ -1278,15 +1343,16 @@ export function useDashboardData(
     // Only fleet buses with a run of the selected segment are "active" — a bus
     // with no run shouldn't claim IN_PROGRESS with 0% stats.
     const busList: Bus[] = buses
-      .filter((bus) =>
-        runs.some((r) => r.busId === bus.id && runTypeFromRunId(r.id) === segment),
-      )
+      .filter((bus) => hasSegmentRun(bus.id))
       .map((bus) => {
         const busAtt = segAtt.filter((a) => a.busId === bus.id);
         const run = runs.find(
           (r) => r.busId === bus.id && runTypeFromRunId(r.id) === segment,
         );
-        const busTotal = busAtt.length;
+        // The bus's unrecorded children are in its denominator, so a run nobody
+        // has opened the app on reads 0%, not a completed 0 of 0.
+        const busRoster = unrecordedByBus.get(bus.id) ?? 0;
+        const busTotal = busAtt.length + busRoster;
         const onboardCount = countByStatus(busAtt, "BOARDED");
         const droppedCount = countByStatus(busAtt, "DROPPED_OFF");
         return {
@@ -1301,7 +1367,7 @@ export function useDashboardData(
           onboard: onboardCount,
           droppedOff: droppedCount,
           absent: countByStatus(busAtt, "ABSENT"),
-          waiting: countByStatus(busAtt, "WAITING"),
+          waiting: countByStatus(busAtt, "WAITING") + busRoster,
         };
       });
 
@@ -1398,7 +1464,20 @@ export function useDashboardData(
       loading,
       live: true,
     };
-  }, [live, attendance, buses, runs, loading, locale, t, tp, segment]);
+  }, [
+    live,
+    attendance,
+    buses,
+    runs,
+    roster,
+    includeRoster,
+    effectiveDate,
+    loading,
+    locale,
+    t,
+    tp,
+    segment,
+  ]);
 
   return data;
 }
