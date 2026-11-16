@@ -45,6 +45,8 @@ export type PluralKey =
   | "sheet.resultUpdate"
   | "sheet.resultUnchanged"
   | "sheet.resultUnmatched"
+  | "sheet.resultArchived"
+  | "sheet.resultRestored"
   | "studentList.showArchived"
   | "students.subtitle"
   | "toast.archived"

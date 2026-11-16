@@ -59,7 +59,7 @@ export const messages: Messages = {
   "mobile.emptySubtitle": "جرّب اسماً أو تصفية أخرى.",
   "mobile.noStudentsTitle": "لا يوجد طلاب في هذه الحافلة",
   "mobile.noStudentsBody":
-    "لم يُعيَّن أي طفل لهذه الحافلة بعد. يمكن لمكتب المدرسة إضافتهم من الكشف.",
+    "لم يُعيَّن أي طفل لهذه الحافلة بعد. يمكن لمكتب المدرسة إضافتهم من شاشة التعيينات.",
   "mobile.syncStatus": "حالة المزامنة",
   "mobile.online": "مباشر",
   "mobile.offline": "دون اتصال — التغييرات محفوظة",
@@ -216,6 +216,7 @@ export const messages: Messages = {
   "studentList.showArchived.one": "عرض المؤرشفين ({count})",
   "studentList.archivedChip": "مؤرشف",
   "studentList.restore": "استعادة",
+  "studentList.restoreAria": "استعادة {name}",
   // داخل قائمة منسدلة طويلة بما يكفي للبحث عن قيمة.
   "dropdown.searchPlaceholder": "ابحث…",
   "dropdown.searchEmpty": "لا توجد نتائج",
@@ -857,6 +858,10 @@ export const messages: Messages = {
   "sheet.resultUnchanged.one": "{count} مطابق أصلًا",
   "sheet.resultUnmatched": "{count} صفًا غير مطبَّق",
   "sheet.resultUnmatched.one": "{count} صف غير مطبَّق",
+  "sheet.resultArchived": "{count} مؤرشف",
+  "sheet.resultArchived.one": "{count} مؤرشف",
+  "sheet.resultRestored": "{count} مُستعاد",
+  "sheet.resultRestored.one": "{count} مُستعاد",
   "sheet.classesTitle": "صفوف هذا الملف",
   "sheet.classNew": "جديد",
   "sheet.classesNote": "الصيغ التي تختلف فقط في الحروف الكبيرة أو المسافات أو كلمة Class/Grade تُعدّ صفًا واحدًا.",

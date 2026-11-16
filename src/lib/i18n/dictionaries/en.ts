@@ -58,7 +58,7 @@ export const messages = {
   "mobile.emptySubtitle": "Try a different name or filter.",
   "mobile.noStudentsTitle": "No students on this bus",
   "mobile.noStudentsBody":
-    "No child is assigned to this bus yet. The school office can add them from the roll.",
+    "No child is assigned to this bus yet. The school office can add them on the Assignments screen.",
   "mobile.syncStatus": "Sync status",
   "mobile.online": "Live",
   "mobile.offline": "Offline — changes saved",
@@ -215,7 +215,10 @@ export const messages = {
   "studentList.showArchived": "Show archived ({count})",
   "studentList.showArchived.one": "Show archived ({count})",
   "studentList.archivedChip": "Archived",
+  // A row action whose label is the same on every row, so the child's name is
+  // what tells two Restore controls apart.
   "studentList.restore": "Restore",
+  "studentList.restoreAria": "Restore {name}",
   // Inside a dropdown menu whose list is long enough to scan for a value.
   "dropdown.searchPlaceholder": "Search…",
   "dropdown.searchEmpty": "No matches",
@@ -872,6 +875,12 @@ export const messages = {
   "sheet.resultUnchanged.one": "{count} already matches",
   "sheet.resultUnmatched": "{count} rows not applied",
   "sheet.resultUnmatched.one": "{count} row not applied",
+  // Apply writes the rollover too, so the strip counts it — shown only when a
+  // child actually leaves or returns.
+  "sheet.resultArchived": "{count} archived",
+  "sheet.resultArchived.one": "{count} archived",
+  "sheet.resultRestored": "{count} restored",
+  "sheet.resultRestored.one": "{count} restored",
   "sheet.classesTitle": "Classes in this file",
   "sheet.classNew": "new",
   "sheet.classesNote":
