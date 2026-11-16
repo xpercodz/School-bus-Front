@@ -771,6 +771,12 @@ Fourteen small items accumulated across the task reviews. None is architectural;
 13. `SlideSegments`'s `box` variant lost its last consumer when dispatch's segment control went; its doc comment still says "(dispatch run type)". Delete the variant and its six `Record` entries, and drop that clause.
 14. The `hint.dispatch.body` translations for `fr` and `ar` mirror an English-shaped clause ("the morning needs no dispatch"). Rewrite them idiomatically, keeping the meaning and the glossary's terms.
 
+**From Task 13's own review (also behaviour, not polish):**
+
+15. **Mapping a column onto a field another column already holds does nothing, while the UI says it matched.** `columnFor` takes the first column with that field, so the newly chosen one is ignored by the plan and the reader cannot tell which column is in use. Make the newly chosen column win: when a column takes a field, any other column holding it returns to `ignore`. That is what the reader meant by choosing it.
+16. The ignored line counts its column names through `sheet.moreNames`, which reads "+1 autres" in French for six names. Give the name list its own string rather than pluralising a count that is already the count of columns.
+17. The disclosure's `sm:min-h-9` drops below the 44px floor at a breakpoint the rows do not share (`min-[761px]`). Align the two breakpoints.
+
 The following are **documented as deferred**, not fixed here — say so in the report: the roster listener's frozen `runId` across midnight, a stale `COMPLETED` status no-oping taps, the empty state that speaks after a denied `students` read, `openImport`'s shared parse token, and the inherited "sum of card denominators equals total" edge.
 
 - [ ] **Step 1:** items 1-5, with `npm run typecheck && npm run lint && npm run build` and a commit.
