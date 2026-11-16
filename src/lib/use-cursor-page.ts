@@ -94,8 +94,11 @@ export function useCursorPage<T>({
       setLoading(true);
     });
     void fetchSchoolId(uid).then(async (schoolId) => {
-      if (cancelled || !schoolId) return;
       try {
+        // A school that cannot be resolved is a page that never loads, so the
+        // early return belongs inside the `try`: outside it, `loading` stays
+        // true for ever.
+        if (cancelled || !schoolId) return;
         const snap = await getDocs(
           query(buildQuery(firestore, schoolId, null), limit(pageSize)),
         );
@@ -124,8 +127,10 @@ export function useCursorPage<T>({
     const keyAtCall = depsKeyRef.current;
     setLoading(true);
     void fetchSchoolId(uid).then(async (schoolId) => {
-      if (!schoolId) return;
       try {
+        // Inside the `try` for the same reason as the first page: a school that
+        // cannot be resolved must still turn the spinner off.
+        if (!schoolId) return;
         const snap = await getDocs(
           query(buildQuery(firestore, schoolId, lastVisible), limit(pageSize)),
         );
