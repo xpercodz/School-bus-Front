@@ -219,7 +219,7 @@ export interface RunRoster {
   runStatus: "IN_PROGRESS" | "COMPLETED" | null;
   /** Static identity of the run the roster shows (for the run-details sheet). busId is "" when the user has no bus. */
   runMeta: { busId: string; runType: string; date: string };
-  /** Complete the run: mark it COMPLETED and write an ABSENT row for every child it has no record of. */
+  /** Complete the run: mark it COMPLETED and resolve every child still unrecorded to ABSENT. */
   completeRun: () => Promise<void>;
   /** Set a student's status to ABSENT directly (kebab-menu shortcut). */
   markAbsent: (id: string) => void;
@@ -561,32 +561,46 @@ export function useRunRoster(): RunRoster {
       { merge: true },
     );
     // Sign-off asks the run's own map, never the rendered status (which is frozen
-    // to the listener's run): a child needs a row exactly when this run has no
-    // record of him. Under a stale map — a rollover, a bus change — nobody is
-    // recorded on this run, which is also what the rules see for a document that
-    // does not exist, so selection and shape are one question and cannot
-    // disagree. A child the map *does* hold keeps the row he has: another
-    // device's word about today is not ours to overwrite with a blanket ABSENT.
+    // to the listener's run), and it settles only what has no answer. A settled
+    // BOARDED/DROPPED_OFF/ABSENT row of this run is the day's record and is left
+    // alone, so another device's answer is never overwritten. A child still
+    // unrecorded — no row at all, or a WAITING row, which is "the absence of a
+    // state" since WAITING stopped being a status — is marked ABSENT, because a
+    // run that closes with a pill still reading "Board" contradicts what signing
+    // off means, and nothing can resolve it afterwards.
     const mapIsThisRun = statuses.runId === runId;
     let markedAbsent = 0;
     for (const student of roster) {
-      if (mapIsThisRun && statuses.byStudentId.has(student.id)) continue;
-      // No child reaching this point has a document to update, so the write is a
-      // CREATE and must carry the row's identity.
+      // `undefined` covers both "no row" and "a map that speaks for another run",
+      // and under a stale map that is everyone — which is what the rules will see
+      // for a document that does not exist.
+      const recorded = mapIsThisRun
+        ? statuses.byStudentId.get(student.id)
+        : undefined;
+      if (recorded !== undefined && carriesState(recorded)) continue;
+      // A WAITING row of this run is resolved in place: five keys, the update
+      // branch's whole allowlist, and `WAITING → ABSENT` is the only value that
+      // moves.
+      const resolvesInPlace = recorded === "WAITING";
+      // Otherwise there is no row to update, so this is a CREATE and must carry
+      // the row's identity.
+      const row = resolvesInPlace
+        ? { status: "ABSENT", boardedAt: null, droppedOffAt: null, ...stamp }
+        : {
+            runId,
+            date,
+            busId,
+            busName,
+            studentName: student.name,
+            grade: student.grade,
+            status: "ABSENT",
+            boardedAt: null,
+            droppedOffAt: null,
+            ...stamp,
+          };
       batch.set(
         doc(firestore, "schools", schoolId, "attendance", `${runId}__${student.id}`),
-        {
-          runId,
-          date,
-          busId,
-          busName,
-          studentName: student.name,
-          grade: student.grade,
-          status: "ABSENT",
-          boardedAt: null,
-          droppedOffAt: null,
-          ...stamp,
-        },
+        row,
         { merge: true },
       );
       markedAbsent += 1;
