@@ -75,20 +75,36 @@ driver, code-only sign-in).
 | Role | Signs in with | May open |
 | --- | --- | --- |
 | **director** | email + password | every screen, including Operators and Activity |
-| **operator** | email + password (same tab) | only the screens on their profile: `live`, `students`, `reports`, `assignments`, `drivers` |
+| **operator** | email + password (same tab) | only the capabilities on their profile — a screen, and the actions named inside it |
 | **staff** | 8-digit access code | the phone roster only; writes its own bus's runs and attendance |
 
-**A grant is the authority.** A secretary granted Students does the roster's work.
-The rule, deliberately:
+**A capability is the authority.** An operator does not hold a *screen*; they hold
+the actions inside it, one flat `section.action` key each. `section.view` is what
+opens the screen, every other key gates one control in it, and a control without
+its key is not drawn. The rules read the same list, so hiding a button is a
+courtesy, never the gate. The vocabulary, deliberately:
 
-- an operator granted **Students** may **create** a child and correct a `name` or
-  `grade` (class);
-- an operator granted **Assignments** may change a student's `busId` and link a
-  driver to a bus, and nothing else on those documents;
-- a caller holding **both** may send `grade` + `busId` in **one** write — which is
-  what one row of a sheet import is;
+- **Students** — `view`, `edit` (a name or class), `import` (the year's sheet, and
+  the archive half of it), `restore`, `export`, `history`;
+- **Reports** — `view`, `classDetail` (open one class), `analytics`, `print`,
+  `export`;
+- **Assignments** — `view`, `move` (a child's bus), `driver` (a bus's driver),
+  `mode` (the school-wide bus/driver labelling switch);
+- **Drivers** — `view`, `create`, `rotate` (issue a new code);
+- **Live monitor** — `view`;
+- a caller holding both the class grant and the bus grant may send `grade` +
+  `busId` in **one** write, which is what one row of a sheet import is;
 - **director-only**, because it is not office work: deleting a student, renaming
-  the school, the Operators page, and reading the Activity log.
+  the school, the Operators page, reading the Activity log — and reading a
+  driver's code.
+
+**A profile with no `permissions` field is read as "every capability of the
+`screens` it names",** so an operator created before capabilities existed keeps
+exactly what they had. An **empty** list means nothing; the two are not the same.
+The main director writes the list from the Operators page
+(`setOperatorPermissions` in `school-admin.ts`) in the same batch as its audit
+entry, and the rules allow that one field on an operator of the same school and
+nothing else.
 
 **The main director** (`owner: true`, or simply the only director of a school) is
 the one account that sees Operators. It is resolved in one place,
@@ -98,13 +114,15 @@ and server never disagree.
 
 **Three places have to agree, or a permission becomes a hidden link:**
 
-1. `src/lib/permissions.ts` — `canOpenScreen` decides what is *drawn*: nav rows,
-   route guards (`RequireAccess` admits the management shell; `RequireScreen` gates
-   each route and redirects to the first screen the reader *can* open).
-2. `firebase/firestore.rules` — reads the same `screens` names off the caller's
-   profile and grants a collection to the union of screens that need it. Writes are
-   narrower and field-split per grant (above), so one grant cannot quietly become
-   the other.
+1. `src/lib/permissions.ts` — `canOpenScreen` (nav rows, route guards) and
+   `can`/`useCan` (each control inside a screen) decide what is *drawn*:
+   `RequireAccess` admits the management shell, `RequireScreen` gates each route
+   and redirects to the first screen the reader *can* open.
+2. `firebase/firestore.rules` — `hasCap(cap, screen)` reads the caller's
+   `permissions` list, and `can(screen)` is `hasCap(screen + '.view', screen)`, so
+   every read grant is capability-aware through one line. Writes are narrower and
+   field-split per capability (above), so one grant cannot quietly become the
+   other.
 3. `School-bus-API` — `requireManager(screen)` for the privileged driver
    endpoints, `requireOwner` for `/v1/operators*`.
 
@@ -306,22 +324,37 @@ driver by name → an auto-generated code is shown **once** (copyable), with per
 reveal / copy / regenerate in pages of ten, and "Generate code" for any staff
 account that has none.
 
-**The issued code stays on screen.** Codes are hashed at rest, so
-`POST /v1/drivers/regenerate` returns the plaintext exactly once: the page keeps it
-in component state (`issuedCodes`) and renders it in that row with the "copy it now"
-hint, so "Generate code" visibly produces a code instead of only a toast. The first
-view runs a one-shot `code-issued` / `code-scan` animation (a rise plus a light
-band crossing the digits), replayed on rotation because the node is keyed by the
-code. Leaving the page loses the code by design — the API cannot return it again.
+**A code can be read again.** Two documents, and neither replaces the other:
+`driverCodes/{uid}` holds the `codeHash` that verification matches, and
+`driverCodeSecrets/{uid}` holds the plaintext, written by the API in the same
+batch. The secrets collection is **director-only** in the rules — on the
+`driverCodes` doc it would reach every operator granted Drivers, and a view
+permission would quietly become "sign in as any driver". So a director reveals or
+copies any current code, today or next week, and the eye/copy controls work off
+whichever document answered (the legacy `code` field of a pre-hash doc still
+counts). The freshly minted answer also goes into component state (`issuedCodes`)
+— that is what runs the once-per-code `code-issued` / `code-scan` animation — and
+the "copy it now" warning is shown only when the code is *not* stored.
+
+A code minted before the secrets collection existed cannot be recovered; issuing a
+new one makes it readable from then on.
 
 ### Operators and Activity
 
-`OperatorsPage.tsx` is the main director's alone: create an operator, choose the
-screens they may open, reset a password, remove them. Access can never be handed
-out from an operator's own account.
+`OperatorsPage.tsx` is the main director's alone: create an operator, choose what
+they may do, reset a password, remove them. The editor is one card per screen with
+an *All / None* switch and a row per capability carrying its label and a one-line
+gloss — a flat list of nineteen ticks is a screen nobody can use safely. Ticking
+an action implies the `view` that opens it, and unticking a view takes the
+section's actions with it, so the editor cannot save a permission with no way in.
+Access can never be handed out from an operator's own account.
 
 `ActivityPage.tsx` reads `schools/{schoolId}/audit` — see [§4](#4-the-data). It is
-director-only: the audited do not administer the audit.
+director-only: the audited do not administer the audit. The strip at the top is
+**four exact counts** (one per family, `getCountFromServer`), not a capped scan
+printed as a total, and it is also the filter. "Exact or absent" is the contract: a
+count that cannot be read shows `—` and logs why, never a stale or invented
+number.
 
 ### Guidebook, tour and hover hints
 
@@ -360,8 +393,9 @@ permissions, never written per role.**
 ```
 users/{uid}                          { role: "director"|"operator"|"staff",
                                        schoolId, email,
-                                       screens?: [...]  // an operator's granted pages
-                                       owner?: true }   // the main director
+                                       screens?: [...],     // legacy: granted pages
+                                       permissions?: [...], // an operator's capabilities
+                                       owner?: true }       // the main director
 schools/{schoolId}                   { name, assignmentMode? }
 schools/{schoolId}/students/{id}     { name, grade, busId, updatedBy, updatedAt }
                                    // `grade` is the CLASS label — "Grade 4A" on
@@ -373,6 +407,9 @@ schools/{schoolId}/buses/{id}        { name, driver, driverUid?, updatedBy, upda
 schools/{schoolId}/driverCodes/{uid} { codeHash }  // HMAC-SHA256(CODE_PEPPER, code);
                                    // director-only. Legacy docs may still carry a
                                    // plaintext { code } field.
+schools/{schoolId}/driverCodeSecrets/{uid} { code } // the readable copy, written by
+                                   // the API beside the hash; DIRECTORS ONLY, never
+                                   // client-writable.
 schools/{schoolId}/runs/{id}         { busId, runType, date, status }
 schools/{schoolId}/attendance/{id}   { runId, date, busId, busName, studentName,
                                        grade, status, boardedAt, droppedOffAt }
@@ -424,9 +461,22 @@ request.auth.uid` and `updatedAt == request.time` (`stamped()` in the rules) —
 half cannot be skipped. Retention is `AUDIT_RETENTION_DAYS` plus a TTL policy on
 `expiresAt`; entries are immutable by design.
 
+**The strip's counts cost one round trip, not four.** The four `getCountFromServer`
+queries run in parallel, and an `event IN` of ten values timed the same as a single
+`==` (139 ms vs 120–136 ms against production), so the cost is the round trip, not
+the scan — which is why there is no `family` field to denormalise. What the screen
+does pay is the tenant lookup: `useUserProfile` primes the cached `schoolId`
+(`primeSchoolId`), so the counts do not wait on a second read of `users/{uid}`, and
+the last exact answer per (user, window, actor) paints immediately on a revisit
+while the fresh one is in flight. A failed refresh still resolves to `—`.
+
 **Indexes.** The per-student history query (`attendance` where `studentName` +
 order by `date`, `runId`) needs the composite index in
-`firebase/firestore.indexes.json` (`npm run deploy:indexes`). Driver codes need a
+`firebase/firestore.indexes.json` (`npm run deploy:indexes`), and so do the audit
+queries: the feed orders `at` **descending**, while the counts strip has no
+`orderBy` at all and therefore needs the same fields with `at` **ascending**. Both
+directions are listed on purpose — a count query served by the descending index is
+refused with "requires an index", which is exactly how the strip shipped blank. Driver codes need a
 **single-field collection-group index on `codeHash`**, which the Firebase CLI
 cannot deploy — enable it once in the console (Firestore → Indexes → Single Field →
 Collection Group; the missing-index error from the verify query links to the
@@ -876,6 +926,24 @@ Accepted trade-offs, each with the condition that should make someone revisit it
   documents the procedure; `docs/ops/cloud-run-deploy.md` records the options.
 - **Contract drift is not enforced by any build step.** The two contract files are
   kept in sync by hand. Revisit when the surface outgrows a handful of endpoints.
+- **No Firestore rules tests exist in either repo.** The rules are the real gate
+  for every permission, and they are reviewed by reading, not by an emulator
+  suite — which is how a self-escalation hole (`permissions` unpinned on the
+  self-update branch) went unnoticed until this feature. Revisit before the next
+  permission change: `report-fe` already has `rules-tests/` + an emulator to copy.
+- **The API does not read capabilities yet.** `requireManager(screen)` still checks
+  the screen, and `/v1/drivers/regenerate` checks no capability at all — so for
+  those privileged routes the hidden button is the only guard until the API ships
+  `requirePermission`. The Firestore side is capability-aware already.
+- **Any director can re-scope an operator from the browser.** The rules allow
+  exactly `permissions` on an operator profile, but they cannot count directors to
+  resolve "the main director", so the *product* rule (only the main director hands
+  out access) is enforced by the Operators page, not by the database. Revisit if a
+  school ever runs two directors who must not re-scope each other.
+- **A driver's code is readable by every director, by design.** It is kept beside
+  the hash so the Drivers page can show it again; an operator granted Drivers sees
+  only that a code exists. A code minted before that copy existed is unrecoverable
+  — rotating it is the recovery path.
 
 **Data**
 
