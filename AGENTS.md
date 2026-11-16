@@ -440,10 +440,13 @@ any more: a bus with children always has a roster, and a bus with none gets its
 own empty state, gated on being online so a cold offline cache cannot tell a
 driver his bus is empty.
 
-- The run document is written **once**, when `runStatus` is null;
-  `completeRun` is the only writer of its status. A tap on a child who already
-  has a row sends only `status`, its two times and the stamps — the rules allow
-  nothing else on an existing document.
+- The run document is written **once**, when `runExists === false` — the gate is
+  the *observed* absence of the document, never `runStatus === null`, which only
+  means no snapshot has said (a listener the rules denied is not evidence of an
+  absent run); `completeRun` is the only writer of its status, and it writes the
+  run unconditionally. A tap on a child who already has a row sends only
+  `status`, its two times and the stamps — the rules allow nothing else on an
+  existing document.
 - **The identity fields ride a create only** (`runId`, `date`, `busId`,
   `busName`, `studentName`, `grade`). That is what stops a bus rename or a
   mid-day class correction — both of which change what those fields would say —
@@ -454,7 +457,9 @@ driver his bus is empty.
 - `completeRun` resolves every child the run has no **settled** record of to
   `ABSENT` — creating the row when there is none, updating it when it reads
   `WAITING`, and never overwriting a `BOARDED`/`DROPPED_OFF`/`ABSENT` answer that
-  may be another device's.
+  may be another device's. A `WAITING` row whose child has left the bus since
+  (moved, or archived) is settled the same way, so a sign-off cannot leave a row
+  behind that nothing can ever answer for.
 
 **The monitor counts the roster on the live day.** `useDashboardData` takes a
 fourth argument (`includeRoster`, default off, passed only by the Live monitor

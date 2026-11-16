@@ -212,9 +212,10 @@ export interface RunRoster {
   /** True when the current run is marked COMPLETED. */
   completed: boolean;
   /**
-   * Live run status for the run-details sheet, or null when there is no run
-   * document for this bus/date/type yet — the first tap creates it, so "no run"
-   * is the absence of a status rather than a status of its own.
+   * Live run status for the run-details sheet, or null when the listener has
+   * not said — either there is no run document for this bus/date/type yet, or
+   * no snapshot has arrived (or the listener errored). Null is "not observed",
+   * never "absent": `runExists` is the field that answers that.
    */
   runStatus: "IN_PROGRESS" | "COMPLETED" | null;
   /** Static identity of the run the roster shows (for the run-details sheet). busId is "" when the user has no bus. */
@@ -264,6 +265,15 @@ export function useRunRoster(): RunRoster {
   const [docs, setDocs] = useState<readonly RosterDoc[]>(EMPTY_ROSTER_DOCS);
   const [statuses, setStatuses] = useState<RunStatuses>(EMPTY_STATUSES);
   const [runStatus, setRunStatus] = useState<RunDoc["status"] | null>(null);
+  /**
+   * Whether today's run document exists — `null` until a snapshot or an error
+   * says. This is the field the writers read, because `runStatus === null` only
+   * means "no snapshot has told us": a listener that has not delivered yet, or
+   * one the rules denied, is not evidence of an absent run. Deciding from the
+   * status is what let a tap create a fresh `IN_PROGRESS` document on top of a
+   * signed-off day.
+   */
+  const [runExists, setRunExists] = useState<boolean | null>(null);
   /**
    * True when a tap could not be recorded. Both writes are now `await`ed
    * because the rules refuse an unstamped roster write, and a refusal used to
@@ -316,6 +326,7 @@ export function useRunRoster(): RunRoster {
         setDocs(EMPTY_ROSTER_DOCS);
         setStatuses(EMPTY_STATUSES);
         setRunStatus(null);
+        setRunExists(null);
         setSettled({ key: effectKey, students: true, attendance: true });
         return;
       }
@@ -399,11 +410,14 @@ export function useRunRoster(): RunRoster {
       );
       // The run document itself: it no longer gates the roster (the first tap
       // creates it), but it is still what the app bar and the completed lock
-      // read. A missing document is `null` — not a status of its own.
+      // read. A missing document is `null` — not a status of its own — and
+      // `runExists` is what remembers that the absence was observed rather than
+      // merely unknown.
       unsubscribers.push(
         onSnapshot(
           doc(firestore, "schools", schoolId, "runs", runId),
           (snap) => {
+            setRunExists(snap.exists());
             setRunStatus(
               snap.exists()
                 ? ((snap.data()?.status as RunDoc["status"]) ?? "IN_PROGRESS")
@@ -412,7 +426,10 @@ export function useRunRoster(): RunRoster {
           },
           () => {
             // Ignore: sign-out denies every open listener before React unmounts
-            // them — nothing to settle on this path.
+            // them — nothing to settle on this path. The existence answer is
+            // withdrawn rather than assumed absent, so a tap writes the row and
+            // leaves a run document it cannot see alone.
+            setRunExists(null);
           },
         ),
       );
@@ -502,10 +519,12 @@ export function useRunRoster(): RunRoster {
       // that synced an hour later keeps `occurredAt` as the moment of the press.
       const batch = writeBatch(firestore);
       // The run is created by the first tap, not by a dispatch — and only when
-      // this client knows of no run. Rewriting it on every tap would cost one
-      // write per child and would let a client that has not yet observed a
-      // COMPLETED run move it back to IN_PROGRESS.
-      if (runStatus === null) {
+      // this client has observed that there is no run. The gate is `runExists`,
+      // never `runStatus === null`: null means "no snapshot has said", and a
+      // tap that took that for absence would rewrite a run somebody else had
+      // already signed off, back to IN_PROGRESS. When the answer is unknown the
+      // tap writes only the row and leaves the run document alone.
+      if (runExists === false) {
         batch.set(
           doc(firestore, "schools", schoolId, "runs", runId),
           {
@@ -605,6 +624,25 @@ export function useRunRoster(): RunRoster {
       );
       markedAbsent += 1;
     }
+    // The roster is who stands on this bus now; the run's map is who it had. A
+    // child moved off the bus — or archived, which clears his bus — between the
+    // first tap and sign-off still holds a WAITING row of this run, and the loop
+    // above never sees him. He is settled here with the same status-only shape,
+    // so the day does not close leaving a row nobody can answer for. Only this
+    // run's own map is read: a stale one speaks for another bus, whose rows are
+    // not ours to write.
+    if (mapIsThisRun) {
+      const onRoster = new Set(roster.map((student) => student.id));
+      for (const [studentId, recorded] of statuses.byStudentId) {
+        if (recorded !== "WAITING" || onRoster.has(studentId)) continue;
+        batch.set(
+          doc(firestore, "schools", schoolId, "attendance", `${runId}__${studentId}`),
+          { status: "ABSENT", boardedAt: null, droppedOffAt: null, ...stamp },
+          { merge: true },
+        );
+        markedAbsent += 1;
+      }
+    }
     // One entry for one action. Forty orphan "marked absent" rows cannot be told
     // apart from forty human decisions.
     queueAudit(batch, firestore, schoolId, {
@@ -628,10 +666,11 @@ export function useRunRoster(): RunRoster {
       const date = todayDateStr();
       const runId = buildRunId(busId, date, ROSTER_RUN_TYPE);
       const batch = writeBatch(firestore);
-      // Same lazy run creation as `cycleStatus`: correcting a child to absent is
-      // also a write on today's run, so it must not need a dispatch either — but
-      // a run this client can see is never rewritten by a tap.
-      if (runStatus === null) {
+      // Same lazy run creation as `cycleStatus`, on the same gate: correcting a
+      // child to absent is also a write on today's run, so it must not need a
+      // dispatch either — but a run this client has observed is never rewritten
+      // by a tap, and an unobserved one is left alone entirely.
+      if (runExists === false) {
         batch.set(
           doc(firestore, "schools", schoolId, "runs", runId),
           {
@@ -894,9 +933,10 @@ function carriesState(status: StudentStatus): boolean {
 /**
  * Per-student presence over the retention window, for the roll view.
  *
- * `enabled` is the whole read: the roll view passes `true`, the day view passes
- * `false` and this does no reading at all (empty map, no loading), so the screen
- * never pays for the 90-day window while it is showing one day.
+ * `enabled` is the whole read: with `false` this does no reading at all (empty
+ * map, no loading). The roll is now the only caller and passes `true` — this
+ * window exists for it — but the gate stays for a screen that shows one day and
+ * must not pay for ninety.
  *
  * Aggregated in **days, not runs**: a day whose morning run boarded and whose
  * afternoon run is absent is one present day, not a tie. Only days carrying a
@@ -1102,14 +1142,12 @@ export interface DashboardData {
  * when the date changes; toggling the segment only re-derives in the memo (no
  * listener churn).
  *
- * `enabled` lets a caller own the day query: the Students screen reads the roll
- * instead of today when no date is picked, so it passes `false` and this hook
- * opens no listeners and does no clearing at all (the cached day rows are simply
- * not read). `live` is still reported truthfully, because the page's "live
- * unavailable" banner is about the connection, not about this hook reading.
- *
- * Callers that always want the day (every call site but that one) keep passing
- * two arguments and get the same behaviour as before.
+ * `enabled` lets a caller own the day query: with `false` this hook opens no
+ * listeners and does no clearing at all (the cached day rows are simply not
+ * read). Nothing passes `false` today — Live and Reports both want the day — so
+ * the gate waits for a screen that does not. `live` is still reported
+ * truthfully, because the page's "live unavailable" banner is about the
+ * connection, not about this hook reading.
  *
  * `includeRoster` adds the standing roster to the day's arithmetic: children
  * standing on a bus that has a run of the selected segment read as waiting when
@@ -1348,6 +1386,12 @@ export function useDashboardData(
     const unrecordedRows: AttendanceRow[] = [];
     let unrecorded = 0;
     if (includeRoster && effectiveDate === todayDateStr()) {
+      // Every row of the segment, whatever bus it names — deliberately. A child
+      // recorded on bus A and moved to bus B later that morning is in this set,
+      // so he is counted once, under A, and is NOT counted as unrecorded on B.
+      // Do not narrow this to the child's current bus and do not count him on
+      // both: he rode A that morning, and a second count would make the day's
+      // total larger than the number of children in it.
       const recorded = new Set(segAtt.map((a) => a.id.split("__").at(-1) ?? a.id));
       for (const child of roster) {
         const run = runs.find(
