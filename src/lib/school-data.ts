@@ -219,7 +219,7 @@ export interface RunRoster {
   runStatus: "IN_PROGRESS" | "COMPLETED" | null;
   /** Static identity of the run the roster shows (for the run-details sheet). busId is "" when the user has no bus. */
   runMeta: { busId: string; runType: string; date: string };
-  /** Complete the run: mark it COMPLETED and any WAITING students ABSENT. */
+  /** Complete the run: mark it COMPLETED and write an ABSENT row for every child it has no record of. */
   completeRun: () => Promise<void>;
   /** Set a student's status to ABSENT directly (kebab-menu shortcut). */
   markAbsent: (id: string) => void;
@@ -470,21 +470,19 @@ export function useRunRoster(): RunRoster {
         times.boardedAt = null;
         times.droppedOffAt = null;
       }
-      // The row's identity rides a CREATE and nothing else. `merge: true` does
-      // not hide a changed value from `affectedKeys()`, and the rules let a
-      // driver change only the status, the two times and the stamps on a row
-      // that already exists — so a bus renamed mid-run or a class corrected by a
-      // sheet import after the row was written would make every tap, and the
-      // whole sign-off batch, be refused. `statuses` is the live map, so a child
-      // in it has a row; a stale cache that misses one lands on the create shape
-      // and is refused (and reported), which is what the driver saw before.
+      // The row's identity rides a CREATE and nothing else: `merge` does not
+      // hide a changed value from `affectedKeys()`, and the rules let a driver
+      // change only the status, the two times and the stamps on a row that
+      // already exists — so a bus renamed mid-run or a class corrected by a
+      // sheet import would otherwise refuse every tap, and the whole sign-off
+      // batch with it.
+      //
+      // So the shape is a create unless the map belongs to this run AND holds
+      // the child; a stale map (a rollover, a bus change) makes every child
+      // unrecorded, which is what the rules see for a missing document.
       //
       // Provenance is mandatory either way: `firestore.rules` refuses a roster
       // write that does not carry who made it and the server's clock.
-      // Unrecorded unless the map is the run this press writes to and holds
-      // this child. A stale map (a rollover before the listener re-opened, a
-      // bus change) means every child is unrecorded, which is also what the
-      // rules see for a document that does not exist yet.
       const hasRecord = statuses.runId === runId && statuses.byStudentId.has(id);
       const row = hasRecord
         ? { status: next, ...times, updatedBy: uid, updatedAt: serverTimestamp() }
@@ -562,38 +560,36 @@ export function useRunRoster(): RunRoster {
       },
       { merge: true },
     );
-    // Same rule as a tap: the map only answers for the run it was read for.
+    // Sign-off asks the run's own map, never the rendered status (which is frozen
+    // to the listener's run): a child needs a row exactly when this run has no
+    // record of him. Under a stale map — a rollover, a bus change — nobody is
+    // recorded on this run, which is also what the rules see for a document that
+    // does not exist, so selection and shape are one question and cannot
+    // disagree. A child the map *does* hold keeps the row he has: another
+    // device's word about today is not ours to overwrite with a blanket ABSENT.
     const mapIsThisRun = statuses.runId === runId;
     let markedAbsent = 0;
     for (const student of roster) {
-      if (student.status === "WAITING") {
-        // A child nobody has recorded has no attendance document, so his write is
-        // a CREATE and must carry the row's identity. A child who still has the
-        // dispatch-era WAITING row gets the status and the stamps only — an
-        // update may change nothing else, and a diverged `grade` or `busName`
-        // would otherwise refuse the whole batch and leave the day signed off as
-        // nothing.
-        const row = mapIsThisRun && statuses.byStudentId.has(student.id)
-          ? { status: "ABSENT", boardedAt: null, droppedOffAt: null, ...stamp }
-          : {
-              runId,
-              date,
-              busId,
-              busName,
-              studentName: student.name,
-              grade: student.grade,
-              status: "ABSENT",
-              boardedAt: null,
-              droppedOffAt: null,
-              ...stamp,
-            };
-        batch.set(
-          doc(firestore, "schools", schoolId, "attendance", `${runId}__${student.id}`),
-          row,
-          { merge: true },
-        );
-        markedAbsent += 1;
-      }
+      if (mapIsThisRun && statuses.byStudentId.has(student.id)) continue;
+      // No child reaching this point has a document to update, so the write is a
+      // CREATE and must carry the row's identity.
+      batch.set(
+        doc(firestore, "schools", schoolId, "attendance", `${runId}__${student.id}`),
+        {
+          runId,
+          date,
+          busId,
+          busName,
+          studentName: student.name,
+          grade: student.grade,
+          status: "ABSENT",
+          boardedAt: null,
+          droppedOffAt: null,
+          ...stamp,
+        },
+        { merge: true },
+      );
+      markedAbsent += 1;
     }
     // One entry for one action. Forty orphan "marked absent" rows cannot be told
     // apart from forty human decisions.
