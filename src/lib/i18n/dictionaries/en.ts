@@ -532,7 +532,7 @@ export const messages = {
     "Each row is one bus. Open it for the children on that run and the order they came off.",
   "hint.dispatch.title": "Dispatch a vehicle",
   "hint.dispatch.body":
-    "Creates a run for a bus, a day and a segment, and pre-registers that bus's students on it.",
+    "Creates an afternoon run for a bus. The morning needs no dispatch: the driver's roster is already there.",
   "hint.export.title": "Export CSV",
   "hint.export.body":
     "Downloads every row of the selected run segment, not just what is on screen.",

@@ -396,7 +396,7 @@ export const messages: Messages = {
   "hint.routes.title": "Lignes",
   "hint.routes.body": "Chaque ligne est un bus. Ouvrez-la pour voir les enfants de ce trajet et l’ordre dans lequel ils sont descendus.",
   "hint.dispatch.title": "Lancer un véhicule",
-  "hint.dispatch.body": "Crée un trajet pour un bus, un jour et un segment, et y préenregistre les élèves de ce bus.",
+  "hint.dispatch.body": "Crée un trajet de dépose de l’après-midi pour un bus. Le matin n’a besoin d’aucun lancement : la liste du conducteur est déjà là.",
   "hint.export.title": "Exporter en CSV",
   "hint.export.body": "Télécharge toutes les lignes du segment de trajet sélectionné, pas seulement ce qui est affiché.",
   "hint.guidebook.title": "Guide",

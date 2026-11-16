@@ -13,9 +13,7 @@ import { Dialog } from "@/components/Dialog";
 import { Button } from "@/components/arc/button/button";
 import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { Icon } from "@/components/Icon";
-import { SlideSegments } from "@/components/SlideSegments";
 import { useToast } from "@/components/Toast";
-import { RUN_SEGMENTS, type RunSegmentId } from "@/data/dashboard";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth";
 import { buildRunId, todayDateStr } from "@/lib/school-data";
@@ -36,8 +34,8 @@ interface DispatchBus {
 }
 
 /**
- * Dispatch a vehicle: pick a bus, run type, and date, then create the run and
- * pre-register that bus's students as WAITING. Self-contained — fetches its own
+ * Dispatch a vehicle: pick a bus and a date, then create that bus's afternoon
+ * run and pre-register its students as WAITING. Self-contained — fetches its own
  * buses and performs the write; in mock mode it only toasts (no Firestore).
  * The form lives in its own component so it remounts (fresh state) each open.
  */
@@ -60,7 +58,9 @@ function DispatchForm({ onClose }: { onClose: () => void }) {
   const [buses, setBuses] = useState<DispatchBus[]>([]);
   const [busId, setBusId] = useState("");
   const selectedBus = buses.find((bus) => bus.id === busId);
-  const [runType, setRunType] = useState<RunSegmentId>("morning");
+  // The morning needs no dispatch — the driver's roster is standing — so this
+  // modal creates the afternoon run, unconditionally.
+  const runType = "afternoon";
   const [date, setDate] = useState(todayDateStr());
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -216,25 +216,12 @@ function DispatchForm({ onClose }: { onClose: () => void }) {
             />
           </div>
 
-          <fieldset className="flex flex-col gap-1.5">
-            <legend className="text-label-lg text-on-surface-variant">
-              {t("dispatch.runType")}
-            </legend>
-            <SlideSegments
-              variant="box"
-              ariaLabel={t("dispatch.runType")}
-              options={RUN_SEGMENTS.map((item) => ({
-                id: item.id,
-                label: t(
-                  item.id === "morning"
-                    ? "runType.morningPickup"
-                    : "runType.afternoonDropoff",
-                ),
-              }))}
-              value={runType}
-              onChange={setRunType}
-            />
-          </fieldset>
+          {/* Not a choice: the morning is the driver's standing roster, so the
+              only run left to dispatch is the afternoon. */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-label-lg text-on-surface-variant">{t("dispatch.runType")}</span>
+            <p className="text-body-md text-on-surface">{t("runType.afternoonDropoff")}</p>
+          </div>
 
           <label className="flex flex-col gap-1.5">
             <span className="text-label-lg text-on-surface-variant">{t("dispatch.date")}</span>
