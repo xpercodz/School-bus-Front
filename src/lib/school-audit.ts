@@ -208,6 +208,23 @@ export function useActivityFeed({
   };
 }
 
+/**
+ * The last exact answer per (user, window, actor), so a revisit to the screen
+ * paints numbers instead of "—" while the fresh count is already in flight.
+ *
+ * Measured against production: one count is 130–190 ms and the four run in
+ * parallel, so the strip's cost is the ROUND TRIP, not the scan — an `event IN`
+ * of ten values timed the same as a single `==` (139 vs 120–136 ms). So there is
+ * nothing to win by denormalising a `family` field onto the entries; the only
+ * wins are not paying a second read for the tenant (see `primeSchoolId`) and
+ * not paying a round trip the reader has already waited for.
+ *
+ * A failed refresh still resolves to absent, never to a stale number: an exact
+ * count that is silently old is the one thing this strip must not show.
+ */
+const countsCache = new Map<string, Record<AuditFamily, number>>();
+const COUNTS_CACHE_MAX = 20;
+
 /** Exact counts per family for the window, plus the total. Null while unknown. */
 export function useActivityCounts(options: {
   from: Date;
@@ -228,7 +245,10 @@ export function useActivityCounts(options: {
     if (!enabled || !uid) return;
     let cancelled = false;
     setLoading(true);
-    setCounts(null);
+    // Keyed by the filter, not the tenant, so it is known before the await:
+    // a changed window or actor finds no entry and the strip clears at once.
+    const cacheKey = `${uid}|${fromMs}|${toMs}|${actorUid ?? ""}`;
+    setCounts(countsCache.get(cacheKey) ?? null);
 
     void (async () => {
       const firestore = db;
@@ -245,21 +265,29 @@ export function useActivityCounts(options: {
             ];
             if (toMs) filters.push(where("at", "<", Timestamp.fromDate(new Date(toMs))));
             if (actorUid) filters.push(where("actorUid", "==", actorUid));
+            // Deliberately no `orderBy`: a count has no order, and an unordered
+            // query needs the `at ASCENDING` indexes the feed's (DESC) ones
+            // cannot serve. Adding an orderBy just to reuse them is a trap.
             return getCountFromServer(
               query(collection(firestore, "schools", schoolId, "audit"), ...filters),
             );
           }),
         );
         if (cancelled) return;
-        setCounts({
+        const next: Record<AuditFamily, number> = {
           access: results[0].data().count,
           student: results[1].data().count,
           roll: results[2].data().count,
           settings: results[3].data().count,
-        });
-      } catch {
+        };
+        if (countsCache.size >= COUNTS_CACHE_MAX) countsCache.clear();
+        countsCache.set(cacheKey, next);
+        setCounts(next);
+      } catch (err) {
         // Counts need the network and an index. An offline director still needs
-        // the list, so the strip simply goes away rather than lying with zeros.
+        // the list, so the strip goes absent rather than lying with zeros — but
+        // never silently: a swallowed error hid a missing index for a whole day.
+        console.error("[activity] counts unavailable", err);
         if (!cancelled) setCounts(null);
       } finally {
         if (!cancelled) setLoading(false);
